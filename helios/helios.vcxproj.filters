@@ -24,40 +24,76 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\graphics\HVERenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HVEWindow.cpp">
-      <Filter>Source Files\hve</Filter>
-    </ClCompile>
-    <ClCompile Include="Helios.cpp">
+    <ClCompile Include="src\graphics\RenderSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HVEPipeline.cpp">
-      <Filter>Source Files\hve</Filter>
+    <ClCompile Include="src\Helios.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HVEDevice.cpp">
-      <Filter>Source Files\hve</Filter>
+    <ClCompile Include="src\graphics\HVEModel.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HVESwapChain.cpp">
-      <Filter>Source Files\hve</Filter>
+    <ClCompile Include="src\graphics\HVEPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVESwapChain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\graphics\HVEQuad.hpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVECamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\HVEKeyboard.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="HVEWindow.h">
-      <Filter>Header Files\hve</Filter>
-    </ClInclude>
-    <ClInclude Include="Helios.h">
+    <ClInclude Include="include\graphics\HVEGameObject.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HVEPipeline.h">
-      <Filter>Header Files\hve</Filter>
+    <ClInclude Include="include\graphics\HVERenderer.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HVEDevice.h">
-      <Filter>Header Files\hve</Filter>
+    <ClInclude Include="include\graphics\RenderSystem.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HVESwapChain.h">
-      <Filter>Header Files\hve</Filter>
+    <ClInclude Include="include\Helios.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEModel.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEPipeline.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVESwapChain.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEWindow.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEDevice.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVECamera.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\input\HVEKeyboard.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

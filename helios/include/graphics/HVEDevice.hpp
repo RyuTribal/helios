@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HVEWindow.h"
+#include "HVEWindow.hpp"
 
 // std lib headers
 #include <string>

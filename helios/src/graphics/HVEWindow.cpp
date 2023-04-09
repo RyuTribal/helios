@@ -1,4 +1,4 @@
-#include "HVEWindow.h"
+#include "graphics/HVEWindow.hpp"
 
 #include <stdexcept>
 
@@ -21,10 +21,21 @@ namespace hve
 	{
 		glfwInit();
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, windowName.c_str(), nullptr, nullptr);
+		glfwSetWindowUserPointer(window, this);
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 	}
+
+	void HVEWindow::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
+		auto hveWindow = reinterpret_cast < HVEWindow* > (glfwGetWindowUserPointer(window));
+		hveWindow->frameBufferResized = true;
+		hveWindow->WIDTH = width;
+		hveWindow->HEIGHT = height;
+	}
+
 
 	void HVEWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface)
 	{

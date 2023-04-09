@@ -1,4 +1,4 @@
-#include "HVEDevice.h"
+#include "graphics/HVEDevice.hpp"
 
 // std headers
 #include <cstring>

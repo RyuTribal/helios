@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HVEDevice.h"
+#include "HVEDevice.hpp"
 
 // vulkan headers
 #include <vulkan/vulkan.h>
@@ -8,6 +8,7 @@
 // std lib headers
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace hve {
 
@@ -16,10 +17,11 @@ class HVESwapChain {
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
   HVESwapChain(HVEDevice &deviceRef, VkExtent2D windowExtent);
+  HVESwapChain(HVEDevice& deviceRef, VkExtent2D windowExtent, std::shared_ptr<HVESwapChain> previous);
   ~HVESwapChain();
 
   HVESwapChain(const HVESwapChain&) = delete;
-  void operator=(const HVESwapChain&) = delete;
+  HVESwapChain& operator=(const HVESwapChain&) = delete;
 
   VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
   VkRenderPass getRenderPass() { return renderPass; }
@@ -38,7 +40,14 @@ class HVESwapChain {
   VkResult acquireNextImage(uint32_t *imageIndex);
   VkResult submitCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
 
+    bool compareSwapFormats(const HVESwapChain &swapChain) const
+    {
+        return swapChain.swapChainDepthFormat == swapChainDepthFormat && 
+            swapChain.swapChainImageFormat == swapChainImageFormat;
+    }
+
  private:
+	void init();
   void createSwapChain();
   void createImageViews();
   void createDepthResources();
@@ -54,6 +63,7 @@ class HVESwapChain {
   VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 
   VkFormat swapChainImageFormat;
+  VkFormat swapChainDepthFormat;
   VkExtent2D swapChainExtent;
 
   std::vector<VkFramebuffer> swapChainFramebuffers;
@@ -69,6 +79,7 @@ class HVESwapChain {
   VkExtent2D windowExtent;
 
   VkSwapchainKHR swapChain;
+  std::shared_ptr<HVESwapChain> oldSwapChain;
 
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;

@@ -72,14 +72,29 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)bin\$(Platform)$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)bin\intermediates\$(Platform)$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)bin\$(Platform)$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)bin\intermediates\$(Platform)$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)bin\$(Platform)$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)bin\intermediates\$(Platform)$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)bin\$(Platform)$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)bin\intermediates\$(Platform)$(Configuration)</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>;$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -94,6 +109,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>;$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,7 +124,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories);$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -138,7 +154,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories);$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -163,26 +179,38 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Helios.cpp" />
-    <ClCompile Include="HVEPipeline.cpp" />
-    <ClCompile Include="HVESwapChain.cpp" />
-    <ClCompile Include="HVEWindow.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="HVEDevice.cpp" />
+    <ClCompile Include="include\graphics\HVEQuad.hpp" />
+    <ClCompile Include="src\graphics\HVECamera.cpp" />
+    <ClCompile Include="src\graphics\HVERenderer.cpp" />
+    <ClCompile Include="src\graphics\RenderSystem.cpp" />
+    <ClCompile Include="src\Helios.cpp" />
+    <ClCompile Include="src\graphics\HVEModel.cpp" />
+    <ClCompile Include="src\graphics\HVEPipeline.cpp" />
+    <ClCompile Include="src\graphics\HVESwapChain.cpp" />
+    <ClCompile Include="src\graphics\HVEWindow.cpp" />
+    <ClCompile Include="src\input\HVEKeyboard.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\graphics\HVEDevice.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Helios.h" />
-    <ClInclude Include="HVEPipeline.h" />
-    <ClInclude Include="HVESwapChain.h" />
-    <ClInclude Include="HVEWindow.h" />
-    <ClInclude Include="HVEDevice.h" />
+    <ClInclude Include="include\graphics\HVECamera.hpp" />
+    <ClInclude Include="include\graphics\HVEGameObject.hpp" />
+    <ClInclude Include="include\graphics\HVERenderer.hpp" />
+    <ClInclude Include="include\graphics\RenderSystem.hpp" />
+    <ClInclude Include="include\Helios.hpp" />
+    <ClInclude Include="include\graphics\HVEModel.hpp" />
+    <ClInclude Include="include\graphics\HVEPipeline.hpp" />
+    <ClInclude Include="include\graphics\HVESwapChain.hpp" />
+    <ClInclude Include="include\graphics\HVEWindow.hpp" />
+    <ClInclude Include="include\graphics\HVEDevice.hpp" />
+    <ClInclude Include="include\input\HVEKeyboard.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="compile.bat" />
-    <None Include="Shaders\simple_shader.frag" />
-    <None Include="Shaders\simple_shader.frag.spv" />
-    <None Include="Shaders\simple_shader.vert" />
-    <None Include="Shaders\simple_shader.vert.spv" />
+    <None Include="shaders\simple_shader.frag" />
+    <None Include="shaders\simple_shader.frag.spv" />
+    <None Include="shaders\simple_shader.vert" />
+    <None Include="shaders\simple_shader.vert.spv" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

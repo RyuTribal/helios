@@ -1,4 +1,4 @@
-#include "Helios.h"
+#include "Helios.hpp"
 
 #include <cstdlib>
 #include <iostream>

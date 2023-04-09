@@ -21,14 +21,24 @@ namespace hve
 			return { static_cast<uint32_t>(WIDTH), static_cast<uint32_t>(HEIGHT) };
 		}
 
+		bool wasWindowResized() { return frameBufferResized; };
+		void resetWindowResizedFlag() { frameBufferResized = false; };
+
 		void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
+
+		GLFWwindow* getGLFWwindow() const { return window; }
+		
 
 	private:
 
+		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+
 		void initWindow();
 
-		const int WIDTH;
-		const int HEIGHT;
+		int WIDTH;
+		int HEIGHT;
+
+		bool frameBufferResized = false;
 
 		std::string windowName;
 
