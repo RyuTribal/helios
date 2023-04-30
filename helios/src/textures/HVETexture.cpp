@@ -14,7 +14,9 @@ namespace hve {
 		assert(data && "Texture error::Couldn't load texture");
 
 		//format = channelsToVKFormat(channels);
-		format = VK_FORMAT_R8G8B8A8_UNORM;
+		// Not all formats are supported by all GPU's
+		// VK_FORMAT_R8G8B8A8_SRGB is the safe option
+		format = VK_FORMAT_R8G8B8A8_SRGB;
 
 		createImage();
 		createImageView();
@@ -41,13 +43,13 @@ namespace hve {
 	{
         switch (channels) {
 	        case 1:
-	            return VK_FORMAT_R8_UNORM;
+	            return VK_FORMAT_R8_SRGB;
 	        case 2:
-	            return VK_FORMAT_R8G8_UNORM;
+	            return VK_FORMAT_R8G8_SRGB;
 	        case 3:
-	            return VK_FORMAT_R8G8B8_UNORM;
+	            return VK_FORMAT_R8G8B8_SRGB;
 	        case 4:
-	            return VK_FORMAT_R8G8B8A8_UNORM;
+	            return VK_FORMAT_R8G8B8A8_SRGB;
 	        default:
 	            // Handle error for unsupported number of channels
 	            return VK_FORMAT_UNDEFINED;
