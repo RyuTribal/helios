@@ -179,9 +179,11 @@
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="include\graphics\HVEQuad.hpp" />
+    <ClCompile Include="src\graphics\HVEBuffer.cpp" />
     <ClCompile Include="src\graphics\HVECamera.cpp" />
+    <ClCompile Include="src\graphics\HVEDescriptors.cpp" />
     <ClCompile Include="src\graphics\HVERenderer.cpp" />
+    <ClCompile Include="src\textures\HVETexture.cpp" />
     <ClCompile Include="src\graphics\RenderSystem.cpp" />
     <ClCompile Include="src\Helios.cpp" />
     <ClCompile Include="src\graphics\HVEModel.cpp" />
@@ -191,11 +193,19 @@
     <ClCompile Include="src\input\HVEKeyboard.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\graphics\HVEDevice.cpp" />
+    <ClCompile Include="src\objects\HVETile.cpp" />
+    <ClCompile Include="src\primitives\HVEShapes.cpp" />
+    <ClCompile Include="src\textures\HVETextureManager.cpp" />
+    <ClCompile Include="src\textures\stb_image_wrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\graphics\HVEBuffer.hpp" />
     <ClInclude Include="include\graphics\HVECamera.hpp" />
+    <ClInclude Include="include\graphics\HVEDescriptors.hpp" />
+    <ClInclude Include="include\graphics\HVEFrameInfo.hpp" />
     <ClInclude Include="include\graphics\HVEGameObject.hpp" />
     <ClInclude Include="include\graphics\HVERenderer.hpp" />
+    <ClInclude Include="include\textures\HVETexture.hpp" />
     <ClInclude Include="include\graphics\RenderSystem.hpp" />
     <ClInclude Include="include\Helios.hpp" />
     <ClInclude Include="include\graphics\HVEModel.hpp" />
@@ -204,13 +214,15 @@
     <ClInclude Include="include\graphics\HVEWindow.hpp" />
     <ClInclude Include="include\graphics\HVEDevice.hpp" />
     <ClInclude Include="include\input\HVEKeyboard.hpp" />
+    <ClInclude Include="include\objects\HVETile.hpp" />
+    <ClInclude Include="include\primitives\HVEShapes.hpp" />
+    <ClInclude Include="include\textures\HVETextureManager.hpp" />
+    <ClInclude Include="include\textures\stb_image_wrapper.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="compile.bat" />
     <None Include="shaders\simple_shader.frag" />
-    <None Include="shaders\simple_shader.frag.spv" />
     <None Include="shaders\simple_shader.vert" />
-    <None Include="shaders\simple_shader.vert.spv" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

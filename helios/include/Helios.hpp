@@ -4,6 +4,8 @@
 #include "graphics/HVEDevice.hpp"
 #include "graphics/HVERenderer.hpp"
 #include "graphics/HVEGameObject.hpp"
+#include "graphics/HVEDescriptors.hpp"
+#include "textures/HVETextureManager.hpp"
 
 #include <memory>
 #include <vector>
@@ -25,12 +27,15 @@ namespace hve {
 		void run();
 	private:
 		void loadGameObjects();
+		void loadGameTextures();
 
 		static constexpr float MAX_FRAME_TIME = 2.f;
 
 		HVEWindow hveWindow{WIDTH, HEIGHT, "Helios"};
 		HVEDevice hveDevice{ hveWindow };
 		HVERenderer hveRenderer{ hveWindow, hveDevice };
+		HVETextureManager textureManager{ hveDevice };
+		std::unique_ptr<HVEDescriptorPool> globalPool{};
 		std::vector<HVEGameObject> gameObjects;
 	};
 }

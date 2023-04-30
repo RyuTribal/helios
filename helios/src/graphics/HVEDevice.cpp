@@ -531,4 +531,4 @@ void HVEDevice::createImageWithInfo(
   }
 }
 
-}  // namespace lve
+}

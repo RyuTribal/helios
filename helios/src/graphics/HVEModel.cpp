@@ -15,15 +15,6 @@ namespace hve
 
 	HVEModel::~HVEModel()
 	{
-		vkDestroyBuffer(hveDevice.device(), vertexBuffer, nullptr);
-		vkFreeMemory(hveDevice.device(), vertexBufferMemory, nullptr);
-
-		if(hasIndexBuffer)
-		{
-			vkDestroyBuffer(hveDevice.device(), indexBuffer, nullptr);
-			vkFreeMemory(hveDevice.device(), indexBufferMemory, nullptr);
-		}
-		
 	}
 
 	void HVEModel::createVertexBuffers(const std::vector<Vertex>& vertices)
@@ -31,35 +22,28 @@ namespace hve
 		vertexCount = static_cast<uint32_t>(vertices.size());
 		assert(vertexCount >= 3 && "Vertex count must be at least 3");
 		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+		uint32_t vertexSize = sizeof(vertices[0]);
 
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		hveDevice.createBuffer(
-			bufferSize,
+		HVEBuffer stagingBuffer{
+			hveDevice,
+			vertexSize,
+			vertexCount,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			stagingBuffer,
-			stagingBufferMemory
-		);
 
-		void* data;
-		vkMapMemory(hveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-		vkUnmapMemory(hveDevice.device(), stagingBufferMemory);
+		};
 
-		hveDevice.createBuffer(
-			bufferSize,
+		stagingBuffer.map();
+		stagingBuffer.writeToBuffer((void*)vertices.data());
+
+		vertexBuffer = std::make_unique<HVEBuffer>(
+			hveDevice,
+			vertexSize,
+			vertexCount,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			vertexBuffer,
-			vertexBufferMemory
-		);
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		hveDevice.copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-		vkDestroyBuffer(hveDevice.device(), stagingBuffer, nullptr);
-		vkFreeMemory(hveDevice.device(), stagingBufferMemory, nullptr);
+		hveDevice.copyBuffer(stagingBuffer.getBuffer(), vertexBuffer->getBuffer(), bufferSize);
 	}
 
 	void HVEModel::createIndexBuffer(const std::vector<uint32_t>& indices)
@@ -73,35 +57,28 @@ namespace hve
 		}
 
 		VkDeviceSize bufferSize = sizeof(indices[0]) * indexCount;
+		uint32_t indexSize = sizeof(indices[0]);
 
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		hveDevice.createBuffer(
-			bufferSize,
+		HVEBuffer stagingBuffer{
+			hveDevice,
+			indexSize,
+			indexCount,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			stagingBuffer,
-			stagingBufferMemory
-		);
+		};
 
-		void* data;
-		vkMapMemory(hveDevice.device(), stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-		vkUnmapMemory(hveDevice.device(), stagingBufferMemory);
+		stagingBuffer.map();
+		stagingBuffer.writeToBuffer((void*)indices.data());
 
-		hveDevice.createBuffer(
-			bufferSize,
+		indexBuffer = std::make_unique<HVEBuffer>(
+			hveDevice,
+			indexSize,
+			indexCount,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			indexBuffer,
-			indexBufferMemory
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 		);
 
-		hveDevice.copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-		vkDestroyBuffer(hveDevice.device(), stagingBuffer, nullptr);
-		vkFreeMemory(hveDevice.device(), stagingBufferMemory, nullptr);
+		hveDevice.copyBuffer(stagingBuffer.getBuffer(), indexBuffer->getBuffer(), bufferSize);
 	}
 
 	void HVEModel::draw(VkCommandBuffer commandBuffer)
@@ -119,14 +96,14 @@ namespace hve
 
 	void HVEModel::bind(VkCommandBuffer commandBuffer)
 	{
-		VkBuffer buffers[] = { vertexBuffer };
+		VkBuffer buffers[] = { vertexBuffer->getBuffer() };
 
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 
 		if(hasIndexBuffer)
 		{
-			vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 		}
 
 	}
@@ -142,7 +119,7 @@ namespace hve
 
 	std::vector<VkVertexInputAttributeDescription> HVEModel::Vertex::getAttributeDescriptions()
 	{
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions(3);
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
@@ -153,6 +130,11 @@ namespace hve
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
 		return attributeDescriptions;
 		

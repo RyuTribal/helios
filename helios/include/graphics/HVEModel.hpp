@@ -1,9 +1,11 @@
 #pragma once
 #include "HVEDevice.hpp"
+#include "graphics/HVEBuffer.hpp"
 
 // libs
 #define GML_FORCE_RADIANS
 #define GML_FORCE_DEPTH_ZERO_TO_ONE
+#include <memory>
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -18,6 +20,7 @@ namespace hve
 		{
 			glm::vec3 position;
 			glm::vec3 color;
+			glm::vec2 texCoord;
 
 			static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
 			static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
@@ -45,13 +48,11 @@ namespace hve
 
 		HVEDevice& hveDevice;
 
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexBufferMemory;
+		std::unique_ptr<HVEBuffer> vertexBuffer;
 		uint32_t vertexCount;
 
 		bool hasIndexBuffer = false;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexBufferMemory;
+		std::unique_ptr<HVEBuffer> indexBuffer;
 		uint32_t indexCount;
 	};
 }
