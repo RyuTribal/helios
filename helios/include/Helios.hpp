@@ -10,6 +10,9 @@
 #include <memory>
 #include <vector>
 
+#include "world/HVEScene.hpp"
+
+
 namespace hve {
 	class Helios
 	{
@@ -27,16 +30,16 @@ namespace hve {
 		void run();
 	private:
 		void loadGameObjects();
-		void loadGameTextures();
 
 		static constexpr float MAX_FRAME_TIME = 2.f;
 
 		HVEWindow hveWindow{WIDTH, HEIGHT, "Helios"};
 		HVEDevice hveDevice{ hveWindow };
 		HVERenderer hveRenderer{ hveWindow, hveDevice };
-		HVETextureManager textureManager{ hveDevice };
+		
 		std::unique_ptr<HVEDescriptorPool> globalPool{};
-		std::vector<HVEGameObject> gameObjects;
+		HVEScene scene;
+		
 	};
 }
 

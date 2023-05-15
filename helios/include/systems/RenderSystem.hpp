@@ -2,26 +2,27 @@
 
 #include "graphics/HVEPipeline.hpp"
 #include "graphics/HVEDevice.hpp"
-#include "graphics/HVEGameObject.hpp"
-#include "graphics/HVECamera.hpp"
-#include "HVEFrameInfo.hpp"
+#include "world/HVEScene.hpp"
+#include "systems/HVESystem.hpp"
 #include "textures/HVETextureManager.hpp"
 
 #include <memory>
 #include <vector>
 
+#include "graphics/HVEFrameInfo.hpp"
+
 namespace hve {
-	class RenderSystem
+	class RenderSystem : public HVESystem
 	{
 
 	public:
 
 		RenderSystem(HVEDevice &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout textureSetLayout);
-		~RenderSystem();
+		~RenderSystem() override;
 
 		RenderSystem(const RenderSystem&) = delete;
 		RenderSystem& operator=(const RenderSystem&) = delete;
-		void renderGameObjects(FrameInfo &frameInfo, std::vector<HVEGameObject> &gameObjects, HVETextureManager& textureManager);
+		void onUpdate(FrameInfo &frameInfo, HVEScene& scene) override;
 	private:
 		void createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout textureSetLayoutt);
 		void createPipeline(VkRenderPass renderPass);

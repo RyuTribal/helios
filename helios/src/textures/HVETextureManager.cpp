@@ -13,7 +13,7 @@ namespace hve
 	{
 	}
 
-	HVETexture& HVETextureManager::loadTexture(const std::string& filePath)
+	HVETexture* HVETextureManager::loadTexture(const std::string& filePath)
 	{
 		if(textureCache.find(filePath) == textureCache.end())
 		{
@@ -21,7 +21,7 @@ namespace hve
 				std::forward_as_tuple(filePath),
 				std::forward_as_tuple(hveDevice, filePath));
 		}
-		return textureCache.at(filePath);
+		return &textureCache.at(filePath);
 	}
 
 

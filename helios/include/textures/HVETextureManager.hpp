@@ -14,8 +14,8 @@ namespace hve
 		HVETextureManager(HVEDevice& hveDevice);
 		~HVETextureManager();
 
-		HVETexture& loadTexture(const std::string& filePath);
-		HVETexture& getTexture(const std::string& filePath) { return textureCache.at(filePath); }
+		HVETexture* loadTexture(const std::string& filePath);
+		HVETexture* getTexture(const std::string& filePath) { return &textureCache.at(filePath); }
 
 		VkDescriptorSet& getDescriptorSetById(int index) { return textureDescriptorSets[index];}
 		std::vector<VkDescriptorSet>& getDescriptionSets() { return textureDescriptorSets; }
