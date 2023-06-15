@@ -16,9 +16,10 @@
 #include "components/HVEAnimComponent.hpp"
 #include "components/HVEColorComponent.hpp"
 #include "components/HVEModelComponent.hpp"
-#include "components/HVETextureComponent.hpp"
+#include "components/HVESpriteComponent.hpp"
 #include "components/HVETransformComponent.hpp"
 #include "enums/HVESystemStages.h"
+#include "graphics/HVEModelManager.hpp"
 #include "graphics/HVERenderer.hpp"
 #include "textures/HVETextureManager.hpp"
 
@@ -46,13 +47,15 @@ namespace hve
         HVEScene& operator=(HVEScene&&) = default;
 
         using id_t = unsigned int;
-        HVEScene(id_t sceneId, HVEWindow& window, HVEDevice& hveDevice, HVERenderer& hveRenderer) : id{ sceneId }, sceneName{ "Scene_" + std::to_string(sceneId) }, hveWindow{ window }, hveRenderer{ hveRenderer }
+        HVEScene(id_t sceneId, HVEWindow& window, HVEDevice& hveDevice, HVERenderer& hveRenderer) : id{ sceneId }, sceneName{ "Scene_" + std::to_string(sceneId) }, hveWindow{ window }, hveRenderer{ hveRenderer }, hveDevice{ hveDevice }
         {
             textureManager = std::make_shared<HVETextureManager>(hveDevice);
+            modelManager = std::make_shared < HVEModelManager>(hveDevice);
         }
-        HVEScene(id_t sceneId, std::string name, HVEWindow& window, HVEDevice& hveDevice, HVERenderer& hveRenderer) : id{ sceneId }, sceneName{ name }, hveWindow{ window }, hveRenderer{ hveRenderer }
+        HVEScene(id_t sceneId, std::string name, HVEWindow& window, HVEDevice& hveDevice, HVERenderer& hveRenderer) : id{ sceneId }, sceneName{ name }, hveWindow{ window }, hveRenderer{ hveRenderer }, hveDevice{hveDevice}
         {
             textureManager = std::make_shared<HVETextureManager>(hveDevice);
+            modelManager = std::make_shared < HVEModelManager>(hveDevice);
         }
 
         void addSystem(std::shared_ptr<HVESystem> system, HVESystemStages stage);
@@ -97,6 +100,7 @@ namespace hve
         id_t getSceneId() { return id; }
         std::string getSceneName() { return sceneName; }
         std::shared_ptr <HVETextureManager> getTextureManager() { return textureManager; }
+        std::shared_ptr<HVEModelManager> getModelManager() { return modelManager; }
         HVEWindow& getWindow() { return hveWindow; }
         void setPlayerControlledCamera(int entityId) { playerControllerCameraId = entityId; }
         HVECameraComponent& getPlayerControlledCamera() { return getEntityComponent<HVECameraComponent>(playerControllerCameraId); }
@@ -110,10 +114,10 @@ namespace hve
             HVEComponentManager<HVEAnimComponent>,
             HVEComponentManager<HVECameraComponent>,
             HVEComponentManager<HVEColliderComponent>,
-			HVEComponentManager<HVEColorComponent>,
+            HVEComponentManager<HVEColorComponent>,
             HVEComponentManager<HVEModelComponent>,
             HVEComponentManager<HVEScriptComponent>,
-            HVEComponentManager<HVETextureComponent>,
+            HVEComponentManager<HVESpriteComponent>,
             HVEComponentManager<HVETransformComponent>
         > componentManagers;
         std::vector<std::shared_ptr<HVESystem>> preRenderSystems;
@@ -132,7 +136,9 @@ namespace hve
 
         HVEWindow& hveWindow;
         HVERenderer& hveRenderer;
+        HVEDevice& hveDevice;
         std::shared_ptr <HVETextureManager> textureManager;
+        std::shared_ptr<HVEModelManager> modelManager;
         id_t playerControllerCameraId = 0;
 
     };

@@ -6,7 +6,7 @@
 
 
 namespace hve {
-	HVETexture::HVETexture(HVEDevice& device, const std::string& filePath) : hveDevice{ device }
+	HVETexture::HVETexture(HVEDevice& device, const std::string& filePath, VkSamplerAddressMode addressMode) : hveDevice{ device }
 	{
 
 		data = stbi_load(filePath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
@@ -20,7 +20,7 @@ namespace hve {
 
 		createImage();
 		createImageView();
-		createImageSampler();
+		createImageSampler(addressMode);
 		createBuffer();
 
 		// Transition image layout and copy buffer to image
@@ -97,7 +97,7 @@ namespace hve {
 		}
 		
 	}
-	void HVETexture::createImageSampler()
+	void HVETexture::createImageSampler(VkSamplerAddressMode addressMode)
 	{
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

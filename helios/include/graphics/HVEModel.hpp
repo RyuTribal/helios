@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#include "HVESwapChain.hpp"
+
 namespace hve
 {
 	class HVEModel
@@ -19,40 +21,60 @@ namespace hve
 		struct Vertex
 		{
 			glm::vec3 position;
-			glm::vec3 color;
-			glm::vec2 texCoord;
 
 			static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
 			static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
+		};
+
+		struct VertexInstanceData
+		{
+			glm::vec4 transformX;
+			glm::vec4 transformY;
+			glm::vec4 transformZ;
+			glm::vec4 transformTranslation;
+
+			glm::vec3 color;
+			glm::vec2 texCoord;
 		};
 
 		struct Builder
 		{
 			std::vector<Vertex> vertices{};
 			std::vector<uint32_t> indices{};
+			std::vector<VertexInstanceData> instances{};
 		};
 
-		HVEModel(HVEDevice &device, const HVEModel::Builder &builder);
+		HVEModel(HVEDevice &device, HVEModel::Builder &builder);
 		~HVEModel();
 
 		HVEModel(const HVEModel&) = delete;
 		HVEModel& operator=(const HVEModel&) = delete;
 
+		void addInstance(VertexInstanceData& instanceData);
+		void clearInstances();
 		void bind(VkCommandBuffer commandBuffer);
 		void draw(VkCommandBuffer commandBuffer);
+		void buildCurrentInstances();
+		void setCurrentFrame(int frameIndex) { currentFrame = frameIndex; }
 
 	private:
 
 		void createVertexBuffers(const std::vector<Vertex>& vertices);
 		void createIndexBuffer(const std::vector<uint32_t>& indices);
+		void createInstanceBuffer(const std::vector<VertexInstanceData>& instances);
 
 		HVEDevice& hveDevice;
-
 		std::unique_ptr<HVEBuffer> vertexBuffer;
 		uint32_t vertexCount;
 
 		bool hasIndexBuffer = false;
 		std::unique_ptr<HVEBuffer> indexBuffer;
 		uint32_t indexCount;
+
+		Builder builder;
+		std::unique_ptr<HVEBuffer> instanceBuffers[HVESwapChain::MAX_FRAMES_IN_FLIGHT];
+		uint32_t instanceCount;
+
+		int currentFrame = 0;
 	};
 }

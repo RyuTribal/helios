@@ -7,7 +7,6 @@
 
 
 #include <stdexcept>
-#include <array>
 #include <iostream>
 #include <graphics/HVEFrameInfo.hpp>
 
@@ -74,8 +73,8 @@ namespace hve
 
 	void RenderSystem::onUpdate(FrameInfo& frameInfo, HVEScene& scene)
 	{
-		hvePipeline->bind(frameInfo.commandBuffer);
 
+		hvePipeline->bind(frameInfo.commandBuffer);
 		vkCmdBindDescriptorSets(
 			frameInfo.commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -88,19 +87,19 @@ namespace hve
 
 		// Get the component managers from the scene
 		auto& transformManager = scene.getComponentManager<HVETransformComponent>();
-		auto& textureManager = scene.getComponentManager<HVETextureComponent>();
+		auto& spriteManager = scene.getComponentManager<HVESpriteComponent>();
 		auto& colorManager = scene.getComponentManager<HVEColorComponent>();
 		auto& modelManager = scene.getComponentManager<HVEModelComponent>();
+
 
 		// Iterate over the entities with the required components
 		for (auto& [entityId, modelComponent] : modelManager.getStorage()) {
 
-			HVETextureComponent* textureComponent = textureManager.getComponent(entityId);
+			HVESpriteComponent* spriteComponent = spriteManager.getComponent(entityId);
 			HVEColorComponent* colorComponent = colorManager.getComponent(entityId);
 			HVETransformComponent* transformComponent = transformManager.getComponent(entityId);
 
-			// Bind the texture descriptor set
-			if (textureComponent != nullptr) {
+			if (spriteComponent != nullptr) {
 				vkCmdBindDescriptorSets(
 					frameInfo.commandBuffer,
 					VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -110,6 +109,28 @@ namespace hve
 					&scene.getTextureManager()->getDescriptorSetById(0),
 					0,
 					nullptr);
+
+				HVEModel::VertexInstanceData instance{};
+				instance.texCoord = *spriteComponent->sprite->getSpriteSheetCoordinates();
+				if (transformComponent) {
+					glm::mat4 instanceTransform = transformComponent->mat4();
+					instance.transformX = instanceTransform[0];
+					instance.transformY = instanceTransform[1];
+					instance.transformZ = instanceTransform[2];
+					instance.transformTranslation = instanceTransform[3];
+				}
+				else
+				{
+					HVETransformComponent objectTransform;
+					objectTransform.translation = { 0.f, 0.f, 0.f };
+					objectTransform.scale = { 1.f, 1.f, 1.f };
+					glm::mat4 instanceTransform = objectTransform.mat4();
+					instance.transformX = instanceTransform[0];
+					instance.transformY = instanceTransform[1];
+					instance.transformZ = instanceTransform[2];
+					instance.transformTranslation = instanceTransform[3];
+				}
+				scene.getModelManager()->getModelByShape(modelComponent.model)->addInstance(instance);
 			}
 			SimplePushConstantData push{};
 			if (colorComponent != nullptr) {
@@ -119,17 +140,6 @@ namespace hve
 			{
 				push.color = glm::vec3{ 0.f, 0.f, 0.f };
 			}
-			if (transformComponent != nullptr) {
-				push.modelMatrix = transformComponent->mat4();
-			}
-			else
-			{
-				// Just a default one if one hasn't been provided
-				HVETransformComponent objectTransform;
-				objectTransform.translation = { 0.f, 0.f, 0.f };
-				objectTransform.scale = { 1.f, 1.f, 1.f };
-				push.modelMatrix = objectTransform.mat4();
-			}
 
 			vkCmdPushConstants(
 				frameInfo.commandBuffer,
@@ -138,10 +148,10 @@ namespace hve
 				0,
 				sizeof(SimplePushConstantData),
 				&push);
-
-			// Bind and draw the model
-			modelComponent.model->bind(frameInfo.commandBuffer);
-			modelComponent.model->draw(frameInfo.commandBuffer);
 		}
+		scene.getModelManager()->getModelByShape(Shapes::Quad)->buildCurrentInstances();
+		// Bind and draw the model
+		scene.getModelManager()->getModelByShape(Shapes::Quad)->bind(frameInfo.commandBuffer);
+		scene.getModelManager()->getModelByShape(Shapes::Quad)->draw(frameInfo.commandBuffer);
 	}
 }

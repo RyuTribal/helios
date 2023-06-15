@@ -9,6 +9,6 @@ namespace hve
 	class HVEShapes
 	{
 	public:
-		static std::unique_ptr<HVEModel> drawQuad(HVEDevice& device, glm::vec3 offset);
+		static std::unique_ptr<HVEModel> drawQuad(HVEDevice& device);
 	};
 }

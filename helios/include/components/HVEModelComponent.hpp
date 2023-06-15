@@ -1,10 +1,11 @@
 #pragma once
+#include "enums/HVEShapes.h"
 #include "graphics/HVEModel.hpp"
 
 namespace hve
 {
 	struct HVEModelComponent
 	{
-		std::shared_ptr<HVEModel> model;
+		Shapes model;
 	};
 }

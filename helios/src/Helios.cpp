@@ -14,6 +14,8 @@
 
 #include "graphics/HVEFrameInfo.hpp"
 #include "systems/HVECameraControlSystem.hpp"
+#include "systems/HVEPostRenderCleanup.hpp"
+#include "systems/HVEPrepareRender.hpp"
 
 
 namespace hve
@@ -72,8 +74,12 @@ namespace hve
 
 		std::shared_ptr<RenderSystem> renderSystem = std::make_shared<RenderSystem>( hveDevice, hveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout(), scene.getTextureManager()->getDescriptionLayout()->getDescriptorSetLayout() );
 		std::shared_ptr<HVECameraControlSystem> cameraController = std::make_shared<HVECameraControlSystem>();
+		std::shared_ptr<HVEPrepareRender> prepareRender = std::make_shared<HVEPrepareRender>();
+		std::shared_ptr<HVEPostRenderCleanup> renderCleanup = std::make_shared<HVEPostRenderCleanup>();
 		scene.addSystem(cameraController, HVESystemStages::PreRender);
+		scene.addSystem(prepareRender, HVESystemStages::PreRender);
 		scene.addSystem(renderSystem, HVESystemStages::DuringRender);
+		scene.addSystem(renderCleanup, HVESystemStages::PostRender);
 		int cameraEntity = scene.createEntity();
 
 		HVETransformComponent cameraTransform{};
@@ -82,7 +88,7 @@ namespace hve
 		scene.addComponentToEntity(cameraEntity, cameraTransform);
 		scene.addComponentToEntity(cameraEntity, cameraComponent);
 
-		//scene.setPlayerControlledCamera(cameraEntity);
+		scene.setPlayerControlledCamera(cameraEntity);
 
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		while (!hveWindow.shouldClose())
@@ -111,13 +117,11 @@ namespace hve
 
 	void Helios::loadGameObjects()
 	{
-		int gridHeight = 2;
-		int gridWidth = 2;
+		int gridHeight = 64;
+		int gridWidth = 64;
 
-		float tileSize = 256.f;
+		float tileSize = 16.f;
 
-		std::shared_ptr <HVEModel> quadShape = HVEShapes::drawQuad(hveDevice, { 0.f, 0.f, 0.f });
-		bool hasCamera = false;
 		for(int i = 0; i < gridHeight; i++)
 		{
 			for(int j = 0; j < gridWidth; j++)
@@ -130,11 +134,6 @@ namespace hve
 
 				int objectId = scene.createEntity();
 
-				HVEModelComponent objectModel;
-				objectModel.model = quadShape;
-
-				scene.addComponentToEntity(objectId, std::move(objectModel));
-
 				HVETransformComponent objectTransform;
 				// The offset so they don't stack on each other
 				objectTransform.translation = { tileSize * j / (WIDTH * aspect), tileSize * i / HEIGHT, 0.f };
@@ -142,17 +141,21 @@ namespace hve
 
 				scene.addComponentToEntity<HVETransformComponent>(objectId, objectTransform);
 
-				HVETexture *texture = scene.getTextureManager()->loadTexture("assets/textures/20jhmr.jpg");
+				HVETexture *texture = scene.getTextureManager()->loadTexture("assets/textures/grass.png", VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-				HVETextureComponent objectTexture{ texture };
-				scene.addComponentToEntity<HVETextureComponent>(objectId, objectTexture);
+				HVESpriteComponent spriteComponent{ texture, {0.f, 0.f}, {16.f, 16.f} };
+				scene.addComponentToEntity<HVESpriteComponent>(objectId, spriteComponent);
 
-				if (!hasCamera) {
+				scene.getModelManager()->createModel(Shapes::Quad);
+				HVEModelComponent objectModel;
+				objectModel.model = Shapes::Quad;
+				scene.addComponentToEntity(objectId, std::move(objectModel));
+
+				if (j == 0) {
 					HVECameraComponent cameraComponent(1.f);
 					cameraComponent.camera.setOrthographicProjection(0, WIDTH, HEIGHT, 0, -1, 1);
 					scene.addComponentToEntity(objectId, cameraComponent);
-					hasCamera = true;
-					scene.setPlayerControlledCamera(objectId);
+					// scene.setPlayerControlledCamera(objectId);
 				}
 				
 			}

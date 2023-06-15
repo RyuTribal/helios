@@ -14,8 +14,8 @@ namespace hve
 	{
 
 	public:
-		HVETexture(HVEDevice& device, const std::string& filePath);
-		HVETexture(HVEDevice& device, const std::string& filePath, std::shared_ptr<HVETexture> previous);
+		HVETexture(HVEDevice& device, const std::string& filePath, VkSamplerAddressMode addressMode);
+		HVETexture(HVEDevice& device, const std::string& filePath, std::shared_ptr<HVETexture> previous, VkSamplerAddressMode addressMode);
 		~HVETexture();
 
 		HVETexture(const HVETexture&) = delete;
@@ -25,7 +25,7 @@ namespace hve
 
 		void createImage();
 		void createImageView();
-		void createImageSampler();
+		void createImageSampler(VkSamplerAddressMode addressMode);
 		void createBuffer();
 		void transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout);
 		void copyBufferToImage();
@@ -35,6 +35,8 @@ namespace hve
 		VkImageView getImageView() const { return textureView; }
 		VkSampler getImageSampler() const { return textureSampler; }
 		VkDeviceSize getImageSize() const { return width * height * 4; }
+		int getWidth() const { return width; }
+		int getHeight() const { return height; }
 
 	private:
 		int width;

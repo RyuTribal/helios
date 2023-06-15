@@ -2,14 +2,16 @@
 
 #include <cassert>
 #include <cstring>
+#include <stdexcept>
 
 namespace hve
 {
 
-	HVEModel::HVEModel(HVEDevice& device, const HVEModel::Builder &builder) : hveDevice{ device }
+	HVEModel::HVEModel(HVEDevice& device, HVEModel::Builder &builder) : hveDevice{ device }, builder{builder}
 	{
 		createVertexBuffers(builder.vertices);
 		createIndexBuffer(builder.indices);
+		// createInstanceBuffer(builder.instances);
 	}
 
 
@@ -81,25 +83,74 @@ namespace hve
 		hveDevice.copyBuffer(stagingBuffer.getBuffer(), indexBuffer->getBuffer(), bufferSize);
 	}
 
+	void HVEModel::createInstanceBuffer(const std::vector<VertexInstanceData>& instances)
+	{
+		instanceCount = static_cast<uint32_t>(instances.size());
+
+		if (instanceCount <= 0)
+		{
+			return;
+		}
+		uint32_t instanceSize = sizeof(instances[0]);
+		VkDeviceSize bufferSize = instanceSize * instanceCount;
+
+		HVEBuffer stagingBuffer{
+			hveDevice,
+			instanceSize,
+			instanceCount,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		};
+
+		stagingBuffer.map();
+		stagingBuffer.writeToBuffer((void*)instances.data());
+
+		instanceBuffers[currentFrame] = std::make_unique<HVEBuffer>(
+			hveDevice,
+			instanceSize,
+			instanceCount,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+		);
+
+		hveDevice.copyBuffer(stagingBuffer.getBuffer(), instanceBuffers[currentFrame]->getBuffer(), bufferSize);
+	}
+
+
+
+	void HVEModel::clearInstances()
+	{
+		builder.instances = {};
+	}
+
 	void HVEModel::draw(VkCommandBuffer commandBuffer)
 	{
 		if(hasIndexBuffer)
 		{
-			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, 0, 0, 0);
 		}
 		else
 		{
-			vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
+			vkCmdDraw(commandBuffer, vertexCount, instanceCount, 0, 0);
 		}
-		
+	}
+
+	void HVEModel::buildCurrentInstances()
+	{
+		createInstanceBuffer(builder.instances);
+	}
+
+	void HVEModel::addInstance(VertexInstanceData& instanceData)
+	{
+		builder.instances.push_back(instanceData);
 	}
 
 	void HVEModel::bind(VkCommandBuffer commandBuffer)
 	{
-		VkBuffer buffers[] = { vertexBuffer->getBuffer() };
+		VkBuffer buffers[] = { vertexBuffer->getBuffer(), instanceBuffers[currentFrame] ? instanceBuffers[currentFrame]->getBuffer() : nullptr};
 
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+		VkDeviceSize offsets[] = { 0, 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 2, buffers, offsets);
 
 		if(hasIndexBuffer)
 		{
@@ -110,31 +161,59 @@ namespace hve
 
 	std::vector<VkVertexInputBindingDescription> HVEModel::Vertex::getBindingDescriptions()
 	{
-		std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+		std::vector<VkVertexInputBindingDescription> bindingDescriptions(2);
+
+		// Binding for Vertex data
 		bindingDescriptions[0].binding = 0;
 		bindingDescriptions[0].stride = sizeof(Vertex);
 		bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		// Binding for instance data
+		bindingDescriptions[1].binding = 1;
+		bindingDescriptions[1].stride = sizeof(VertexInstanceData);
+		bindingDescriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
 		return bindingDescriptions;
 	}
 
 	std::vector<VkVertexInputAttributeDescription> HVEModel::Vertex::getAttributeDescriptions()
 	{
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions(3);
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions(7);
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = offsetof(Vertex, position);
 
-		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].binding = 1;
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
+		attributeDescriptions[1].offset = offsetof(VertexInstanceData, color);
 
-		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].binding = 1;
 		attributeDescriptions[2].location = 2;
 		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+		attributeDescriptions[2].offset = offsetof(VertexInstanceData, texCoord);
+
+		attributeDescriptions[3].binding = 1;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[3].offset = offsetof(VertexInstanceData, transformX);
+
+		attributeDescriptions[4].binding = 1;
+		attributeDescriptions[4].location = 4;
+		attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[4].offset = offsetof(VertexInstanceData, transformY);
+
+		attributeDescriptions[5].binding = 1;
+		attributeDescriptions[5].location = 5;
+		attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[5].offset = offsetof(VertexInstanceData, transformZ);
+
+		attributeDescriptions[6].binding = 1;
+		attributeDescriptions[6].location = 6;
+		attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[6].offset = offsetof(VertexInstanceData, transformTranslation);
 
 		return attributeDescriptions;
 		
