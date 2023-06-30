@@ -85,6 +85,7 @@ namespace hve
 
 	void HVEModel::createInstanceBuffer(const std::vector<VertexInstanceData>& instances)
 	{
+		instancesAdded = true;
 		instanceCount = static_cast<uint32_t>(instances.size());
 
 		if (instanceCount <= 0)
@@ -114,6 +115,8 @@ namespace hve
 		);
 
 		hveDevice.copyBuffer(stagingBuffer.getBuffer(), instanceBuffers[currentFrame]->getBuffer(), bufferSize);
+		instancesBuilt[currentFrame] = true;
+		
 	}
 
 
@@ -121,6 +124,8 @@ namespace hve
 	void HVEModel::clearInstances()
 	{
 		builder.instances = {};
+		std::copy(std::begin(INSTANCE_BASE), std::end(INSTANCE_BASE), std::begin(instancesBuilt));
+		instancesAdded = false;
 	}
 
 	void HVEModel::draw(VkCommandBuffer commandBuffer)
@@ -143,6 +148,7 @@ namespace hve
 	void HVEModel::addInstance(VertexInstanceData& instanceData)
 	{
 		builder.instances.push_back(instanceData);
+		instancesAdded = false;
 	}
 
 	void HVEModel::bind(VkCommandBuffer commandBuffer)

@@ -73,7 +73,6 @@ namespace hve
 
 	void RenderSystem::onUpdate(FrameInfo& frameInfo, HVEScene& scene)
 	{
-
 		hvePipeline->bind(frameInfo.commandBuffer);
 		vkCmdBindDescriptorSets(
 			frameInfo.commandBuffer,
@@ -85,71 +84,17 @@ namespace hve
 			0,
 			nullptr);
 
-		// Get the component managers from the scene
-		auto& transformManager = scene.getComponentManager<HVETransformComponent>();
-		auto& spriteManager = scene.getComponentManager<HVESpriteComponent>();
-		auto& colorManager = scene.getComponentManager<HVEColorComponent>();
-		auto& modelManager = scene.getComponentManager<HVEModelComponent>();
-
-
-		// Iterate over the entities with the required components
-		for (auto& [entityId, modelComponent] : modelManager.getStorage()) {
-
-			HVESpriteComponent* spriteComponent = spriteManager.getComponent(entityId);
-			HVEColorComponent* colorComponent = colorManager.getComponent(entityId);
-			HVETransformComponent* transformComponent = transformManager.getComponent(entityId);
-
-			if (spriteComponent != nullptr) {
-				vkCmdBindDescriptorSets(
-					frameInfo.commandBuffer,
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipelineLayout,
-					1,
-					1,
-					&scene.getTextureManager()->getDescriptorSetById(0),
-					0,
-					nullptr);
-
-				HVEModel::VertexInstanceData instance{};
-				instance.texCoord = *spriteComponent->sprite->getSpriteSheetCoordinates();
-				if (transformComponent) {
-					glm::mat4 instanceTransform = transformComponent->mat4();
-					instance.transformX = instanceTransform[0];
-					instance.transformY = instanceTransform[1];
-					instance.transformZ = instanceTransform[2];
-					instance.transformTranslation = instanceTransform[3];
-				}
-				else
-				{
-					HVETransformComponent objectTransform;
-					objectTransform.translation = { 0.f, 0.f, 0.f };
-					objectTransform.scale = { 1.f, 1.f, 1.f };
-					glm::mat4 instanceTransform = objectTransform.mat4();
-					instance.transformX = instanceTransform[0];
-					instance.transformY = instanceTransform[1];
-					instance.transformZ = instanceTransform[2];
-					instance.transformTranslation = instanceTransform[3];
-				}
-				scene.getModelManager()->getModelByShape(modelComponent.model)->addInstance(instance);
-			}
-			SimplePushConstantData push{};
-			if (colorComponent != nullptr) {
-				push.color = colorComponent->color;
-			}
-			else
-			{
-				push.color = glm::vec3{ 0.f, 0.f, 0.f };
-			}
-
-			vkCmdPushConstants(
-				frameInfo.commandBuffer,
-				pipelineLayout,
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-				0,
-				sizeof(SimplePushConstantData),
-				&push);
-		}
-		scene.getModelManager()->getModelByShape(Shapes::Quad)->buildCurrentInstances();
+		vkCmdBindDescriptorSets(
+			frameInfo.commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipelineLayout,
+			1,
+			1,
+			&scene.getTextureManager()->getDescriptorSetById(0),
+			0,
+			nullptr);
+		
+		scene.getModelManager()->buildAllInstances();
 		// Bind and draw the model
 		scene.getModelManager()->getModelByShape(Shapes::Quad)->bind(frameInfo.commandBuffer);
 		scene.getModelManager()->getModelByShape(Shapes::Quad)->draw(frameInfo.commandBuffer);

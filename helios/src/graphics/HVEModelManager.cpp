@@ -1,5 +1,7 @@
 #include "graphics/HVEModelManager.hpp"
 
+#include <iostream>
+
 #include "primitives/HVEShapes.hpp"
 
 namespace hve
@@ -32,9 +34,12 @@ namespace hve
 	{
 		for (auto i = models.begin(); i != models.end(); i++)
 		{
-			i->second->buildCurrentInstances();
+			if (!i->second->getInstanceBuilt()) {
+				i->second->buildCurrentInstances();
+			}
 		}
 	}
+
 	void HVEModelManager::clearAllInstances()
 	{
 		for (auto i = models.begin(); i != models.end(); i++)

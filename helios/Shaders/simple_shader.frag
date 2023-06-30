@@ -8,10 +8,10 @@ layout(set = 1, binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) out vec4 outColor;
 
-layout(push_constant) uniform Push {
-    mat4 modelMatrix;
-    vec3 color;
-} push;
+//layout(push_constant) uniform Push {
+//    mat4 modelMatrix;
+//    vec3 color;
+//} push;
 
 void main() {
      //outColor = vec4(fragTexCoord, 0.0, 1.0);

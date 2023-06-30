@@ -79,7 +79,7 @@ namespace hve
 		scene.addSystem(cameraController, HVESystemStages::PreRender);
 		scene.addSystem(prepareRender, HVESystemStages::PreRender);
 		scene.addSystem(renderSystem, HVESystemStages::DuringRender);
-		scene.addSystem(renderCleanup, HVESystemStages::PostRender);
+		// scene.addSystem(renderCleanup, HVESystemStages::PostRender);
 		int cameraEntity = scene.createEntity();
 
 		HVETransformComponent cameraTransform{};
@@ -117,10 +117,10 @@ namespace hve
 
 	void Helios::loadGameObjects()
 	{
-		int gridHeight = 64;
-		int gridWidth = 64;
+		int gridHeight = 32;
+		int gridWidth = 32;
 
-		float tileSize = 16.f;
+		float tileSize = 128.f;
 
 		for(int i = 0; i < gridHeight; i++)
 		{

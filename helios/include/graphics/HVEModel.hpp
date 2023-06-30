@@ -56,9 +56,11 @@ namespace hve
 		void draw(VkCommandBuffer commandBuffer);
 		void buildCurrentInstances();
 		void setCurrentFrame(int frameIndex) { currentFrame = frameIndex; }
+		size_t instanceSize() { return builder.instances.size(); }
+		bool getInstanceBuilt() { return instancesBuilt[currentFrame]; }
+		bool getInstancesAdded() { return instancesAdded; }
 
 	private:
-
 		void createVertexBuffers(const std::vector<Vertex>& vertices);
 		void createIndexBuffer(const std::vector<uint32_t>& indices);
 		void createInstanceBuffer(const std::vector<VertexInstanceData>& instances);
@@ -74,7 +76,11 @@ namespace hve
 		Builder builder;
 		std::unique_ptr<HVEBuffer> instanceBuffers[HVESwapChain::MAX_FRAMES_IN_FLIGHT];
 		uint32_t instanceCount;
+		std::vector<VertexInstanceData> newInstances{};
 
 		int currentFrame = 0;
+		bool INSTANCE_BASE[HVESwapChain::MAX_FRAMES_IN_FLIGHT] = { false, false };
+		bool instancesBuilt[HVESwapChain::MAX_FRAMES_IN_FLIGHT] = { false, false };
+		bool instancesAdded = false;
 	};
 }

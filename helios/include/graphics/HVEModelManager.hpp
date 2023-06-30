@@ -11,6 +11,7 @@ namespace hve
 	public:
 		HVEModelManager(HVEDevice& device) : device{device}{}
 		void createModel(Shapes shape);
+		std::unordered_map<Shapes, std::unique_ptr<HVEModel>>* getMap() { return &models; }
 		HVEModel* getModelByShape(Shapes shape);
 		void buildAllInstances();
 		void clearAllInstances();
@@ -18,5 +19,6 @@ namespace hve
 	private:
 		HVEDevice& device;
 		std::unordered_map<Shapes, std::unique_ptr<HVEModel>> models{};
+
 	};
 }
