@@ -8,6 +8,7 @@ namespace hve
 {
 	void HVEModelManager::createModel(Shapes shape)
 	{
+		std::lock_guard<std::mutex> lock(model_lock);
 		if (getModelByShape(shape) == nullptr)
 		{
 			switch (shape)
@@ -23,6 +24,7 @@ namespace hve
 	}
 	HVEModel* HVEModelManager::getModelByShape(Shapes shape)
 	{
+		std::lock_guard<std::mutex> lock(model_lock);
 		if (models.find(shape) == models.end())
 		{
 			return nullptr;
@@ -32,6 +34,7 @@ namespace hve
 	}
 	void HVEModelManager::buildAllInstances()
 	{
+		std::lock_guard<std::mutex> lock(model_lock);
 		for (auto i = models.begin(); i != models.end(); i++)
 		{
 			if (!i->second->getInstanceBuilt()) {
@@ -42,6 +45,7 @@ namespace hve
 
 	void HVEModelManager::clearAllInstances()
 	{
+		std::lock_guard<std::mutex> lock(model_lock);
 		for (auto i = models.begin(); i != models.end(); i++)
 		{
 			i->second->clearInstances();
@@ -49,6 +53,7 @@ namespace hve
 	}
 	void HVEModelManager::updateFrameIndex(int frameIndex)
 	{
+		std::lock_guard<std::mutex> lock(model_lock);
 		for (auto i = models.begin(); i != models.end(); i++)
 		{
 			i->second->setCurrentFrame(frameIndex);

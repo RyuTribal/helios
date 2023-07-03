@@ -1,0 +1,3 @@
+[submodule "helios/vendor/spdlog"]
+	path = helios/vendor/spdlog
+	url = https://github.com/gabime/spdlog

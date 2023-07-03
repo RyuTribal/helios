@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <unordered_map>
 #include "HVEModel.hpp"
 #include "enums/HVEShapes.h"
@@ -17,6 +18,7 @@ namespace hve
 		void clearAllInstances();
 		void updateFrameIndex(int frameIndex);
 	private:
+		std::mutex model_lock;
 		HVEDevice& device;
 		std::unordered_map<Shapes, std::unique_ptr<HVEModel>> models{};
 

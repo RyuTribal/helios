@@ -19,6 +19,7 @@ namespace hve
 		// Iterate over the entities with the required components
 		// TODO: this for loop takes too long to do each frame, haram
 		for (auto& model_pair : *scene.getModelManager()->getMap()) {
+			std::cout << scene.getModelManager()->getModelByShape(model_pair.first)->getInstancesAdded() << std::endl;
 			if (!scene.getModelManager()->getModelByShape(model_pair.first)->getInstancesAdded()) {
 				for (auto& [entityId, modelComponent] : modelManager.getStorage()) {
 					HVESpriteComponent* spriteComponent = spriteManager.getComponent(entityId);

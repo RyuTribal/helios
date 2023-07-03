@@ -5,6 +5,7 @@ namespace hve {
 
 	int HVEEntityManager::createEntity()
 	{
+		std::lock_guard<std::mutex> lock(entity_lock);
 		int newId = currentId++;
 		activeEntities.insert(newId);
 		return newId;
@@ -12,6 +13,7 @@ namespace hve {
 
 	void HVEEntityManager::deleteEntity(int enitityId)
 	{
+		std::lock_guard<std::mutex> lock(entity_lock);
 		activeEntities.erase(enitityId);
 	}
 }

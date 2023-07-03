@@ -1,5 +1,7 @@
 #pragma once
 
+#include <future>
+
 #include "graphics/HVEWindow.hpp"
 #include "graphics/HVEDevice.hpp"
 #include "graphics/HVERenderer.hpp"
@@ -30,6 +32,8 @@ namespace hve {
 		void run();
 	private:
 		void loadGameObjects();
+
+		std::vector<std::future<void>> futures;
 
 		static constexpr float MAX_FRAME_TIME = 2.f;
 

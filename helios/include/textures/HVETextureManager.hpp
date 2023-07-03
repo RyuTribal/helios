@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <unordered_map>
 
 #include "HVETexture.hpp"
@@ -26,6 +27,7 @@ namespace hve
 
 	private:
 		HVEDevice& hveDevice;
+		std::mutex texture_manager_lock;
 		std::unordered_map<std::string, HVETexture> textureCache;
 		std::unique_ptr<HVEDescriptorPool> textureDescriptorPool{};
 		std::unique_ptr<HVEDescriptorSetLayout> textureDescriptorLayout{};

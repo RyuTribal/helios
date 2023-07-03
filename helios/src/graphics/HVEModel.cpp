@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
 
 namespace hve
@@ -153,7 +154,7 @@ namespace hve
 
 	void HVEModel::bind(VkCommandBuffer commandBuffer)
 	{
-		VkBuffer buffers[] = { vertexBuffer->getBuffer(), instanceBuffers[currentFrame] ? instanceBuffers[currentFrame]->getBuffer() : nullptr};
+		VkBuffer buffers[] = { vertexBuffer->getBuffer(), instanceBuffers[currentFrame]->getBuffer()};
 
 		VkDeviceSize offsets[] = { 0, 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 2, buffers, offsets);

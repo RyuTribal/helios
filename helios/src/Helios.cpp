@@ -10,6 +10,7 @@
 #define GML_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <chrono>
+#include <future>
 #include <iostream>
 
 #include "graphics/HVEFrameInfo.hpp"
@@ -115,57 +116,69 @@ namespace hve
 		vkDeviceWaitIdle(hveDevice.device());
 	}
 
-	void Helios::loadGameObjects()
+	static void loadObject(HVEScene *scene, int j, int i)
 	{
-		int gridHeight = 32;
-		int gridWidth = 32;
-
 		float tileSize = 128.f;
+		auto aspect = static_cast<float>(Helios::HEIGHT) / Helios::WIDTH;
 
-		for(int i = 0; i < gridHeight; i++)
+		float width = tileSize / (Helios::WIDTH * aspect);
+
+		float height = tileSize / Helios::HEIGHT;
+
+		int objectId = scene->createEntity();
+
+		HVETransformComponent objectTransform;
+		// The offset so they don't stack on each other
+		objectTransform.translation = { tileSize * j / (Helios::WIDTH * aspect), tileSize * i / Helios::HEIGHT, 0.f };
+		objectTransform.scale = { width, height, 1.f };
+
+		scene->addComponentToEntity<HVETransformComponent>(objectId, objectTransform);
+
+		HVETexture* texture = scene->getTextureManager()->loadTexture("assets/textures/grass.png", VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+		HVESpriteComponent spriteComponent{ texture, {0.f, 0.f}, {16.f, 16.f} };
+		scene->addComponentToEntity<HVESpriteComponent>(objectId, spriteComponent);
+
+		scene->getModelManager()->createModel(Shapes::Quad);
+		HVEModelComponent objectModel;
+		objectModel.model = Shapes::Quad;
+		scene->addComponentToEntity(objectId, std::move(objectModel));
+
+		if (j == 0) {
+			HVECameraComponent cameraComponent(1.f);
+			cameraComponent.camera.setOrthographicProjection(0, Helios::WIDTH, Helios::HEIGHT, 0, -1, 1);
+			scene->addComponentToEntity(objectId, cameraComponent);
+			// scene.setPlayerControlledCamera(objectId);
+		}
+	}
+
+	static void loadBatch(HVEScene* scene, int startX, int startY, int width, int height)
+	{
+		for (int i = startY; i < startY + height; i++)
 		{
-			for(int j = 0; j < gridWidth; j++)
+			for (int j = startX; j < startX + width; j++)
 			{
-				auto aspect = static_cast<float>(HEIGHT) / WIDTH;
-
-				float width = tileSize / (WIDTH * aspect);
-
-				float height = tileSize / HEIGHT;
-
-				int objectId = scene.createEntity();
-
-				HVETransformComponent objectTransform;
-				// The offset so they don't stack on each other
-				objectTransform.translation = { tileSize * j / (WIDTH * aspect), tileSize * i / HEIGHT, 0.f };
-				objectTransform.scale = { width, height, 1.f };
-
-				scene.addComponentToEntity<HVETransformComponent>(objectId, objectTransform);
-
-				HVETexture *texture = scene.getTextureManager()->loadTexture("assets/textures/grass.png", VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-				HVESpriteComponent spriteComponent{ texture, {0.f, 0.f}, {16.f, 16.f} };
-				scene.addComponentToEntity<HVESpriteComponent>(objectId, spriteComponent);
-
-				scene.getModelManager()->createModel(Shapes::Quad);
-				HVEModelComponent objectModel;
-				objectModel.model = Shapes::Quad;
-				scene.addComponentToEntity(objectId, std::move(objectModel));
-
-				if (j == 0) {
-					HVECameraComponent cameraComponent(1.f);
-					cameraComponent.camera.setOrthographicProjection(0, WIDTH, HEIGHT, 0, -1, 1);
-					scene.addComponentToEntity(objectId, cameraComponent);
-					// scene.setPlayerControlledCamera(objectId);
-				}
-				
+				loadObject(scene, j, i);  // existing function to load a single object
 			}
 		}
+	}
+
+	void Helios::loadGameObjects()
+	{
+		int gridHeight = 2048;
+		int gridWidth = 2048;
+		int batchSize = 64;  // size of each batch
+
+		for (int i = 0; i < gridHeight; i += batchSize)
+		{
+			for (int j = 0; j < gridWidth; j += batchSize)
+			{
+				futures.push_back(std::async(std::launch::async, loadBatch, &scene, j, i, batchSize, batchSize));
+			}
+		}
+
 		scene.getTextureManager()->createTextureDescriptorSets();
 	}
 
-
-
-
-
-
+	
 }
