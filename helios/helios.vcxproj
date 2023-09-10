@@ -79,17 +79,17 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
@@ -102,13 +102,13 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
@@ -116,7 +116,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
@@ -129,13 +129,13 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
@@ -143,7 +143,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
@@ -197,113 +197,6 @@
     <ClInclude Include="include\textures\HVETextureManager.hpp" />
     <ClInclude Include="include\textures\stb_image_wrapper.h" />
     <ClInclude Include="include\world\HVEScene.hpp" />
-    <ClInclude Include="vendor\glfw\include\GLFW\glfw3.h" />
-    <ClInclude Include="vendor\glfw\include\GLFW\glfw3native.h" />
-    <ClInclude Include="vendor\spdlog\bench\utils.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\async.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\argv.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\env.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\common-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\common.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\circular_q.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\console_globals.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\fmt_helper.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\mpmc_blocking_q.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\null_mutex.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\os-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\os.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\synchronous_factory.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client-windows.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client-windows.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\details\windows_include.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bin_to_hex.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\args.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\chrono.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\color.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\compile.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\core.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\locale.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\os.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ostream.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\printf.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ranges.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\std.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\xchar.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\chrono.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\compile.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\fmt.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ostr.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ranges.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\std.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\xchar.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\formatter.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\fwd.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\logger-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\logger.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\android_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\callback_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\daily_file_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dist_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dup_filter_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\hourly_file_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\kafka_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\mongo_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\msvc_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\null_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ostream_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\qt_sinks.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ringbuffer_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\syslog_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\systemd_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\tcp_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\udp_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\win_eventlog_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog-inl.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\stopwatch.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\tweakme.h" />
-    <ClInclude Include="vendor\spdlog\include\spdlog\version.h" />
-    <ClInclude Include="vendor\stb\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\HVEComponentManager.cpp" />
@@ -334,18 +227,11 @@
     <ClCompile Include="src\textures\HVETextureManager.cpp" />
     <ClCompile Include="src\textures\stb_image_wrapper.cpp" />
     <ClCompile Include="src\world\HVEScene.cpp" />
-    <ClCompile Include="vendor\spdlog\bench\async_bench.cpp" />
-    <ClCompile Include="vendor\spdlog\bench\bench.cpp" />
-    <ClCompile Include="vendor\spdlog\bench\formatter-bench.cpp" />
-    <ClCompile Include="vendor\spdlog\bench\latency.cpp" />
-    <ClCompile Include="vendor\spdlog\example\example.cpp" />
-    <ClCompile Include="vendor\spdlog\src\async.cpp" />
-    <ClCompile Include="vendor\spdlog\src\bundled_fmtlib_format.cpp" />
-    <ClCompile Include="vendor\spdlog\src\cfg.cpp" />
-    <ClCompile Include="vendor\spdlog\src\color_sinks.cpp" />
-    <ClCompile Include="vendor\spdlog\src\file_sinks.cpp" />
-    <ClCompile Include="vendor\spdlog\src\spdlog.cpp" />
-    <ClCompile Include="vendor\spdlog\src\stdout_sinks.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">
+      <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

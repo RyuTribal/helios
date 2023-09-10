@@ -1,3 +1,9 @@
 [submodule "helios/vendor/spdlog"]
 	path = helios/vendor/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "helios/vendor/glm"]
+	path = helios/vendor/glm
+	url = https://github.com/g-truc/glm
+[submodule "helios/vendor/GLFW"]
+	path = helios/vendor/GLFW
+	url = https://github.com/TheCherno/glfw

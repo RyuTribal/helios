@@ -11,6 +11,11 @@ workspace "helios"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+IncludeDirs = {}
+IncludeDirs["GLFW"] = "helios/vendor/GLFW/include"
+
+include "helios/vendor/GLFW"
+
 project "helios"
     location "helios"
     kind "SharedLib"
@@ -21,10 +26,10 @@ project "helios"
 
     files
     {
-        "%{prj.name}/**.h",
-        "%{prj.name}/**.hpp",
-        "%{prj.name}/**.cpp",
-        "%{prj.name}/**.c"
+        "%{prj.name}/include/**.h",
+        "%{prj.name}/include/**.hpp",
+        "%{prj.name}/src/**.cpp",
+        "%{prj.name}/src/**.c"
     }
 
     libdirs
@@ -36,22 +41,23 @@ project "helios"
     links
     {
         "vulkan-1",
-        "glfw3"
+        "GLFW",
+        "opengl32.lib"
     }
 
     includedirs
     {
-        "%{prj.name}/vendor/spdlog/include",
-        "%{prj.name}/vendor/glfw/include",
-        "%{prj.name}/vendor/glm",
         "%{prj.name}/vendor/stb",
         "$(VULKAN_SDK)/Include",
+        "%{prj.name}/vendor/spdlog/include",
+        "%{IncludeDirs.GLFW}",
+        "%{prj.name}/vendor/glm",
         "%{prj.name}/include"
     }
 
     filter "system:windows"
         cppdialect "C++17"
-        staticruntime "On"
+        staticruntime "Off"
         systemversion "latest"
 
         defines
@@ -104,7 +110,7 @@ project "Sandbox"
 
     filter "system:windows"
         cppdialect "C++17"
-        staticruntime "On"
+        staticruntime "Off"
         systemversion "latest"
 
         defines
