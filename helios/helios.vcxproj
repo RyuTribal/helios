@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -9,13 +9,15 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <UpToDateCheckInput Include="Shaders/*.vert" />
-    <UpToDateCheckInput Include="Shaders/*.frag" />
+    <ProjectConfiguration Include="Dist|x64">
+      <Configuration>Dist</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{6937D801-55D9-02D8-3E94-162C2AD58928}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{d9631212-e88a-49a7-bd32-d0b7d71d1d8f}</ProjectGuid>
     <RootNamespace>helios</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -23,20 +25,23 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -44,157 +49,303 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)bin-intermediates\$(Configuration)-$(Platform)\$(ProjectName)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\Debug-windows-x86_64\helios\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\helios\</IntDir>
+    <TargetName>helios</TargetName>
+    <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)bin-intermediates\$(Configuration)-$(Platform)\$(ProjectName)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Release-windows-x86_64\helios\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\helios\</IntDir>
+    <TargetName>helios</TargetName>
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Dist-windows-x86_64\helios\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\helios\</IntDir>
+    <TargetName>helios</TargetName>
+    <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_PLAT_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories);$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb;$(SolutionDir)helios\vendor\spdlog\include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.239.0\Lib;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Profile>true</Profile>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImportLibrary>..\bin\Debug-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
-    <PreBuildEvent>
-      <Command>call compile.bat</Command>
-      <Message>Compiling Shaders...</Message>
-    </PreBuildEvent>
-    <CustomBuildStep>
-      <Command>
-      </Command>
-    </CustomBuildStep>
-    <CustomBuildStep>
-      <Message>
-      </Message>
-    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll ..\bin\Debug-windows-x86_64\Sandbox &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_PLATNDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\include;C:\VulkanSDK\1.3.239.0\Include;%(AdditionalIncludeDirectories);$(ProjectDir)include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\stb;$(SolutionDir)helios\vendor\spdlog\include;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glm</AdditionalIncludeDirectories>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.239.0\Lib;C:\Users\sedel\OneDrive\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImportLibrary>..\bin\Release-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
-    <PreBuildEvent>
-      <Command>call compile.bat</Command>
-      <Message>Compiling Shaders...</Message>
-    </PreBuildEvent>
-    <CustomBuildStep>
-      <Command>
-      </Command>
-    </CustomBuildStep>
-    <CustomBuildStep>
-      <Message>
-      </Message>
-    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll ..\bin\Release-windows-x86_64\Sandbox &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\spdlog\include;vendor\glfw\include;vendor\glm;vendor\stb;$(VULKAN_SDK)\Include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImportLibrary>..\bin\Dist-windows-x86_64\helios\helios.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll ..\bin\Dist-windows-x86_64\Sandbox &gt; nul)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\helios\Application.cpp" />
-    <ClCompile Include="src\graphics\HVEBuffer.cpp" />
-    <ClCompile Include="src\graphics\HVECamera.cpp" />
-    <ClCompile Include="src\graphics\HVEDescriptors.cpp" />
-    <ClCompile Include="src\graphics\HVEModelManager.cpp" />
-    <ClCompile Include="src\graphics\HVERenderer.cpp" />
-    <ClCompile Include="src\helios\Log.cpp" />
-    <ClCompile Include="src\HVEComponentManager.cpp" />
-    <ClCompile Include="src\HVEEntityManager.cpp" />
-    <ClCompile Include="src\systems\HVECameraControlSystem.cpp" />
-    <ClCompile Include="src\systems\HVEPostRenderCleanup.cpp" />
-    <ClCompile Include="src\systems\HVEPrepareRender.cpp" />
-    <ClCompile Include="src\textures\HVESprite.cpp" />
-    <ClCompile Include="src\textures\HVETexture.cpp" />
-    <ClCompile Include="src\systems\RenderSystem.cpp" />
-    <ClCompile Include="src\Helios.cpp" />
-    <ClCompile Include="src\graphics\HVEModel.cpp" />
-    <ClCompile Include="src\graphics\HVEPipeline.cpp" />
-    <ClCompile Include="src\graphics\HVESwapChain.cpp" />
-    <ClCompile Include="src\graphics\HVEWindow.cpp" />
-    <ClCompile Include="src\input\HVEKeyboard.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\graphics\HVEDevice.cpp" />
-    <ClCompile Include="src\objects\HVETile.cpp" />
-    <ClCompile Include="src\primitives\HVEShapes.cpp" />
-    <ClCompile Include="src\textures\HVETextureManager.cpp" />
-    <ClCompile Include="src\textures\stb_image_wrapper.cpp" />
-    <ClCompile Include="src\world\HVEScene.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\helios\EntryPoint.h" />
+    <ClInclude Include="include\HVEComponentManager.hpp" />
+    <ClInclude Include="include\HVEEntityManager.hpp" />
     <ClInclude Include="include\Helios.h" />
-    <ClInclude Include="include\helios\Application.h" />
+    <ClInclude Include="include\Helios.hpp" />
     <ClInclude Include="include\components\HVEAnimComponent.hpp" />
-    <ClInclude Include="include\components\HVEColliderComponent.hpp" />
     <ClInclude Include="include\components\HVECameraComponent.hpp" />
+    <ClInclude Include="include\components\HVEColliderComponent.hpp" />
     <ClInclude Include="include\components\HVEColorComponent.hpp" />
     <ClInclude Include="include\components\HVEModelComponent.hpp" />
+    <ClInclude Include="include\components\HVEScriptComponent.hpp" />
     <ClInclude Include="include\components\HVESpriteComponent.hpp" />
     <ClInclude Include="include\components\HVETextureComponent.hpp" />
-    <ClInclude Include="include\components\HVEScriptComponent.hpp" />
     <ClInclude Include="include\components\HVETransformComponent.hpp" />
     <ClInclude Include="include\enums\HVEComponentEnum.h" />
     <ClInclude Include="include\enums\HVEShapes.h" />
     <ClInclude Include="include\enums\HVESystemStages.h" />
-    <ClInclude Include="include\graphics\HVEModelManager.hpp" />
-    <ClInclude Include="include\helios\Core.h" />
-    <ClInclude Include="include\helios\Log.h" />
-    <ClInclude Include="include\HVEComponentManager.hpp" />
-    <ClInclude Include="include\HVEEntityManager.hpp" />
     <ClInclude Include="include\graphics\HVEBuffer.hpp" />
     <ClInclude Include="include\graphics\HVECamera.hpp" />
     <ClInclude Include="include\graphics\HVEDescriptors.hpp" />
+    <ClInclude Include="include\graphics\HVEDevice.hpp" />
     <ClInclude Include="include\graphics\HVEFrameInfo.hpp" />
     <ClInclude Include="include\graphics\HVEGameObject.hpp" />
+    <ClInclude Include="include\graphics\HVEModel.hpp" />
+    <ClInclude Include="include\graphics\HVEModelManager.hpp" />
+    <ClInclude Include="include\graphics\HVEPipeline.hpp" />
     <ClInclude Include="include\graphics\HVERenderer.hpp" />
+    <ClInclude Include="include\graphics\HVESwapChain.hpp" />
+    <ClInclude Include="include\graphics\HVEWindow.hpp" />
+    <ClInclude Include="include\helios\Application.h" />
+    <ClInclude Include="include\helios\Core.h" />
+    <ClInclude Include="include\helios\EntryPoint.h" />
+    <ClInclude Include="include\helios\Log.h" />
+    <ClInclude Include="include\input\HVEKeyboard.hpp" />
+    <ClInclude Include="include\objects\HVETile.hpp" />
+    <ClInclude Include="include\primitives\HVEShapes.hpp" />
     <ClInclude Include="include\systems\HVECameraControlSystem.hpp" />
     <ClInclude Include="include\systems\HVEPostRenderCleanup.hpp" />
     <ClInclude Include="include\systems\HVEPrepareRender.hpp" />
     <ClInclude Include="include\systems\HVESystem.hpp" />
+    <ClInclude Include="include\systems\RenderSystem.hpp" />
     <ClInclude Include="include\textures\HVESprite.hpp" />
     <ClInclude Include="include\textures\HVETexture.hpp" />
-    <ClInclude Include="include\systems\RenderSystem.hpp" />
-    <ClInclude Include="include\Helios.hpp" />
-    <ClInclude Include="include\graphics\HVEModel.hpp" />
-    <ClInclude Include="include\graphics\HVEPipeline.hpp" />
-    <ClInclude Include="include\graphics\HVESwapChain.hpp" />
-    <ClInclude Include="include\graphics\HVEWindow.hpp" />
-    <ClInclude Include="include\graphics\HVEDevice.hpp" />
-    <ClInclude Include="include\input\HVEKeyboard.hpp" />
-    <ClInclude Include="include\objects\HVETile.hpp" />
-    <ClInclude Include="include\primitives\HVEShapes.hpp" />
     <ClInclude Include="include\textures\HVETextureManager.hpp" />
     <ClInclude Include="include\textures\stb_image_wrapper.h" />
     <ClInclude Include="include\world\HVEScene.hpp" />
+    <ClInclude Include="vendor\glfw\include\GLFW\glfw3.h" />
+    <ClInclude Include="vendor\glfw\include\GLFW\glfw3native.h" />
+    <ClInclude Include="vendor\spdlog\bench\utils.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\async.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\argv.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\env.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\common-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\common.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\circular_q.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\console_globals.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\fmt_helper.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\mpmc_blocking_q.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\null_mutex.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\os-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\os.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\synchronous_factory.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client-windows.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client-windows.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\windows_include.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bin_to_hex.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\args.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\chrono.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\color.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\compile.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\core.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\locale.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\os.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ostream.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\printf.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ranges.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\std.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\xchar.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\chrono.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\compile.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\fmt.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ostr.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ranges.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\std.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\xchar.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\formatter.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\fwd.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\logger-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\logger.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\android_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\callback_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\daily_file_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dist_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dup_filter_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\hourly_file_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\kafka_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\mongo_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\msvc_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\null_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ostream_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\qt_sinks.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ringbuffer_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\syslog_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\systemd_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\tcp_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\udp_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\win_eventlog_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog-inl.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\stopwatch.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\tweakme.h" />
+    <ClInclude Include="vendor\spdlog\include\spdlog\version.h" />
+    <ClInclude Include="vendor\stb\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="compile.bat" />
-    <None Include="shaders\simple_shader.frag" />
-    <None Include="shaders\simple_shader.vert" />
+    <ClCompile Include="src\HVEComponentManager.cpp" />
+    <ClCompile Include="src\HVEEntityManager.cpp" />
+    <ClCompile Include="src\Helios.cpp" />
+    <ClCompile Include="src\graphics\HVEBuffer.cpp" />
+    <ClCompile Include="src\graphics\HVECamera.cpp" />
+    <ClCompile Include="src\graphics\HVEDescriptors.cpp" />
+    <ClCompile Include="src\graphics\HVEDevice.cpp" />
+    <ClCompile Include="src\graphics\HVEModel.cpp" />
+    <ClCompile Include="src\graphics\HVEModelManager.cpp" />
+    <ClCompile Include="src\graphics\HVEPipeline.cpp" />
+    <ClCompile Include="src\graphics\HVERenderer.cpp" />
+    <ClCompile Include="src\graphics\HVESwapChain.cpp" />
+    <ClCompile Include="src\graphics\HVEWindow.cpp" />
+    <ClCompile Include="src\helios\Application.cpp" />
+    <ClCompile Include="src\helios\Log.cpp" />
+    <ClCompile Include="src\input\HVEKeyboard.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\objects\HVETile.cpp" />
+    <ClCompile Include="src\primitives\HVEShapes.cpp" />
+    <ClCompile Include="src\systems\HVECameraControlSystem.cpp" />
+    <ClCompile Include="src\systems\HVEPostRenderCleanup.cpp" />
+    <ClCompile Include="src\systems\HVEPrepareRender.cpp" />
+    <ClCompile Include="src\systems\RenderSystem.cpp" />
+    <ClCompile Include="src\textures\HVESprite.cpp" />
+    <ClCompile Include="src\textures\HVETexture.cpp" />
+    <ClCompile Include="src\textures\HVETextureManager.cpp" />
+    <ClCompile Include="src\textures\stb_image_wrapper.cpp" />
+    <ClCompile Include="src\world\HVEScene.cpp" />
+    <ClCompile Include="vendor\spdlog\bench\async_bench.cpp" />
+    <ClCompile Include="vendor\spdlog\bench\bench.cpp" />
+    <ClCompile Include="vendor\spdlog\bench\formatter-bench.cpp" />
+    <ClCompile Include="vendor\spdlog\bench\latency.cpp" />
+    <ClCompile Include="vendor\spdlog\example\example.cpp" />
+    <ClCompile Include="vendor\spdlog\src\async.cpp" />
+    <ClCompile Include="vendor\spdlog\src\bundled_fmtlib_format.cpp" />
+    <ClCompile Include="vendor\spdlog\src\cfg.cpp" />
+    <ClCompile Include="vendor\spdlog\src\color_sinks.cpp" />
+    <ClCompile Include="vendor\spdlog\src\file_sinks.cpp" />
+    <ClCompile Include="vendor\spdlog\src\spdlog.cpp" />
+    <ClCompile Include="vendor\spdlog\src\stdout_sinks.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,258 +1,693 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="include\components">
+      <UniqueIdentifier>{1E5107FE-0A35-C853-7395-C2A65F98B2D5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="include\enums">
+      <UniqueIdentifier>{A0E42CA5-0CA5-A8DB-D5DF-F158415FEDB7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\hve">
-      <UniqueIdentifier>{a2ae21d1-fada-499f-841f-3b01e3a05331}</UniqueIdentifier>
+    <Filter Include="include\graphics">
+      <UniqueIdentifier>{099E0101-F596-2053-1EC9-05D80A21005F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\hve">
-      <UniqueIdentifier>{d13356c8-be72-4c85-8690-e11b2a580fc8}</UniqueIdentifier>
+    <Filter Include="include\helios">
+      <UniqueIdentifier>{7C152151-68E3-1457-5177-857D3DE4F0BB}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{6776d841-ddb3-4de7-a7c7-22bd55f5ed15}</UniqueIdentifier>
+    <Filter Include="include\input">
+      <UniqueIdentifier>{683275A5-D4F2-F0DB-9D2D-3A5909AD35B8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\objects">
+      <UniqueIdentifier>{625FF588-CEEA-624D-D7FB-E5414306BF4D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\primitives">
+      <UniqueIdentifier>{E4E97FEA-D0CD-4040-392E-3B9325312BC2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\systems">
+      <UniqueIdentifier>{B01630F3-1CA2-9DB7-25B3-20AC91BDF9B7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\textures">
+      <UniqueIdentifier>{9CA79A4D-88A0-B99F-B1D2-9E249D2A99AB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\world">
+      <UniqueIdentifier>{201D73A6-8CDD-EEDC-5518-385AC19733B9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics">
+      <UniqueIdentifier>{2DF282EC-1955-1291-C2DA-4A47AE1CDE13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\helios">
+      <UniqueIdentifier>{A010375F-8CC8-78AC-F5CF-5108E1A6139D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\input">
+      <UniqueIdentifier>{0C5966B5-78C3-1A2C-C101-CCD12DABF880}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\objects">
+      <UniqueIdentifier>{06BFCA59-7274-434F-FB68-3D26671D3A53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\primitives">
+      <UniqueIdentifier>{08D7A6BB-F4A4-9AC1-DD38-0BE8C9A57626}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\systems">
+      <UniqueIdentifier>{547605C4-C02B-7EB9-4920-7890B5D474BD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\textures">
+      <UniqueIdentifier>{C0FB1B39-AC5E-ABDD-55E4-E39341267760}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\world">
+      <UniqueIdentifier>{C44364B6-30AE-182D-79EC-C9D2E595F681}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor">
+      <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\glfw">
+      <UniqueIdentifier>{528F79C1-BE44-F2B6-4739-EC8DB3EDE8BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\glfw\include">
+      <UniqueIdentifier>{C5E801F8-314A-DF05-BAB7-25B8261816C5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\glfw\include\GLFW">
+      <UniqueIdentifier>{24E7751C-100C-C59C-3957-AA2C25DBC3BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog">
+      <UniqueIdentifier>{8BBC5F22-F77C-DB58-C0B7-24D62C372035}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\bench">
+      <UniqueIdentifier>{1AD3E432-8634-C240-0FA2-08F37B02F9FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\example">
+      <UniqueIdentifier>{6629C191-D295-7C8C-9B89-14EA07B59EF4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include">
+      <UniqueIdentifier>{FE3E7AAE-6AAB-35A9-339F-CD069FCA5711}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog">
+      <UniqueIdentifier>{76856FF2-6240-5F9E-0BF8-D7E8F791A92E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog\cfg">
+      <UniqueIdentifier>{F5C81C01-E119-0843-0A7E-F604F62D9BAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog\details">
+      <UniqueIdentifier>{EB8B59AF-D772-1BA7-80C3-81C46C89940D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog\fmt">
+      <UniqueIdentifier>{ACD61C01-9827-0843-C18B-F604AD3B9BAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog\fmt\bundled">
+      <UniqueIdentifier>{99E1FA97-855E-EEDA-AEDB-EEEE9AB78A6E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\include\spdlog\sinks">
+      <UniqueIdentifier>{6D3396BC-596F-9926-C281-B11DAEDC4141}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spdlog\src">
+      <UniqueIdentifier>{22C8CC8D-8EDE-CA23-D755-564543AB9BAB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\stb">
+      <UniqueIdentifier>{8BD3C5A8-778B-07F6-E092-E051CC69A2E6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\graphics\HVERenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\systems\RenderSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Helios.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEModel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEPipeline.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVESwapChain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEDevice.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVECamera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\input\HVEKeyboard.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\primitives\HVEShapes.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\objects\HVETile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\textures\HVETexture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEDescriptors.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\textures\HVETextureManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\textures\stb_image_wrapper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\HVEEntityManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\HVEComponentManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\world\HVEScene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\systems\HVECameraControlSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\textures\HVESprite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\HVEModelManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\systems\HVEPostRenderCleanup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\systems\HVEPrepareRender.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\Application.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\Log.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\graphics\HVEGameObject.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVERenderer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\systems\RenderSystem.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Helios.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEModel.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEPipeline.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVESwapChain.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEWindow.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEDevice.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVECamera.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\input\HVEKeyboard.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\primitives\HVEShapes.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\objects\HVETile.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\textures\HVETexture.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEBuffer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEFrameInfo.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEDescriptors.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\textures\HVETextureManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\textures\stb_image_wrapper.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="include\HVEComponentManager.hpp">
+      <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\HVEEntityManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\HVEComponentManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\enums\HVEComponentEnum.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVECameraComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVEScriptComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVEColliderComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVEAnimComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVETextureComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\systems\HVESystem.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVETransformComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVEColorComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVEModelComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\world\HVEScene.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\systems\HVECameraControlSystem.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\enums\HVESystemStages.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\textures\HVESprite.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\HVESpriteComponent.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\enums\HVEShapes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\HVEModelManager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\systems\HVEPostRenderCleanup.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\systems\HVEPrepareRender.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\helios\Core.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\helios\Application.h">
-      <Filter>Header Files</Filter>
+      <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\Helios.h">
-      <Filter>Header Files</Filter>
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Helios.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVEAnimComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVECameraComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVEColliderComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVEColorComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVEModelComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVEScriptComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVESpriteComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVETextureComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\HVETransformComponent.hpp">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\enums\HVEComponentEnum.h">
+      <Filter>include\enums</Filter>
+    </ClInclude>
+    <ClInclude Include="include\enums\HVEShapes.h">
+      <Filter>include\enums</Filter>
+    </ClInclude>
+    <ClInclude Include="include\enums\HVESystemStages.h">
+      <Filter>include\enums</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEBuffer.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVECamera.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEDescriptors.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEDevice.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEFrameInfo.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEGameObject.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEModel.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEModelManager.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEPipeline.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVERenderer.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVESwapChain.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\HVEWindow.hpp">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\helios\Application.h">
+      <Filter>include\helios</Filter>
+    </ClInclude>
+    <ClInclude Include="include\helios\Core.h">
+      <Filter>include\helios</Filter>
     </ClInclude>
     <ClInclude Include="include\helios\EntryPoint.h">
-      <Filter>Header Files</Filter>
+      <Filter>include\helios</Filter>
     </ClInclude>
     <ClInclude Include="include\helios\Log.h">
-      <Filter>Header Files</Filter>
+      <Filter>include\helios</Filter>
+    </ClInclude>
+    <ClInclude Include="include\input\HVEKeyboard.hpp">
+      <Filter>include\input</Filter>
+    </ClInclude>
+    <ClInclude Include="include\objects\HVETile.hpp">
+      <Filter>include\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="include\primitives\HVEShapes.hpp">
+      <Filter>include\primitives</Filter>
+    </ClInclude>
+    <ClInclude Include="include\systems\HVECameraControlSystem.hpp">
+      <Filter>include\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\systems\HVEPostRenderCleanup.hpp">
+      <Filter>include\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\systems\HVEPrepareRender.hpp">
+      <Filter>include\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\systems\HVESystem.hpp">
+      <Filter>include\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\systems\RenderSystem.hpp">
+      <Filter>include\systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\textures\HVESprite.hpp">
+      <Filter>include\textures</Filter>
+    </ClInclude>
+    <ClInclude Include="include\textures\HVETexture.hpp">
+      <Filter>include\textures</Filter>
+    </ClInclude>
+    <ClInclude Include="include\textures\HVETextureManager.hpp">
+      <Filter>include\textures</Filter>
+    </ClInclude>
+    <ClInclude Include="include\textures\stb_image_wrapper.h">
+      <Filter>include\textures</Filter>
+    </ClInclude>
+    <ClInclude Include="include\world\HVEScene.hpp">
+      <Filter>include\world</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\glfw\include\GLFW\glfw3.h">
+      <Filter>vendor\glfw\include\GLFW</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\glfw\include\GLFW\glfw3native.h">
+      <Filter>vendor\glfw\include\GLFW</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\bench\utils.h">
+      <Filter>vendor\spdlog\bench</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\async.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger-inl.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\async_logger.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\argv.h">
+      <Filter>vendor\spdlog\include\spdlog\cfg</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\env.h">
+      <Filter>vendor\spdlog\include\spdlog\cfg</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\cfg</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\cfg\helpers.h">
+      <Filter>vendor\spdlog\include\spdlog\cfg</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\common-inl.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\common.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\backtracer.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\circular_q.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\console_globals.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\file_helper.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\fmt_helper.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\log_msg_buffer.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\mpmc_blocking_q.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\null_mutex.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\os-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\os.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\periodic_worker.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\registry.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\synchronous_factory.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client-windows.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\tcp_client.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\thread_pool.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client-windows.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\udp_client.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\details\windows_include.h">
+      <Filter>vendor\spdlog\include\spdlog\details</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bin_to_hex.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\args.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\chrono.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\color.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\compile.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\core.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\format.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\locale.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\os.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ostream.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\printf.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\ranges.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\std.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\bundled\xchar.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt\bundled</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\chrono.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\compile.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\fmt.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ostr.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\ranges.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\std.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fmt\xchar.h">
+      <Filter>vendor\spdlog\include\spdlog\fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\formatter.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\fwd.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\logger-inl.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\logger.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter-inl.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\pattern_formatter.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\android_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ansicolor_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\base_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\basic_file_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\callback_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\daily_file_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dist_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\dup_filter_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\hourly_file_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\kafka_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\mongo_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\msvc_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\null_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ostream_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\qt_sinks.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\ringbuffer_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\rotating_file_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_color_sinks.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\stdout_sinks.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\syslog_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\systemd_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\tcp_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\udp_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\win_eventlog_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink-inl.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\sinks\wincolor_sink.h">
+      <Filter>vendor\spdlog\include\spdlog\sinks</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog-inl.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\spdlog.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\stopwatch.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\tweakme.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spdlog\include\spdlog\version.h">
+      <Filter>vendor\spdlog\include\spdlog</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\stb\stb_image.h">
+      <Filter>vendor\stb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\simple_shader.vert">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\simple_shader.frag">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="compile.bat" />
+    <ClCompile Include="src\HVEComponentManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\HVEEntityManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Helios.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEBuffer.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVECamera.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEDescriptors.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEDevice.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEModel.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEModelManager.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEPipeline.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVERenderer.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVESwapChain.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\HVEWindow.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\helios\Application.cpp">
+      <Filter>src\helios</Filter>
+    </ClCompile>
+    <ClCompile Include="src\helios\Log.cpp">
+      <Filter>src\helios</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\HVEKeyboard.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\objects\HVETile.cpp">
+      <Filter>src\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="src\primitives\HVEShapes.cpp">
+      <Filter>src\primitives</Filter>
+    </ClCompile>
+    <ClCompile Include="src\systems\HVECameraControlSystem.cpp">
+      <Filter>src\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="src\systems\HVEPostRenderCleanup.cpp">
+      <Filter>src\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="src\systems\HVEPrepareRender.cpp">
+      <Filter>src\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="src\systems\RenderSystem.cpp">
+      <Filter>src\systems</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textures\HVESprite.cpp">
+      <Filter>src\textures</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textures\HVETexture.cpp">
+      <Filter>src\textures</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textures\HVETextureManager.cpp">
+      <Filter>src\textures</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textures\stb_image_wrapper.cpp">
+      <Filter>src\textures</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\HVEScene.cpp">
+      <Filter>src\world</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\bench\async_bench.cpp">
+      <Filter>vendor\spdlog\bench</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\bench\bench.cpp">
+      <Filter>vendor\spdlog\bench</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\bench\formatter-bench.cpp">
+      <Filter>vendor\spdlog\bench</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\bench\latency.cpp">
+      <Filter>vendor\spdlog\bench</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\example\example.cpp">
+      <Filter>vendor\spdlog\example</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\async.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\bundled_fmtlib_format.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\cfg.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\color_sinks.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\file_sinks.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\spdlog.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\spdlog\src\stdout_sinks.cpp">
+      <Filter>vendor\spdlog\src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
