@@ -76,10 +76,11 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -99,10 +100,11 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -126,10 +128,11 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -152,86 +155,98 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\HVEComponentManager.hpp" />
-    <ClInclude Include="include\HVEEntityManager.hpp" />
-    <ClInclude Include="include\Helios.h" />
-    <ClInclude Include="include\Helios.hpp" />
-    <ClInclude Include="include\components\HVEAnimComponent.hpp" />
-    <ClInclude Include="include\components\HVECameraComponent.hpp" />
-    <ClInclude Include="include\components\HVEColliderComponent.hpp" />
-    <ClInclude Include="include\components\HVEColorComponent.hpp" />
-    <ClInclude Include="include\components\HVEModelComponent.hpp" />
-    <ClInclude Include="include\components\HVEScriptComponent.hpp" />
-    <ClInclude Include="include\components\HVESpriteComponent.hpp" />
-    <ClInclude Include="include\components\HVETextureComponent.hpp" />
-    <ClInclude Include="include\components\HVETransformComponent.hpp" />
-    <ClInclude Include="include\enums\HVEComponentEnum.h" />
-    <ClInclude Include="include\enums\HVEShapes.h" />
-    <ClInclude Include="include\enums\HVESystemStages.h" />
-    <ClInclude Include="include\graphics\HVEBuffer.hpp" />
-    <ClInclude Include="include\graphics\HVECamera.hpp" />
-    <ClInclude Include="include\graphics\HVEDescriptors.hpp" />
-    <ClInclude Include="include\graphics\HVEDevice.hpp" />
-    <ClInclude Include="include\graphics\HVEFrameInfo.hpp" />
-    <ClInclude Include="include\graphics\HVEGameObject.hpp" />
-    <ClInclude Include="include\graphics\HVEModel.hpp" />
-    <ClInclude Include="include\graphics\HVEModelManager.hpp" />
-    <ClInclude Include="include\graphics\HVEPipeline.hpp" />
-    <ClInclude Include="include\graphics\HVERenderer.hpp" />
-    <ClInclude Include="include\graphics\HVESwapChain.hpp" />
-    <ClInclude Include="include\graphics\HVEWindow.hpp" />
-    <ClInclude Include="include\helios\Application.h" />
-    <ClInclude Include="include\helios\Core.h" />
-    <ClInclude Include="include\helios\EntryPoint.h" />
-    <ClInclude Include="include\helios\Log.h" />
-    <ClInclude Include="include\input\HVEKeyboard.hpp" />
-    <ClInclude Include="include\objects\HVETile.hpp" />
-    <ClInclude Include="include\primitives\HVEShapes.hpp" />
-    <ClInclude Include="include\systems\HVECameraControlSystem.hpp" />
-    <ClInclude Include="include\systems\HVEPostRenderCleanup.hpp" />
-    <ClInclude Include="include\systems\HVEPrepareRender.hpp" />
-    <ClInclude Include="include\systems\HVESystem.hpp" />
-    <ClInclude Include="include\systems\RenderSystem.hpp" />
-    <ClInclude Include="include\textures\HVESprite.hpp" />
-    <ClInclude Include="include\textures\HVETexture.hpp" />
-    <ClInclude Include="include\textures\HVETextureManager.hpp" />
-    <ClInclude Include="include\textures\stb_image_wrapper.h" />
-    <ClInclude Include="include\world\HVEScene.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\HVEComponentManager.cpp" />
-    <ClCompile Include="src\HVEEntityManager.cpp" />
-    <ClCompile Include="src\Helios.cpp" />
-    <ClCompile Include="src\graphics\HVEBuffer.cpp" />
-    <ClCompile Include="src\graphics\HVECamera.cpp" />
-    <ClCompile Include="src\graphics\HVEDescriptors.cpp" />
-    <ClCompile Include="src\graphics\HVEDevice.cpp" />
-    <ClCompile Include="src\graphics\HVEModel.cpp" />
-    <ClCompile Include="src\graphics\HVEModelManager.cpp" />
-    <ClCompile Include="src\graphics\HVEPipeline.cpp" />
-    <ClCompile Include="src\graphics\HVERenderer.cpp" />
-    <ClCompile Include="src\graphics\HVESwapChain.cpp" />
-    <ClCompile Include="src\graphics\HVEWindow.cpp" />
     <ClCompile Include="src\helios\Application.cpp" />
+    <ClCompile Include="src\helios\HVEEntityManager.cpp" />
     <ClCompile Include="src\helios\Log.cpp" />
-    <ClCompile Include="src\input\HVEKeyboard.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\objects\HVETile.cpp" />
-    <ClCompile Include="src\primitives\HVEShapes.cpp" />
-    <ClCompile Include="src\systems\HVECameraControlSystem.cpp" />
-    <ClCompile Include="src\systems\HVEPostRenderCleanup.cpp" />
-    <ClCompile Include="src\systems\HVEPrepareRender.cpp" />
-    <ClCompile Include="src\systems\RenderSystem.cpp" />
-    <ClCompile Include="src\textures\HVESprite.cpp" />
-    <ClCompile Include="src\textures\HVETexture.cpp" />
-    <ClCompile Include="src\textures\HVETextureManager.cpp" />
-    <ClCompile Include="src\textures\stb_image_wrapper.cpp" />
-    <ClCompile Include="src\world\HVEScene.cpp" />
+    <ClCompile Include="src\helios\components\HVEComponentManager.cpp" />
+    <ClCompile Include="src\helios\events\ApplicationEvent.cpp" />
+    <ClCompile Include="src\helios\events\Event.cpp" />
+    <ClCompile Include="src\helios\events\KeyEvent.cpp" />
+    <ClCompile Include="src\helios\events\MouseEvent.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEBuffer.cpp" />
+    <ClCompile Include="src\helios\graphics\HVECamera.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEDescriptors.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEDevice.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEModel.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEModelManager.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEPipeline.cpp" />
+    <ClCompile Include="src\helios\graphics\HVERenderer.cpp" />
+    <ClCompile Include="src\helios\graphics\HVESwapChain.cpp" />
+    <ClCompile Include="src\helios\graphics\HVEWindow.cpp" />
+    <ClCompile Include="src\helios\input\HVEKeyboard.cpp" />
+    <ClCompile Include="src\helios\objects\HVETile.cpp" />
+    <ClCompile Include="src\helios\primitives\HVEShapes.cpp" />
+    <ClCompile Include="src\helios\systems\HVECameraControlSystem.cpp" />
+    <ClCompile Include="src\helios\systems\HVEPostRenderCleanup.cpp" />
+    <ClCompile Include="src\helios\systems\HVEPrepareRender.cpp" />
+    <ClCompile Include="src\helios\systems\RenderSystem.cpp" />
+    <ClCompile Include="src\helios\textures\HVESprite.cpp" />
+    <ClCompile Include="src\helios\textures\HVETexture.cpp" />
+    <ClCompile Include="src\helios\textures\HVETextureManager.cpp" />
+    <ClCompile Include="src\helios\textures\stb_image_wrapper.cpp" />
+    <ClCompile Include="src\helios\world\HVEScene.cpp" />
+    <ClCompile Include="src\hvepch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\platform\windows\WindowsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">
       <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Helios.h" />
+    <ClInclude Include="src\helios\Application.h" />
+    <ClInclude Include="src\helios\components\HVEAnimComponent.h" />
+    <ClInclude Include="src\helios\components\HVECameraComponent.h" />
+    <ClInclude Include="src\helios\components\HVEColliderComponent.h" />
+    <ClInclude Include="src\helios\components\HVEColorComponent.h" />
+    <ClInclude Include="src\helios\components\HVEComponentManager.h" />
+    <ClInclude Include="src\helios\components\HVEModelComponent.h" />
+    <ClInclude Include="src\helios\components\HVEScriptComponent.h" />
+    <ClInclude Include="src\helios\components\HVESpriteComponent.h" />
+    <ClInclude Include="src\helios\components\HVETextureComponent.h" />
+    <ClInclude Include="src\helios\components\HVETransformComponent.h" />
+    <ClInclude Include="src\helios\Core.h" />
+    <ClInclude Include="src\helios\EntryPoint.h" />
+    <ClInclude Include="src\helios\enums\HVEComponentEnum.h" />
+    <ClInclude Include="src\helios\enums\HVEShapes.h" />
+    <ClInclude Include="src\helios\enums\HVESystemStages.h" />
+    <ClInclude Include="src\helios\events\ApplicationEvent.h" />
+    <ClInclude Include="src\helios\events\Event.h" />
+    <ClInclude Include="src\helios\events\KeyEvent.h" />
+    <ClInclude Include="src\helios\events\MouseEvent.h" />
+    <ClInclude Include="src\helios\graphics\HVEBuffer.h" />
+    <ClInclude Include="src\helios\graphics\HVECamera.h" />
+    <ClInclude Include="src\helios\graphics\HVEDescriptors.h" />
+    <ClInclude Include="src\helios\graphics\HVEDevice.h" />
+    <ClInclude Include="src\helios\graphics\HVEFrameInfo.h" />
+    <ClInclude Include="src\helios\graphics\HVEGameObject.h" />
+    <ClInclude Include="src\helios\graphics\HVEModel.h" />
+    <ClInclude Include="src\helios\graphics\HVEModelManager.h" />
+    <ClInclude Include="src\helios\graphics\HVEPipeline.h" />
+    <ClInclude Include="src\helios\graphics\HVERenderer.h" />
+    <ClInclude Include="src\helios\graphics\HVESwapChain.h" />
+    <ClInclude Include="src\helios\graphics\HVEWindow.h" />
+    <ClInclude Include="src\helios\HVEEntityManager.h" />
+    <ClInclude Include="src\helios\input\HVEKeyboard.h" />
+    <ClInclude Include="src\helios\Log.h" />
+    <ClInclude Include="src\helios\objects\HVETile.h" />
+    <ClInclude Include="src\helios\primitives\HVEShapes.h" />
+    <ClInclude Include="src\helios\systems\HVECameraControlSystem.h" />
+    <ClInclude Include="src\helios\systems\HVEPostRenderCleanup.h" />
+    <ClInclude Include="src\helios\systems\HVEPrepareRender.h" />
+    <ClInclude Include="src\helios\systems\HVESystem.h" />
+    <ClInclude Include="src\helios\systems\RenderSystem.h" />
+    <ClInclude Include="src\helios\textures\HVESprite.h" />
+    <ClInclude Include="src\helios\textures\HVETexture.h" />
+    <ClInclude Include="src\helios\textures\HVETextureManager.h" />
+    <ClInclude Include="src\helios\textures\stb_image_wrapper.h" />
+    <ClInclude Include="src\helios\Window.h" />
+    <ClInclude Include="src\helios\world\HVEScene.h" />
+    <ClInclude Include="src\hvepch.h" />
+    <ClInclude Include="src\platform\windows\WindowsWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

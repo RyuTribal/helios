@@ -24,6 +24,9 @@ project "helios"
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
+    pchheader "hvepch.h"
+    pchsource "helios/src/hvepch.cpp"
+
     files
     {
         "%{prj.name}/include/**.h",
@@ -52,7 +55,7 @@ project "helios"
         "%{prj.name}/vendor/spdlog/include",
         "%{IncludeDirs.GLFW}",
         "%{prj.name}/vendor/glm",
-        "%{prj.name}/include"
+        "%{prj.name}/src"
     }
 
     filter "system:windows"
@@ -100,7 +103,7 @@ project "Sandbox"
     includedirs
     {
         "helios/vendor/spdlog/include",
-        "helios/include"
+        "helios/src"
     }
 
     links

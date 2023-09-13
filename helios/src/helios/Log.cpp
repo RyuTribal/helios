@@ -1,4 +1,6 @@
+#include "hvepch.h"
 #include "helios/Log.h"
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace hve
 {
