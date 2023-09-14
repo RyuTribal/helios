@@ -1,6 +1,7 @@
 #pragma once
 
 #include "helios/Core.h"
+#include <string>
 
 namespace hve {
 

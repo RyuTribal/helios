@@ -76,14 +76,17 @@ project "helios"
 
     filter "configurations:Debug"
         defines "HVE_DEBUG"
+        buildoptions "/MDd"
         symbols "On"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
+        buildoptions "/MD"
         optimize "On"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
+        buildoptions "/MD"
         optimize "On"
 
 project "Sandbox"
@@ -123,14 +126,17 @@ project "Sandbox"
 
     filter "configurations:Debug"
         defines "HVE_DEBUG"
+        buildoptions "/MDd"
         symbols "On"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
+        buildoptions "/MD"
         optimize "On"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
+        buildoptions "/MD"
         optimize "On"
 
 
