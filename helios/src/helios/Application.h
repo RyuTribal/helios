@@ -6,7 +6,7 @@
 #include "events/ApplicationEvent.h"
 
 
-namespace hve {
+namespace Helios {
 	class HELIOS_API Application
 	{
 	public:

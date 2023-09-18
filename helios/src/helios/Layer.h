@@ -3,7 +3,7 @@
 #include "helios/Core.h"
 #include "helios/events/Event.h"
 
-namespace hve
+namespace Helios
 {
 	class HELIOS_API Layer
 	{

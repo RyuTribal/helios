@@ -2,13 +2,13 @@
 
 #ifdef HVE_PLATFORM_WINDOWS
 
-extern hve::Application* hve::CreateApplication();
+extern Helios::Application* Helios::CreateApplication();
 
 int main(int argc, char** argv)
 {
-	hve::Log::Init();
+	Helios::Log::Init();
 	HVE_CORE_WARN("Log Initialized");
-	auto app = hve::CreateApplication();
+	auto app = Helios::CreateApplication();
 	app->run();
 	delete app;
 }

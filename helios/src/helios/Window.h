@@ -3,7 +3,7 @@
 #include "helios/Core.h"
 #include "helios/events/Event.h"
 
-namespace hve {
+namespace Helios {
 	struct WindowProps
 	{
 		std::string Title;
@@ -20,7 +20,7 @@ namespace hve {
 	class HELIOS_API Window
 	{
 	public:
-		using EventCallbackFn = std::function<void(hve::Event&)>;
+		using EventCallbackFn = std::function<void(Event&)>;
 
 		virtual ~Window() {};
 

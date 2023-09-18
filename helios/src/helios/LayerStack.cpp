@@ -1,7 +1,8 @@
 #include "hvepch.h"
 #include "LayerStack.h"
 
-namespace hve
+
+namespace Helios
 {
 	LayerStack::LayerStack()
 	{

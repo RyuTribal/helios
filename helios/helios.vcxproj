@@ -79,8 +79,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -91,8 +91,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -104,8 +104,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -120,8 +120,8 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -133,8 +133,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -149,8 +149,8 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
@@ -158,38 +158,30 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Helios.h" />
+    <ClInclude Include="src\helios\Application.h" />
+    <ClInclude Include="src\helios\Core.h" />
+    <ClInclude Include="src\helios\EntryPoint.h" />
+    <ClInclude Include="src\helios\Layer.h" />
+    <ClInclude Include="src\helios\LayerStack.h" />
+    <ClInclude Include="src\helios\Log.h" />
+    <ClInclude Include="src\helios\Window.h" />
+    <ClInclude Include="src\helios\events\ApplicationEvent.h" />
+    <ClInclude Include="src\helios\events\Event.h" />
+    <ClInclude Include="src\helios\events\KeyEvent.h" />
+    <ClInclude Include="src\helios\events\MouseEvent.h" />
+    <ClInclude Include="src\hvepch.h" />
+    <ClInclude Include="src\platform\windows\WindowsWindow.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\helios\Application.cpp" />
-    <ClCompile Include="src\helios\HVEEntityManager.cpp" />
     <ClCompile Include="src\helios\Layer.cpp" />
     <ClCompile Include="src\helios\LayerStack.cpp" />
     <ClCompile Include="src\helios\Log.cpp" />
-    <ClCompile Include="src\helios\components\HVEComponentManager.cpp" />
     <ClCompile Include="src\helios\events\ApplicationEvent.cpp" />
     <ClCompile Include="src\helios\events\Event.cpp" />
     <ClCompile Include="src\helios\events\KeyEvent.cpp" />
     <ClCompile Include="src\helios\events\MouseEvent.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEBuffer.cpp" />
-    <ClCompile Include="src\helios\graphics\HVECamera.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEDescriptors.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEDevice.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEModel.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEModelManager.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEPipeline.cpp" />
-    <ClCompile Include="src\helios\graphics\HVERenderer.cpp" />
-    <ClCompile Include="src\helios\graphics\HVESwapChain.cpp" />
-    <ClCompile Include="src\helios\graphics\HVEWindow.cpp" />
-    <ClCompile Include="src\helios\input\HVEKeyboard.cpp" />
-    <ClCompile Include="src\helios\objects\HVETile.cpp" />
-    <ClCompile Include="src\helios\primitives\HVEShapes.cpp" />
-    <ClCompile Include="src\helios\systems\HVECameraControlSystem.cpp" />
-    <ClCompile Include="src\helios\systems\HVEPostRenderCleanup.cpp" />
-    <ClCompile Include="src\helios\systems\HVEPrepareRender.cpp" />
-    <ClCompile Include="src\helios\systems\RenderSystem.cpp" />
-    <ClCompile Include="src\helios\textures\HVESprite.cpp" />
-    <ClCompile Include="src\helios\textures\HVETexture.cpp" />
-    <ClCompile Include="src\helios\textures\HVETextureManager.cpp" />
-    <ClCompile Include="src\helios\textures\stb_image_wrapper.cpp" />
-    <ClCompile Include="src\helios\world\HVEScene.cpp" />
     <ClCompile Include="src\hvepch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -198,6 +190,9 @@
   <ItemGroup>
     <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">
       <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\Glad\Glad.vcxproj">
+      <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

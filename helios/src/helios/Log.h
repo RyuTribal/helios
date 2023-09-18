@@ -9,7 +9,7 @@
 #pragma warning(pop)
 
 
-namespace hve
+namespace Helios
 {
 	class HELIOS_API Log
 	{
@@ -26,16 +26,16 @@ namespace hve
 }
 
 // Core log macros
-#define HVE_CORE_FATAL(...) ::hve::Log::GetCoreLogger()->critical(__VA_ARGS__)
-#define HVE_CORE_ERROR(...) ::hve::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define HVE_CORE_WARN(...) ::hve::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define HVE_CORE_INFO(...) ::hve::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define HVE_CORE_TRACE(...) ::hve::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define HVE_CORE_FATAL(...) ::Helios::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define HVE_CORE_ERROR(...) ::Helios::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define HVE_CORE_WARN(...) ::Helios::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define HVE_CORE_INFO(...) ::Helios::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define HVE_CORE_TRACE(...) ::Helios::Log::GetCoreLogger()->trace(__VA_ARGS__)
 
 
 // Client log macros
-#define HVE_FATAL(...) ::hve::Log::GetClientLogger()->critical(__VA_ARGS__)
-#define HVE_ERROR(...) ::hve::Log::GetClientLogger()->error(__VA_ARGS__)
-#define HVE_WARN(...) ::hve::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define HVE_INFO(...) ::hve::Log::GetClientLogger()->info(__VA_ARGS__)
-#define HVE_TRACE(...) ::hve::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define HVE_FATAL(...) ::Helios::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define HVE_ERROR(...) ::Helios::Log::GetClientLogger()->error(__VA_ARGS__)
+#define HVE_WARN(...) ::Helios::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define HVE_INFO(...) ::Helios::Log::GetClientLogger()->info(__VA_ARGS__)
+#define HVE_TRACE(...) ::Helios::Log::GetClientLogger()->trace(__VA_ARGS__)

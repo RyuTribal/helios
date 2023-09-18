@@ -2,7 +2,7 @@
 
 #include "Event.h"
 
-namespace hve
+namespace Helios
 {
 	class HELIOS_API KeyEvent : public Event
 	{

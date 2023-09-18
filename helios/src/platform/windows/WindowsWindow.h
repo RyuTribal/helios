@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-namespace hve
+namespace Helios
 {
 	class WindowsWindow : public Window
 	{

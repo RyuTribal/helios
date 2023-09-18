@@ -1,6 +1,6 @@
 #include <Helios.h>
 
-class ExampleLayer : public hve::Layer
+class ExampleLayer : public Helios::Layer
 {
 public:
 	ExampleLayer() : Layer("Example"){}
@@ -10,14 +10,14 @@ public:
 		HVE_INFO("ExampleLayer::Update");
 	}
 
-	void OnEvent(hve::Event& event) override
+	void OnEvent(Helios::Event& event) override
 	{
 		HVE_TRACE("{0}", event);
 	}
 };
 
 
-class Sandbox : public hve::Application
+class Sandbox : public Helios::Application
 {
 public:
 	Sandbox()
@@ -33,7 +33,7 @@ public:
 
 };
 
-hve::Application* hve::CreateApplication()
+Helios::Application* Helios::CreateApplication()
 {
 	return new Sandbox();
 }

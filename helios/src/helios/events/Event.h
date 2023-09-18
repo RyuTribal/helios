@@ -3,7 +3,7 @@
 #include "helios/Core.h"
 #include <string>
 
-namespace hve {
+namespace Helios {
 
 	// Events in Helios are currently blocking, meaning when an event occurs it
 	// immediately gets dispatched and must be dealt with right then an there.

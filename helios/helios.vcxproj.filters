@@ -4,32 +4,8 @@
     <Filter Include="helios">
       <UniqueIdentifier>{6937D801-55D9-02D8-3E94-162C2AD58928}</UniqueIdentifier>
     </Filter>
-    <Filter Include="helios\components">
-      <UniqueIdentifier>{FE2C3866-6A43-36FC-B3BA-C11D1F100784}</UniqueIdentifier>
-    </Filter>
     <Filter Include="helios\events">
       <UniqueIdentifier>{4D67AFA0-B927-2BD7-8262-7454EEE16FB3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\graphics">
-      <UniqueIdentifier>{E9018A25-558D-F7E9-5E9E-7ADECAA853EA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\input">
-      <UniqueIdentifier>{4822D5CE-3485-6473-DD0A-9D29C94C30F6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\objects">
-      <UniqueIdentifier>{42C7108A-2E95-0490-1729-75B60396E0F4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\primitives">
-      <UniqueIdentifier>{C4C5B052-30DC-AEE8-7953-3A0AE5A87F70}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\systems">
-      <UniqueIdentifier>{907E4BF4-7C4C-3FFA-65E0-AF20514D1B5F}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\textures">
-      <UniqueIdentifier>{7C0B2372-E896-9036-F1A7-132B5DB2EC36}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="helios\world">
-      <UniqueIdentifier>{000DD3CF-EC6F-6274-95F5-9A2A81372EF7}</UniqueIdentifier>
     </Filter>
     <Filter Include="platform">
       <UniqueIdentifier>{4A63C33C-3630-1E48-5F49-0CF04B7553D6}</UniqueIdentifier>
@@ -39,10 +15,47 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\helios\Application.cpp">
+    <ClInclude Include="src\Helios.h" />
+    <ClInclude Include="src\helios\Application.h">
       <Filter>helios</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\HVEEntityManager.cpp">
+    </ClInclude>
+    <ClInclude Include="src\helios\Core.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\EntryPoint.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\Layer.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\LayerStack.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\Log.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\Window.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\events\ApplicationEvent.h">
+      <Filter>helios\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\events\Event.h">
+      <Filter>helios\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\events\KeyEvent.h">
+      <Filter>helios\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\events\MouseEvent.h">
+      <Filter>helios\events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\hvepch.h" />
+    <ClInclude Include="src\platform\windows\WindowsWindow.h">
+      <Filter>platform\windows</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\helios\Application.cpp">
       <Filter>helios</Filter>
     </ClCompile>
     <ClCompile Include="src\helios\Layer.cpp">
@@ -53,9 +66,6 @@
     </ClCompile>
     <ClCompile Include="src\helios\Log.cpp">
       <Filter>helios</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\components\HVEComponentManager.cpp">
-      <Filter>helios\components</Filter>
     </ClCompile>
     <ClCompile Include="src\helios\events\ApplicationEvent.cpp">
       <Filter>helios\events</Filter>
@@ -68,72 +78,6 @@
     </ClCompile>
     <ClCompile Include="src\helios\events\MouseEvent.cpp">
       <Filter>helios\events</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEBuffer.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVECamera.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEDescriptors.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEDevice.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEModel.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEModelManager.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEPipeline.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVERenderer.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVESwapChain.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\graphics\HVEWindow.cpp">
-      <Filter>helios\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\input\HVEKeyboard.cpp">
-      <Filter>helios\input</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\objects\HVETile.cpp">
-      <Filter>helios\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\primitives\HVEShapes.cpp">
-      <Filter>helios\primitives</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\systems\HVECameraControlSystem.cpp">
-      <Filter>helios\systems</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\systems\HVEPostRenderCleanup.cpp">
-      <Filter>helios\systems</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\systems\HVEPrepareRender.cpp">
-      <Filter>helios\systems</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\systems\RenderSystem.cpp">
-      <Filter>helios\systems</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\textures\HVESprite.cpp">
-      <Filter>helios\textures</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\textures\HVETexture.cpp">
-      <Filter>helios\textures</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\textures\HVETextureManager.cpp">
-      <Filter>helios\textures</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\textures\stb_image_wrapper.cpp">
-      <Filter>helios\textures</Filter>
-    </ClCompile>
-    <ClCompile Include="src\helios\world\HVEScene.cpp">
-      <Filter>helios\world</Filter>
     </ClCompile>
     <ClCompile Include="src\hvepch.cpp" />
     <ClCompile Include="src\platform\windows\WindowsWindow.cpp">

@@ -13,8 +13,10 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDirs = {}
 IncludeDirs["GLFW"] = "helios/vendor/GLFW/include"
+IncludeDirs["Glad"] = "helios/vendor/Glad/include"
 
 include "helios/vendor/GLFW"
+include "helios/vendor/Glad"
 
 project "helios"
     location "helios"
@@ -29,22 +31,21 @@ project "helios"
 
     files
     {
-        "%{prj.name}/include/**.h",
-        "%{prj.name}/include/**.hpp",
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.hpp",
         "%{prj.name}/src/**.cpp",
         "%{prj.name}/src/**.c"
     }
 
     libdirs
     {
-        "$(VULKAN_SDK)/Lib",
         "%{prj.name}/vendor/glfw/lib-vc2022"
     }
 
     links
     {
-        "vulkan-1",
         "GLFW",
+        "Glad",
         "opengl32.lib"
     }
 
@@ -54,6 +55,7 @@ project "helios"
         "$(VULKAN_SDK)/Include",
         "%{prj.name}/vendor/spdlog/include",
         "%{IncludeDirs.GLFW}",
+        "%{IncludeDirs.Glad}",
         "%{prj.name}/vendor/glm",
         "%{prj.name}/src"
     }
@@ -66,7 +68,8 @@ project "helios"
         defines
         {
             "HVE_PLATFORM_WINDOWS",
-            "HVE_BUILD_DLL"
+            "HVE_BUILD_DLL",
+            "GLFW_INCLUDE_NONE"
         }
 
         postbuildcommands
@@ -121,7 +124,8 @@ project "Sandbox"
 
         defines
         {
-            "HVE_PLATFORM_WINDOWS"
+            "HVE_PLATFORM_WINDOWS",
+            
         }
 
     filter "configurations:Debug"

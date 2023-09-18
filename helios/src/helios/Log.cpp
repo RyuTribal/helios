@@ -2,7 +2,7 @@
 #include "helios/Log.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-namespace hve
+namespace Helios
 {
 	std::shared_ptr<spdlog::logger> Log::s_CoreLogger;
 	std::shared_ptr<spdlog::logger> Log::s_ClientLogger;

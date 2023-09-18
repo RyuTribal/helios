@@ -1,7 +1,7 @@
 #include "hvepch.h"
 #include "Layer.h"
 
-namespace hve
+namespace Helios
 {
 	Layer::Layer(const std::string& name) : m_DebugName(name)
 	{

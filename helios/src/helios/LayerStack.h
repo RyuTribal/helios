@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace hve
+namespace Helios
 {
 	class HELIOS_API LayerStack
 	{
