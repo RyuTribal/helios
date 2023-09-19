@@ -4,11 +4,17 @@
     <Filter Include="helios">
       <UniqueIdentifier>{6937D801-55D9-02D8-3E94-162C2AD58928}</UniqueIdentifier>
     </Filter>
+    <Filter Include="helios\ImGui">
+      <UniqueIdentifier>{53D790CC-3F3A-2071-E8BF-5827D401ECF3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="helios\events">
       <UniqueIdentifier>{4D67AFA0-B927-2BD7-8262-7454EEE16FB3}</UniqueIdentifier>
     </Filter>
     <Filter Include="platform">
       <UniqueIdentifier>{4A63C33C-3630-1E48-5F49-0CF04B7553D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\OpenGL">
+      <UniqueIdentifier>{3E351A86-AAC0-874A-B3D1-0A3F1FDCE34A}</UniqueIdentifier>
     </Filter>
     <Filter Include="platform\windows">
       <UniqueIdentifier>{A44FC440-9048-E392-B97A-C817A5D2C29E}</UniqueIdentifier>
@@ -24,6 +30,9 @@
     </ClInclude>
     <ClInclude Include="src\helios\EntryPoint.h">
       <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\ImGui\ImGuiLayer.h">
+      <Filter>helios\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="src\helios\Layer.h">
       <Filter>helios</Filter>
@@ -50,6 +59,9 @@
       <Filter>helios\events</Filter>
     </ClInclude>
     <ClInclude Include="src\hvepch.h" />
+    <ClInclude Include="src\platform\OpenGL\ImGuiOpenGLRenderer.h">
+      <Filter>platform\OpenGL</Filter>
+    </ClInclude>
     <ClInclude Include="src\platform\windows\WindowsWindow.h">
       <Filter>platform\windows</Filter>
     </ClInclude>
@@ -57,6 +69,9 @@
   <ItemGroup>
     <ClCompile Include="src\helios\Application.cpp">
       <Filter>helios</Filter>
+    </ClCompile>
+    <ClCompile Include="src\helios\ImGui\ImGuiLayer.cpp">
+      <Filter>helios\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="src\helios\Layer.cpp">
       <Filter>helios</Filter>
@@ -80,6 +95,9 @@
       <Filter>helios\events</Filter>
     </ClCompile>
     <ClCompile Include="src\hvepch.cpp" />
+    <ClCompile Include="src\platform\OpenGL\ImGuiOpenGLRenderer.cpp">
+      <Filter>platform\OpenGL</Filter>
+    </ClCompile>
     <ClCompile Include="src\platform\windows\WindowsWindow.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>

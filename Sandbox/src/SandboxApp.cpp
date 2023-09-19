@@ -23,6 +23,7 @@ public:
 	Sandbox()
 	{
 		PushLayer(new ExampleLayer());
+		PushOverlay(new Helios::ImGuiLayer());
 	}
 
 	~Sandbox()

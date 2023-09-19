@@ -80,7 +80,7 @@
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -105,7 +105,7 @@
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -134,7 +134,7 @@
       <PrecompiledHeaderFile>hvepch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>HVE_PLATFORM_WINDOWS;HVE_BUILD_DLL;GLFW_INCLUDE_NONE;HVE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\stb;$(VULKAN_SDK)\Include;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -162,6 +162,7 @@
     <ClInclude Include="src\helios\Application.h" />
     <ClInclude Include="src\helios\Core.h" />
     <ClInclude Include="src\helios\EntryPoint.h" />
+    <ClInclude Include="src\helios\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\helios\Layer.h" />
     <ClInclude Include="src\helios\LayerStack.h" />
     <ClInclude Include="src\helios\Log.h" />
@@ -171,10 +172,12 @@
     <ClInclude Include="src\helios\events\KeyEvent.h" />
     <ClInclude Include="src\helios\events\MouseEvent.h" />
     <ClInclude Include="src\hvepch.h" />
+    <ClInclude Include="src\platform\OpenGL\ImGuiOpenGLRenderer.h" />
     <ClInclude Include="src\platform\windows\WindowsWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\helios\Application.cpp" />
+    <ClCompile Include="src\helios\ImGui\ImGuiLayer.cpp" />
     <ClCompile Include="src\helios\Layer.cpp" />
     <ClCompile Include="src\helios\LayerStack.cpp" />
     <ClCompile Include="src\helios\Log.cpp" />
@@ -185,6 +188,7 @@
     <ClCompile Include="src\hvepch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\platform\windows\WindowsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -193,6 +197,9 @@
     </ProjectReference>
     <ProjectReference Include="vendor\Glad\Glad.vcxproj">
       <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
+      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -2,10 +2,10 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Programming\helios\helios\bin\Debug-windows-x86_64\helios\helios.dll</FullPath>
+      <FullPath>C:\Programming\helios\bin\Debug-windows-x86_64\helios\helios.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\Programming\helios\helios\bin\Debug-windows-x86_64\Sandbox\Sandbox.exe</FullPath>
+      <FullPath>C:\Programming\helios\bin\Debug-windows-x86_64\Sandbox\Sandbox.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

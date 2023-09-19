@@ -40,6 +40,11 @@ bld/
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
+bin/
+bin-int/
+
+# Files
+*.user
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

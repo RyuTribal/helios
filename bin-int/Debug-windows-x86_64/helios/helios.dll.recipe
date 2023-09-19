@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Programming\helios\helios\bin\Debug-windows-x86_64\helios\helios.dll</FullPath>
+      <FullPath>C:\Programming\helios\bin\Debug-windows-x86_64\helios\helios.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

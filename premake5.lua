@@ -14,9 +14,11 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 IncludeDirs = {}
 IncludeDirs["GLFW"] = "helios/vendor/GLFW/include"
 IncludeDirs["Glad"] = "helios/vendor/Glad/include"
+IncludeDirs["ImGui"] = "helios/vendor/imgui"
 
 include "helios/vendor/GLFW"
 include "helios/vendor/Glad"
+include "helios/vendor/imgui"
 
 project "helios"
     location "helios"
@@ -46,6 +48,7 @@ project "helios"
     {
         "GLFW",
         "Glad",
+        "ImGui",
         "opengl32.lib"
     }
 
@@ -56,6 +59,7 @@ project "helios"
         "%{prj.name}/vendor/spdlog/include",
         "%{IncludeDirs.GLFW}",
         "%{IncludeDirs.Glad}",
+        "%{IncludeDirs.ImGui}",
         "%{prj.name}/vendor/glm",
         "%{prj.name}/src"
     }
