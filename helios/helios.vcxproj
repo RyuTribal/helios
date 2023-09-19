@@ -95,7 +95,7 @@
       <ImportLibrary>..\bin\Debug-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST ..\bin\Debug-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll ..\bin\Debug-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll ..\bin\Debug-windows-x86_64\Sandbox\" &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll "..\bin\Debug-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\helios\helios.dll "..\bin\Debug-windows-x86_64\Sandbox\" &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,7 +123,7 @@
       <ImportLibrary>..\bin\Release-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST ..\bin\Release-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll ..\bin\Release-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll ..\bin\Release-windows-x86_64\Sandbox\" &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll "..\bin\Release-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\helios\helios.dll "..\bin\Release-windows-x86_64\Sandbox\" &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
@@ -151,7 +151,7 @@
       <ImportLibrary>..\bin\Dist-windows-x86_64\helios\helios.lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>IF EXIST ..\bin\Dist-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll ..\bin\Dist-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll ..\bin\Dist-windows-x86_64\Sandbox\" &gt; nul)</Command>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\helios\helios.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll "..\bin\Dist-windows-x86_64\Sandbox\" &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\helios\helios.dll "..\bin\Dist-windows-x86_64\Sandbox\" &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -160,9 +160,12 @@
     <ClInclude Include="src\helios\Core.h" />
     <ClInclude Include="src\helios\EntryPoint.h" />
     <ClInclude Include="src\helios\ImGui\ImGuiLayer.h" />
+    <ClInclude Include="src\helios\Input.h" />
+    <ClInclude Include="src\helios\KeyCodes.h" />
     <ClInclude Include="src\helios\Layer.h" />
     <ClInclude Include="src\helios\LayerStack.h" />
     <ClInclude Include="src\helios\Log.h" />
+    <ClInclude Include="src\helios\MouseButtonCodes.h" />
     <ClInclude Include="src\helios\Window.h" />
     <ClInclude Include="src\helios\events\ApplicationEvent.h" />
     <ClInclude Include="src\helios\events\Event.h" />
@@ -170,6 +173,7 @@
     <ClInclude Include="src\helios\events\MouseEvent.h" />
     <ClInclude Include="src\hvepch.h" />
     <ClInclude Include="src\platform\OpenGL\ImGuiOpenGLRenderer.h" />
+    <ClInclude Include="src\platform\windows\WindowsInput.h" />
     <ClInclude Include="src\platform\windows\WindowsWindow.h" />
   </ItemGroup>
   <ItemGroup>
@@ -186,6 +190,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
+    <ClCompile Include="src\platform\windows\WindowsInput.cpp" />
     <ClCompile Include="src\platform\windows\WindowsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -24,8 +24,6 @@ namespace Helios
 		EventDispatcher dispatcher(event);
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(OnWindowClosed));
 
-		HVE_CORE_TRACE("{0}", event);
-
 		for(auto it = m_LayerStack.end(); it != m_LayerStack.begin();)
 		{
 			(*--it)->OnEvent(event);
@@ -61,6 +59,8 @@ namespace Helios
 			{
 				layer->OnUpdate();
 			}
+
+
 			m_Window->OnUpdate();
 		}
 	}

@@ -34,6 +34,12 @@
     <ClInclude Include="src\helios\ImGui\ImGuiLayer.h">
       <Filter>helios\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="src\helios\Input.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\KeyCodes.h">
+      <Filter>helios</Filter>
+    </ClInclude>
     <ClInclude Include="src\helios\Layer.h">
       <Filter>helios</Filter>
     </ClInclude>
@@ -41,6 +47,9 @@
       <Filter>helios</Filter>
     </ClInclude>
     <ClInclude Include="src\helios\Log.h">
+      <Filter>helios</Filter>
+    </ClInclude>
+    <ClInclude Include="src\helios\MouseButtonCodes.h">
       <Filter>helios</Filter>
     </ClInclude>
     <ClInclude Include="src\helios\Window.h">
@@ -61,6 +70,9 @@
     <ClInclude Include="src\hvepch.h" />
     <ClInclude Include="src\platform\OpenGL\ImGuiOpenGLRenderer.h">
       <Filter>platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\WindowsInput.h">
+      <Filter>platform\windows</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\windows\WindowsWindow.h">
       <Filter>platform\windows</Filter>
@@ -97,6 +109,9 @@
     <ClCompile Include="src\hvepch.cpp" />
     <ClCompile Include="src\platform\OpenGL\ImGuiOpenGLRenderer.cpp">
       <Filter>platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\platform\windows\WindowsInput.cpp">
+      <Filter>platform\windows</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\windows\WindowsWindow.cpp">
       <Filter>platform\windows</Filter>

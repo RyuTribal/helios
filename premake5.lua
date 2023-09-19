@@ -21,6 +21,9 @@ group "Dependencies"
     include "helios/vendor/Glad"
     include "helios/vendor/imgui"
 
+group ""
+
+group "Core"
 project "helios"
     location "helios"
     kind "SharedLib"
@@ -78,9 +81,9 @@ project "helios"
         }
 
         postbuildcommands
-        {
-            ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox/\"")
-        }
+		{
+			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
+		}
 
     filter "configurations:Debug"
         defines "HVE_DEBUG"
@@ -97,7 +100,9 @@ project "helios"
         runtime "Release"
         optimize "On"
 
+group ""
 
+group "Misc"
 
 project "Sandbox"
     location "Sandbox"
