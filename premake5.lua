@@ -16,9 +16,10 @@ IncludeDirs["GLFW"] = "helios/vendor/GLFW/include"
 IncludeDirs["Glad"] = "helios/vendor/Glad/include"
 IncludeDirs["ImGui"] = "helios/vendor/imgui"
 
-include "helios/vendor/GLFW"
-include "helios/vendor/Glad"
-include "helios/vendor/imgui"
+group "Dependencies"
+    include "helios/vendor/GLFW"
+    include "helios/vendor/Glad"
+    include "helios/vendor/imgui"
 
 project "helios"
     location "helios"
@@ -78,7 +79,7 @@ project "helios"
 
         postbuildcommands
         {
-            ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+            ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox/\"")
         }
 
     filter "configurations:Debug"
