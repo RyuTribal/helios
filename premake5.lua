@@ -24,6 +24,7 @@ project "helios"
     location "helios"
     kind "SharedLib"
     language "C++"
+    staticruntime "off"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -66,7 +67,6 @@ project "helios"
 
     filter "system:windows"
         cppdialect "C++17"
-        staticruntime "Off"
         systemversion "latest"
 
         defines
@@ -83,22 +83,25 @@ project "helios"
 
     filter "configurations:Debug"
         defines "HVE_DEBUG"
-        buildoptions "/MDd"
+        runtime "Debug"
         symbols "On"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "On"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "On"
+
+
 
 project "Sandbox"
     location "Sandbox"
     kind "ConsoleApp"
+    staticruntime "off"
     language "C++"
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -123,7 +126,6 @@ project "Sandbox"
 
     filter "system:windows"
         cppdialect "C++17"
-        staticruntime "Off"
         systemversion "latest"
 
         defines
@@ -134,17 +136,16 @@ project "Sandbox"
 
     filter "configurations:Debug"
         defines "HVE_DEBUG"
-        buildoptions "/MDd"
+        runtime "Debug"
         symbols "On"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "On"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
-        buildoptions "/MD"
+        runtime "Release"
         optimize "On"
-
 

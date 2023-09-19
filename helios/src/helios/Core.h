@@ -10,6 +10,10 @@
 	#error Helios currently only supports Windows :(
 #endif
 
+#ifdef HVE_DEBUG
+	#define HVE_ENABLE_ASSERTS
+#endif
+
 #ifdef HVE_ENABLE_ASSERTS
 	#define HVE_ASSERT(x, ...) { if(!(x)) { HVE_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak();}}
 	#define HVE_CORE_ASSERT(x, ...) { if(!(x)) { HVE_CORE_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak();}}
