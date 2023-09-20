@@ -17,6 +17,8 @@ namespace Helios
 		s_Instance = this;
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
+
+		m_ImGuiLayer = std::make_unique<ImGuiLayer>();
 	}
 
 	void Application::OnEvent(Event& event)
@@ -55,11 +57,18 @@ namespace Helios
 		{
 			glClearColor(0,0,0,1);
 			glClear(GL_COLOR_BUFFER_BIT);
-			for(Layer* layer : m_LayerStack)
+
+			for (Layer* layer : m_LayerStack)
 			{
 				layer->OnUpdate();
 			}
 
+			m_ImGuiLayer->Begin();
+			for(Layer* layer : m_LayerStack)
+			{
+				layer->OnImGuiRender();
+			}
+			m_ImGuiLayer->End();
 
 			m_Window->OnUpdate();
 		}

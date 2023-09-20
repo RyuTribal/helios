@@ -16,9 +16,6 @@
     <Filter Include="src\platform">
       <UniqueIdentifier>{41663D6D-2DC9-CC11-D64E-05C8C2909894}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\platform\OpenGL">
-      <UniqueIdentifier>{555C82A0-C1BD-5FAE-4A2B-A660B68B966D}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\platform\windows">
       <UniqueIdentifier>{9B5931A8-87E8-BA71-3007-CF6C1C75CB17}</UniqueIdentifier>
     </Filter>
@@ -95,9 +92,6 @@
     </ClInclude>
     <ClInclude Include="src\hvepch.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\platform\OpenGL\ImGuiOpenGLRenderer.h">
-      <Filter>src\platform\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\windows\WindowsInput.h">
       <Filter>src\platform\windows</Filter>
@@ -1358,6 +1352,9 @@
     <ClCompile Include="src\helios\Application.cpp">
       <Filter>src\helios</Filter>
     </ClCompile>
+    <ClCompile Include="src\helios\ImGui\ImGuiBuild.cpp">
+      <Filter>src\helios\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="src\helios\ImGui\ImGuiLayer.cpp">
       <Filter>src\helios\ImGui</Filter>
     </ClCompile>
@@ -1384,9 +1381,6 @@
     </ClCompile>
     <ClCompile Include="src\hvepch.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\platform\OpenGL\ImGuiOpenGLRenderer.cpp">
-      <Filter>src\platform\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="src\platform\windows\WindowsInput.cpp">
       <Filter>src\platform\windows</Filter>

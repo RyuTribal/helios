@@ -7,3 +7,6 @@
 [submodule "helios/vendor/GLFW"]
 	path = helios/vendor/GLFW
 	url = https://github.com/TheCherno/glfw
+[submodule "helios/vendor/imgui"]
+	path = helios/vendor/imgui
+	url = https://github.com/RyuTribal/imgui
