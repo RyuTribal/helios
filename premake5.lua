@@ -15,6 +15,7 @@ IncludeDirs = {}
 IncludeDirs["GLFW"] = "helios/vendor/GLFW/include"
 IncludeDirs["Glad"] = "helios/vendor/Glad/include"
 IncludeDirs["ImGui"] = "helios/vendor/imgui"
+IncludeDirs["glm"] = "helios/vendor/glm"
 
 group "Dependencies"
     include "helios/vendor/GLFW"
@@ -41,7 +42,9 @@ project "helios"
         "%{prj.name}/src/**.h",
         "%{prj.name}/src/**.hpp",
         "%{prj.name}/src/**.cpp",
-        "%{prj.name}/src/**.c"
+        "%{prj.name}/src/**.c",
+        "%{prj.name}/vendor/glm/glm/**.hpp",
+        "%{prj.name}/vendor/glm/glm/**.inl"
     }
 
     libdirs
@@ -65,7 +68,7 @@ project "helios"
         "%{IncludeDirs.GLFW}",
         "%{IncludeDirs.Glad}",
         "%{IncludeDirs.ImGui}",
-        "%{prj.name}/vendor/glm",
+        "%{IncludeDirs.glm}",
         "%{prj.name}/src"
     }
 
@@ -116,13 +119,14 @@ project "Sandbox"
         "%{prj.name}/**.h",
         "%{prj.name}/**.hpp",
         "%{prj.name}/**.cpp",
-        "%{prj.name}/**.c"
+        "%{prj.name}/**.c",
     }
 
     includedirs
     {
         "helios/vendor/spdlog/include",
-        "helios/src"
+        "helios/src",
+        "${IncludeDirs.glm}"
     }
 
     links
