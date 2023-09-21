@@ -7,16 +7,16 @@ public:
 
 	void OnUpdate() override
 	{
-		if(Helios::Input::IsKeyPressed(HVE_KEY_TAB))
+		if(Helios::Input::IsKeyPressed(HVE_KEY_SPACE))
 		{
-			HVE_TRACE("Tab is pressed");
+			HVE_TRACE("The fucken bird jumped");
 		}
 		//HVE_INFO("ExampleLayer::Update");
 	}
 
 	void OnEvent(Helios::Event& event) override
 	{
-		//HVE_TRACE("{0}", event);
+		HVE_TRACE("{0}", event);
 	}
 };
 
@@ -33,8 +33,6 @@ public:
 	{
 		
 	}
-
-
 };
 
 Helios::Application* Helios::CreateApplication()
