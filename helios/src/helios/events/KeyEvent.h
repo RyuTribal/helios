@@ -4,7 +4,7 @@
 
 namespace Helios
 {
-	class HELIOS_API KeyEvent : public Event
+	class KeyEvent : public Event
 	{
 	public:
 		inline int GetKeyCode() const { return m_KeyCode; }
@@ -15,7 +15,7 @@ namespace Helios
 		int m_KeyCode;
 	};
 
-	class HELIOS_API KeyPressedEvent : public KeyEvent
+	class KeyPressedEvent : public KeyEvent
 	{
 	public:
 		KeyPressedEvent(int keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount) {}
@@ -35,7 +35,7 @@ namespace Helios
 		int m_RepeatCount;
 	};
 
-	class HELIOS_API KeyReleasedEvent : public KeyEvent
+	class KeyReleasedEvent : public KeyEvent
 	{
 	public:
 		KeyReleasedEvent(int keycode) : KeyEvent(keycode) {}
@@ -51,7 +51,7 @@ namespace Helios
 	};
 
 
-	class HELIOS_API KeyTypedEvent : public KeyEvent
+	class KeyTypedEvent : public KeyEvent
 	{
 	public:
 		KeyTypedEvent(int keycode) : KeyEvent(keycode) {}

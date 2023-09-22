@@ -27,9 +27,10 @@ group ""
 group "Core"
 project "helios"
     location "helios"
-    kind "SharedLib"
+    kind "StaticLib"
     language "C++"
-    staticruntime "off"
+    cppdialect "C++17"
+    staticruntime "on"
 
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -60,6 +61,11 @@ project "helios"
         "opengl32.lib"
     }
 
+    defines
+    {
+        "_CRT_SECURE_NO_WARNINGS"
+    }
+
     includedirs
     {
         "%{prj.name}/vendor/stb",
@@ -73,7 +79,6 @@ project "helios"
     }
 
     filter "system:windows"
-        cppdialect "C++17"
         systemversion "latest"
 
         defines
@@ -83,25 +88,20 @@ project "helios"
             "GLFW_INCLUDE_NONE"
         }
 
-        postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
-		}
-
     filter "configurations:Debug"
         defines "HVE_DEBUG"
         runtime "Debug"
-        symbols "On"
+        symbols "on"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
         runtime "Release"
-        optimize "On"
+        optimize "on"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
         runtime "Release"
-        optimize "On"
+        optimize "on"
 
 group ""
 
@@ -110,8 +110,9 @@ group "Misc"
 project "Sandbox"
     location "Sandbox"
     kind "ConsoleApp"
-    staticruntime "off"
+    staticruntime "on"
     language "C++"
+    cppdialect "C++17"
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
     files
@@ -135,7 +136,6 @@ project "Sandbox"
     }
 
     filter "system:windows"
-        cppdialect "C++17"
         systemversion "latest"
 
         defines
@@ -147,15 +147,15 @@ project "Sandbox"
     filter "configurations:Debug"
         defines "HVE_DEBUG"
         runtime "Debug"
-        symbols "On"
+        symbols "on"
 
     filter "configurations:Release"
         defines "HVE_RELEASE"
         runtime "Release"
-        optimize "On"
+        optimize "on"
 
     filter "configurations:Dist"
         defines "HVE_DIST"
         runtime "Release"
-        optimize "On"
+        optimize "on"
 

@@ -11,7 +11,7 @@
 
 namespace Helios
 {
-	class HELIOS_API Log
+	class Log
 	{
 	public:
 		static void Init();

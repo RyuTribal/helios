@@ -17,7 +17,7 @@ namespace Helios {
 		{
 		}
 	};
-	class HELIOS_API Window
+	class Window
 	{
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;

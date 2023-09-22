@@ -8,7 +8,7 @@
 
 
 namespace Helios {
-	class HELIOS_API Application
+	class Application
 	{
 	public:
 		Application();

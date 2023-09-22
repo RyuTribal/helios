@@ -7,7 +7,7 @@
 
 namespace Helios
 {
-	class HELIOS_API LayerStack
+	class LayerStack
 	{
 	public:
 		LayerStack();
