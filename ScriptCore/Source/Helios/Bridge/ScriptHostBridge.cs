@@ -67,6 +67,12 @@ public static unsafe class ScriptHostBridge
     {
         string path = PtrToString(pathPtr);
 
+        if (!File.Exists(path))
+        {
+            Console.Error.WriteLine($"[ScriptBridge] App assembly not found: {path}");
+            return;
+        }
+
         // Unload previous if any
         if (s_ScriptALC != null)
         {
