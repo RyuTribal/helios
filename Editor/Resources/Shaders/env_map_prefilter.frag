@@ -1,10 +1,15 @@
 #version 460
 
-out vec4 fragColor;
-in vec3 local_pos;
+layout(location = 0) out vec4 fragColor;
+layout(location = 0) in vec3 local_pos;
 
-uniform samplerCube u_EnvironmentMap;
-uniform float u_Roughness;
+layout(set = 1, binding = 1) uniform samplerCube u_EnvironmentMap;
+
+layout(push_constant) uniform PushConstants {
+    mat4 u_Projection;
+    mat4 u_View;
+    float u_Roughness;
+} pc;
 
 const float PI = 3.14159265359;
 
@@ -12,10 +17,10 @@ float RadicalInverse_VdC(uint bits);
 vec2 Hammersley(uint i, uint N);
 vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness);
 float DistributionGGX(vec3 N, vec3 H, float roughness);
-  
+
 void main()
-{		
-    
+{
+
     vec3 N = normalize(local_pos);
 
     vec3 R = N;
@@ -24,29 +29,29 @@ void main()
     const uint SAMPLE_COUNT = 1024u;
     vec3 prefilteredColor = vec3(0.0);
     float totalWeight = 0.0;
-    
+
     for(uint i = 0u; i < SAMPLE_COUNT; ++i)
     {
         // generates a sample vector that's biased towards the preferred alignment direction (importance sampling).
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
-        vec3 H = ImportanceSampleGGX(Xi, N, u_Roughness);
+        vec3 H = ImportanceSampleGGX(Xi, N, pc.u_Roughness);
         vec3 L  = normalize(2.0 * dot(V, H) * H - V);
 
         float NdotL = max(dot(N, L), 0.0);
         if(NdotL > 0.0)
         {
             // sample from the environment's mip level based on roughness/pdf
-            float D   = DistributionGGX(N, H, u_Roughness);
+            float D   = DistributionGGX(N, H, pc.u_Roughness);
             float NdotH = max(dot(N, H), 0.0);
             float HdotV = max(dot(H, V), 0.0);
-            float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
+            float pdf = D * NdotH / (4.0 * HdotV) + 0.0001;
 
             float resolution = 512.0; // resolution of source cubemap (per face)
             float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
             float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
 
-            float mipLevel = u_Roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
-            
+            float mipLevel = pc.u_Roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel);
+
             prefilteredColor += textureLod(u_EnvironmentMap, L, mipLevel).rgb * NdotL;
             totalWeight      += NdotL;
         }
@@ -55,7 +60,7 @@ void main()
     prefilteredColor = prefilteredColor / totalWeight;
 
     fragColor = vec4(prefilteredColor, 1.0);
-}  
+}
 
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -74,7 +79,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 // ----------------------------------------------------------------------------
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 // efficient VanDerCorpus calculation.
-float RadicalInverse_VdC(uint bits) 
+float RadicalInverse_VdC(uint bits)
 {
      bits = (bits << 16u) | (bits >> 16u);
      bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
@@ -86,29 +91,28 @@ float RadicalInverse_VdC(uint bits)
 // ----------------------------------------------------------------------------
 vec2 Hammersley(uint i, uint N)
 {
-	return vec2(float(i)/float(N), RadicalInverse_VdC(i));
+    return vec2(float(i)/float(N), RadicalInverse_VdC(i));
 }
 // ----------------------------------------------------------------------------
 vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 {
-	float a = roughness*roughness;
-	
-	float phi = 2.0 * PI * Xi.x;
-	float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
-	float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
-	
-	// from spherical coordinates to cartesian coordinates - halfway vector
-	vec3 H;
-	H.x = cos(phi) * sinTheta;
-	H.y = sin(phi) * sinTheta;
-	H.z = cosTheta;
-	
-	// from tangent-space H vector to world-space sample vector
-	vec3 up          = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangent   = normalize(cross(up, N));
-	vec3 bitangent = cross(N, tangent);
-	
-	vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-	return normalize(sampleVec);
+    float a = roughness*roughness;
+
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+
+    // from spherical coordinates to cartesian coordinates - halfway vector
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+
+    // from tangent-space H vector to world-space sample vector
+    vec3 up          = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent   = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+
+    vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
 }
-  

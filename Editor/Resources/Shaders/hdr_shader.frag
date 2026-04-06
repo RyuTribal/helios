@@ -1,13 +1,14 @@
-#version 460 core
+#version 460
 
-in vec2 TextureCoordinates;
+layout(location = 0) in vec2 TextureCoordinates;
 
-layout(binding = 0) uniform sampler2D hdrBuffer;
+layout(set = 1, binding = 1) uniform sampler2D hdrBuffer;
 
-// Controls exposure level of image
-uniform float exposure;
+layout(push_constant) uniform PushConstants {
+    float exposure;
+} pc;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 // Uses Filmic tonemapping (thanks chat gpt)
 
@@ -18,10 +19,10 @@ vec3 FilmicToneMapping(vec3 color) {
 }
 
 void main() {
-	vec3 color = texture(hdrBuffer, TextureCoordinates).rgb;
-	vec3 result = vec3(1.0) - exp(-color * exposure);
+    vec3 color = texture(hdrBuffer, TextureCoordinates).rgb;
+    vec3 result = vec3(1.0) - exp(-color * pc.exposure);
 
-	// Minor gamma correction. Need to expand on it
-	FilmicToneMapping(result);
-	fragColor = vec4(result, 1.0);
+    // Minor gamma correction. Need to expand on it
+    FilmicToneMapping(result);
+    fragColor = vec4(result, 1.0);
 }

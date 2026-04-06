@@ -2,9 +2,11 @@
 
 layout (location = 0) in vec3 a_coords;
 
-uniform mat4 u_Transform;
+layout(push_constant) uniform PushConstants {
+    mat4 u_Transform;
+} pc;
 
 
 void main(){
-	gl_Position = u_Transform * vec4(a_coords, 1.0);
+    gl_Position = pc.u_Transform * vec4(a_coords, 1.0);
 }

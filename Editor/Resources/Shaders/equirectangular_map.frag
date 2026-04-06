@@ -1,9 +1,9 @@
 #version 460
 
-out vec4 fragColor;
-in vec3 localPos;
+layout(location = 0) out vec4 fragColor;
+layout(location = 0) in vec3 localPos;
 
-uniform sampler2D u_EnvironmentMap;
+layout(set = 1, binding = 1) uniform sampler2D u_EnvironmentMap;
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
 vec2 SampleSphericalMap(vec3 v)
@@ -19,11 +19,11 @@ vec3 ToneMapReinhard(vec3 color) {
 }
 
 void main()
-{		
+{
     vec2 uv = SampleSphericalMap(normalize(localPos)); // make sure to normalize localPos
     vec3 color = texture(u_EnvironmentMap, uv).rgb;
 
     //color = ToneMapReinhard(color);
-    
+
     fragColor = vec4(color, 1.0);
 }
