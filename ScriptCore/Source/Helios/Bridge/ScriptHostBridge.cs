@@ -15,13 +15,13 @@ public unsafe struct ManagedBridgeNative
     public delegate* unmanaged<void> UnloadAppAssembly;
     public delegate* unmanaged<int> GetEntityClassCount;
     public delegate* unmanaged<int, byte*, int, void> GetEntityClassName;
-    public delegate* unmanaged<byte*, bool> EntityClassExists;
-    public delegate* unmanaged<byte*, ulong, bool> CreateInstance;
+    public delegate* unmanaged<byte*, byte> EntityClassExists;
+    public delegate* unmanaged<byte*, ulong, byte> CreateInstance;
     public delegate* unmanaged<ulong, void> DestroyInstance;
     public delegate* unmanaged<ulong, void> InvokeOnCreate;
     public delegate* unmanaged<ulong, float, void> InvokeOnUpdate;
     public delegate* unmanaged<void> DestroyAllInstances;
-    public delegate* unmanaged<ulong, byte*, bool> EntityHasComponent;
+    public delegate* unmanaged<ulong, byte*, byte> EntityHasComponent;
 }
 
 public static unsafe class ScriptHostBridge
@@ -146,19 +146,19 @@ public static unsafe class ScriptHostBridge
     }
 
     [UnmanagedCallersOnly]
-    private static bool BridgeEntityClassExists(byte* fullNamePtr)
+    private static byte BridgeEntityClassExists(byte* fullNamePtr)
     {
         string fullName = PtrToString(fullNamePtr);
         foreach (var type in s_EntityClasses)
         {
             if (type.FullName == fullName || type.Name == fullName)
-                return true;
+                return 1;
         }
-        return false;
+        return 0;
     }
 
     [UnmanagedCallersOnly]
-    private static bool BridgeCreateInstance(byte* classNamePtr, ulong entityId)
+    private static byte BridgeCreateInstance(byte* classNamePtr, ulong entityId)
     {
         string className = PtrToString(classNamePtr);
 
@@ -172,16 +172,16 @@ public static unsafe class ScriptHostBridge
             }
         }
 
-        if (targetType == null) return false;
+        if (targetType == null) return 0;
 
         var instance = (Entity?)Activator.CreateInstance(targetType);
-        if (instance == null) return false;
+        if (instance == null) return 0;
 
         // Set the entity ID (public mutable field)
         instance.ID = entityId;
 
         s_Instances[entityId] = instance;
-        return true;
+        return 1;
     }
 
     [UnmanagedCallersOnly]
@@ -230,9 +230,9 @@ public static unsafe class ScriptHostBridge
     }
 
     [UnmanagedCallersOnly]
-    private static bool BridgeEntityHasComponent(ulong entityId, byte* componentNamePtr)
+    private static byte BridgeEntityHasComponent(ulong entityId, byte* componentNamePtr)
     {
         string componentName = PtrToString(componentNamePtr);
-        return NativeAPI.EntityHasComponent(entityId, componentName);
+        return NativeAPI.EntityHasComponent(entityId, componentName) ? (byte)1 : (byte)0;
     }
 }
