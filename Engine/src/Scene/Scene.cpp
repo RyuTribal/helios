@@ -8,6 +8,7 @@
 #include "Core/Application.h"
 #include "Physics/PhysicsEngine.h"
 #include "Sound/SoundEngine.h"
+#include "Script/ScriptEngine.h"
 
 namespace Engine {
 

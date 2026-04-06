@@ -262,7 +262,8 @@ namespace Engine {
         auto box_collider = entity->GetComponent<BoxColliderComponent>();
         if (box_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 vel(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, vel);
         }
     }
 
@@ -296,7 +297,8 @@ namespace Engine {
         auto box_collider = entity->GetComponent<BoxColliderComponent>();
         if (box_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, impulse);
         }
     }
 
@@ -306,7 +308,8 @@ namespace Engine {
         auto box_collider = entity->GetComponent<BoxColliderComponent>();
         if (box_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, impulse);
         }
     }
 
@@ -316,10 +319,9 @@ namespace Engine {
         auto box_collider = entity->GetComponent<BoxColliderComponent>();
         if (box_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(
-                entityId,
-                glm::vec3(linear[0], linear[1], linear[2]),
-                glm::vec3(angular[0], angular[1], angular[2]));
+            glm::vec3 lin(linear[0], linear[1], linear[2]);
+            glm::vec3 ang(angular[0], angular[1], angular[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(entityId, lin, ang);
         }
     }
 
@@ -344,7 +346,8 @@ namespace Engine {
         auto sphere_collider = entity->GetComponent<SphereColliderComponent>();
         if (sphere_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 vel(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, vel);
         }
     }
 
@@ -378,7 +381,8 @@ namespace Engine {
         auto sphere_collider = entity->GetComponent<SphereColliderComponent>();
         if (sphere_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, impulse);
         }
     }
 
@@ -388,7 +392,8 @@ namespace Engine {
         auto sphere_collider = entity->GetComponent<SphereColliderComponent>();
         if (sphere_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, impulse);
         }
     }
 
@@ -398,10 +403,9 @@ namespace Engine {
         auto sphere_collider = entity->GetComponent<SphereColliderComponent>();
         if (sphere_collider)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(
-                entityId,
-                glm::vec3(linear[0], linear[1], linear[2]),
-                glm::vec3(angular[0], angular[1], angular[2]));
+            glm::vec3 lin(linear[0], linear[1], linear[2]);
+            glm::vec3 ang(angular[0], angular[1], angular[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(entityId, lin, ang);
         }
     }
 
@@ -426,7 +430,8 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 vel(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->SetLinearVelocity(entityId, vel);
         }
     }
 
@@ -460,7 +465,8 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearImpulse(entityId, impulse);
         }
     }
 
@@ -470,7 +476,8 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 impulse(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddAngularImpulse(entityId, impulse);
         }
     }
 
@@ -480,10 +487,9 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(
-                entityId,
-                glm::vec3(linear[0], linear[1], linear[2]),
-                glm::vec3(angular[0], angular[1], angular[2]));
+            glm::vec3 lin(linear[0], linear[1], linear[2]);
+            glm::vec3 ang(angular[0], angular[1], angular[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->AddLinearAndAngularImpulse(entityId, lin, ang);
         }
     }
 
@@ -517,7 +523,8 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->SetRotation(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 rot(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->SetRotation(entityId, rot);
         }
     }
 
@@ -527,7 +534,8 @@ namespace Engine {
         auto cc = entity->GetComponent<CharacterControllerComponent>();
         if (cc)
         {
-            PhysicsEngine::Get()->GetCurrentScene()->Rotate(entityId, glm::vec3(inXYZ[0], inXYZ[1], inXYZ[2]));
+            glm::vec3 delta(inXYZ[0], inXYZ[1], inXYZ[2]);
+            PhysicsEngine::Get()->GetCurrentScene()->Rotate(entityId, delta);
         }
     }
 

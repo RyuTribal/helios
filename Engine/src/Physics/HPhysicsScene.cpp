@@ -4,6 +4,7 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 
 #include "HContactListener.h"
+#include "Script/ScriptEngine.h"
 
 namespace Engine {
 
@@ -88,20 +89,20 @@ namespace Engine {
 
 		for (auto& [id1, id2] : this->m_newContact)
 		{
-			ScriptEngine::CallMethod<uint64_t>(id1, "OnNewCollision", id2);
-			ScriptEngine::CallMethod<uint64_t>(id2, "OnNewCollision", id1);
+			ScriptEngine::InvokeCollisionCallback(id1, "OnNewCollision", id2);
+			ScriptEngine::InvokeCollisionCallback(id2, "OnNewCollision", id1);
 		}
 
 		for (auto& [id1, id2] : this->m_persistContact)
 		{
-			ScriptEngine::CallMethod<uint64_t>(id1, "OnPersistCollision", id2);
-			ScriptEngine::CallMethod<uint64_t>(id2, "OnPersistCollision", id1);
+			ScriptEngine::InvokeCollisionCallback(id1, "OnPersistCollision", id2);
+			ScriptEngine::InvokeCollisionCallback(id2, "OnPersistCollision", id1);
 		}
 
 		for (auto& [id1, id2] : this->m_removedContact)
 		{
-			ScriptEngine::CallMethod<uint64_t>(id1, "OnRemovedCollision", id2);
-			ScriptEngine::CallMethod<uint64_t>(id2, "OnRemovedCollision", id1);
+			ScriptEngine::InvokeCollisionCallback(id1, "OnRemovedCollision", id2);
+			ScriptEngine::InvokeCollisionCallback(id2, "OnRemovedCollision", id1);
 		}
 
 		std::vector<UUID> entities_to_destroy;

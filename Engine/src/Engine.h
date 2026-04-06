@@ -35,6 +35,9 @@
 #include "Scene/Entity.h"
 #include "Scene/Components.h"
 
+// --------------- Script ----------------
+#include "Script/ScriptEngine.h"
+
 // ---------------- UI -------------------
 #include "UI/FilePicker.h"
 

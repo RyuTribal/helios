@@ -2,6 +2,7 @@
 #include <imgui/imgui_internal.h>
 #include <ImGui/imGuIZMOquat.h>
 #include <Sound/AudioAsset.h>
+#include <Script/ScriptEngine.h>
 
 using namespace Engine;
 
@@ -381,7 +382,7 @@ namespace EditorPanels {
 			if (ImGui::BeginPopup("##ClassSearchPopup"))
 			{
 				static char buffer[64];
-				auto& map = ScriptEngine::GetEntityClasses();
+				auto classNames = ScriptEngine::GetEntityClassNames();
 				static std::vector<std::string> filteredResults;
 				std::string searchText = buffer;
 
@@ -389,29 +390,29 @@ namespace EditorPanels {
 				{
 					std::transform(searchText.begin(), searchText.end(), searchText.begin(), ::tolower);
 					filteredResults.clear();
-					for (auto& elements : map)
+					for (auto& name : classNames)
 					{
 						if (searchText.empty())
 						{
-							filteredResults.push_back(elements.first);
+							filteredResults.push_back(name);
 							continue;
 						}
 
-						std::string lowerClassName = elements.first;
+						std::string lowerClassName = name;
 						std::transform(lowerClassName.begin(), lowerClassName.end(), lowerClassName.begin(), ::tolower);
 
 						if (lowerClassName.find(searchText) != std::string::npos)
 						{
-							filteredResults.push_back(elements.first);
+							filteredResults.push_back(name);
 						}
 					}
 				}
 
 				if (filteredResults.size() < 1 && searchText.empty()) // So it fills the list in the beginning
 				{
-					for (auto& elements : map)
+					for (auto& name : classNames)
 					{
-						filteredResults.push_back(elements.first);
+						filteredResults.push_back(name);
 					}
 				}
 

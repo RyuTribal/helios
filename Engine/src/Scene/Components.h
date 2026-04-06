@@ -6,7 +6,6 @@
 #include "Renderer/Mesh.h"
 #include "Lights/PointLight.h"
 #include "Lights/DirectionalLight.h"
-#include <Script/ScriptEngine.h>
 #include <Physics/Auxiliary/HEMotionType.h>
 #include <Sound/GlobalSource.h>
 #include <Sound/LocalSource.h>
@@ -145,14 +144,13 @@ namespace Engine {
 		LocalSoundsComponent(const LocalSoundsComponent&) = default;
 	};
 
-	struct ScriptComponent 
+	struct ScriptComponent
 	{
-		Ref<ScriptClass> script = nullptr;
 		std::string Name = "";
 
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;
-		ScriptComponent(Ref<ScriptClass> new_script) : script(new_script) {}
+		ScriptComponent(const std::string& name) : Name(name) {}
 	};
 
 	/// Physics stuff
