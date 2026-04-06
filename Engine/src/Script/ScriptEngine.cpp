@@ -15,7 +15,12 @@ namespace Engine {
     bool ScriptEngine::s_ShouldReload = false;
     std::vector<uint64_t> ScriptEngine::s_ActiveEntityIDs{};
     std::filesystem::path ScriptEngine::s_AppAssemblyPath{};
-    std::unique_ptr<filewatch::FileWatch<ScriptEngine::WatcherString>> ScriptEngine::s_WatcherHandle = nullptr;
+#ifdef PLATFORM_WINDOWS
+    using WatcherString = std::wstring;
+#else
+    using WatcherString = std::string;
+#endif
+    static std::unique_ptr<filewatch::FileWatch<WatcherString>> s_WatcherHandle = nullptr;
 
     void ScriptEngine::Init()
     {

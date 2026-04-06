@@ -2,7 +2,6 @@
 
 #include "ManagedBridge.h"
 #include "NativeEngineAPI.h"
-#include "FileWatch.hpp"
 
 namespace Engine {
 
@@ -32,7 +31,6 @@ namespace Engine {
         static Scene* GetSceneContext();
         static std::vector<std::string> GetEntityClassNames();
 
-        // Collision callbacks — bridge delegates to managed code
         static void InvokeCollisionCallback(uint64_t entityId, const char* methodName, uint64_t otherEntityId);
 
     private:
@@ -42,12 +40,5 @@ namespace Engine {
         static bool s_ShouldReload;
         static std::vector<uint64_t> s_ActiveEntityIDs;
         static std::filesystem::path s_AppAssemblyPath;
-
-#ifdef PLATFORM_WINDOWS
-        using WatcherString = std::wstring;
-#else
-        using WatcherString = std::string;
-#endif
-        static std::unique_ptr<filewatch::FileWatch<WatcherString>> s_WatcherHandle;
     };
 }
