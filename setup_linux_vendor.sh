@@ -25,7 +25,7 @@ check_command() {
 log_info "Checking prerequisites..."
 
 MISSING=0
-for cmd in cmake make gcc g++ pkg-config git autoconf automake libtool; do
+for cmd in cmake make gcc g++ pkg-config git curl; do
     if ! check_command "$cmd"; then
         MISSING=1
     fi
@@ -80,76 +80,39 @@ else
     log_info "Assimp built and installed to $ASSIMP_LIB_DIR"
 fi
 
-# ─── Build/Install Mono ──────────────────────────────────────────────────────
-MONO_LIB_DIR="$VENDOR_DIR/mono/lib/linux"
-if [ -f "$MONO_LIB_DIR/libmonosgen-2.0.a" ] || [ -f "$MONO_LIB_DIR/libmonosgen-2.0.so" ]; then
-    log_info "Mono Linux library already exists, skipping."
+# ─── Download .NET 10 Runtime ─────────────────────────────────────────────────
+DOTNET_DIR="$VENDOR_DIR/dotnet"
+if [ -d "$DOTNET_DIR/shared/Microsoft.NETCore.App" ]; then
+    log_info ".NET 10 runtime already exists, skipping download."
 else
-    log_info "Setting up Mono for Linux..."
-    mkdir -p "$MONO_LIB_DIR"
+    log_info "Downloading .NET 10 runtime..."
+    mkdir -p "$DOTNET_DIR"
 
-    # Try to find system-installed Mono first
-    MONO_SYSTEM_LIB=""
-    for search_path in /usr/lib /usr/lib64 /usr/local/lib /usr/lib/x86_64-linux-gnu; do
-        if [ -f "$search_path/libmonosgen-2.0.a" ]; then
-            MONO_SYSTEM_LIB="$search_path/libmonosgen-2.0.a"
-            break
-        elif [ -f "$search_path/libmonosgen-2.0.so" ]; then
-            MONO_SYSTEM_LIB="$search_path/libmonosgen-2.0.so"
-            break
-        fi
-    done
+    # Use the official dotnet-install script
+    curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+    chmod +x /tmp/dotnet-install.sh
+    /tmp/dotnet-install.sh --channel 10.0 --runtime dotnet --install-dir "$DOTNET_DIR"
 
-    if [ -n "$MONO_SYSTEM_LIB" ]; then
-        log_info "Found system Mono at: $MONO_SYSTEM_LIB"
-        cp "$MONO_SYSTEM_LIB" "$MONO_LIB_DIR/"
-
-        # Also copy the shared lib if we found the static one, or vice versa
-        MONO_DIR="$(dirname "$MONO_SYSTEM_LIB")"
-        for f in "$MONO_DIR"/libmonosgen-2.0.*; do
-            [ -f "$f" ] && cp "$f" "$MONO_LIB_DIR/" 2>/dev/null || true
-        done
-
-        log_info "Mono libraries copied to $MONO_LIB_DIR"
-    else
-        log_warn "System Mono not found. Attempting to build from source..."
-        log_warn "This may take a long time (30+ minutes)."
-
-        MONO_BUILD="$BUILD_DIR/mono"
-        rm -rf "$MONO_BUILD"
-
-        git clone --depth 1 --branch mono-6.12.0.206 https://github.com/mono/mono.git "$MONO_BUILD"
-
-        cd "$MONO_BUILD"
-        ./autogen.sh --prefix="$MONO_BUILD/install" \
-            --disable-boehm \
-            --enable-static \
-            --with-sgen=yes
-
-        make -j "$(nproc)"
-        make install
-
-        # Copy the built libraries
-        cp "$MONO_BUILD/install/lib"/libmonosgen-2.0.* "$MONO_LIB_DIR/" 2>/dev/null || true
-        cp "$MONO_BUILD/mono/mini/.libs"/libmonosgen-2.0.* "$MONO_LIB_DIR/" 2>/dev/null || true
-
-        cd "$SCRIPT_DIR"
-        log_info "Mono built and installed to $MONO_LIB_DIR"
+    if [ ! -d "$DOTNET_DIR/shared/Microsoft.NETCore.App" ]; then
+        log_error "Failed to download .NET 10 runtime"
+        exit 1
     fi
+
+    log_info ".NET 10 runtime installed to $DOTNET_DIR"
 fi
 
-# ─── Verify mono include headers ─────────────────────────────────────────────
-MONO_INCLUDE="$VENDOR_DIR/mono/include/mono"
-if [ ! -d "$MONO_INCLUDE/jit" ]; then
-    log_warn "Mono include headers may be incomplete."
-    # Try to copy from system
-    for search_path in /usr/include/mono-2.0 /usr/local/include/mono-2.0; do
-        if [ -d "$search_path/mono" ]; then
-            log_info "Copying Mono headers from $search_path..."
-            cp -r "$search_path/mono/"* "$MONO_INCLUDE/"
-            break
-        fi
-    done
+# ─── Download hostfxr headers ─────────────────────────────────────────────────
+DOTNET_INCLUDE="$DOTNET_DIR/include"
+if [ -f "$DOTNET_INCLUDE/hostfxr.h" ] && [ "$(wc -l < "$DOTNET_INCLUDE/hostfxr.h")" -gt 5 ]; then
+    log_info "hostfxr headers already present, skipping download."
+else
+    log_info "Downloading hostfxr headers..."
+    mkdir -p "$DOTNET_INCLUDE"
+    HEADERS_BASE="https://raw.githubusercontent.com/dotnet/runtime/main/src/native/corehost"
+    curl -sSL "$HEADERS_BASE/hostfxr.h" -o "$DOTNET_INCLUDE/hostfxr.h"
+    curl -sSL "$HEADERS_BASE/coreclr_delegates.h" -o "$DOTNET_INCLUDE/coreclr_delegates.h"
+    curl -sSL "$HEADERS_BASE/nethost/nethost.h" -o "$DOTNET_INCLUDE/nethost.h"
+    log_info "hostfxr headers downloaded to $DOTNET_INCLUDE"
 fi
 
 # ─── Make premake5 executable ─────────────────────────────────────────────────
@@ -163,8 +126,10 @@ log_info "  Vendor setup complete!"
 log_info "========================================="
 log_info ""
 log_info "Next steps:"
-log_info "  1. ./generate_linux_projects.sh"
-log_info "  2. make config=debug_linux-x86_64"
+log_info "  1. Install .NET 10 SDK: https://dot.net/download"
+log_info "  2. dotnet build ScriptCore/ScriptCore.csproj"
+log_info "  3. ./generate_linux_projects.sh"
+log_info "  4. make config=debug"
 log_info ""
 
 # Optionally clean build dir
