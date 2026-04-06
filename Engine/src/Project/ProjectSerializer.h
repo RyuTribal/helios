@@ -9,15 +9,6 @@ namespace Engine {
 
 	struct ProjectSettings;
 
-	struct PremakeProjectConfig
-	{
-		std::string Name;
-		std::string Namespace;
-		std::string Files;
-	};
-
-	
-
 	class ProjectSerializer
 	{
 	public:
@@ -25,6 +16,5 @@ namespace Engine {
 		static void Serializer(ProjectSettings& settings);
 		static ProjectSettings Deserializer(const std::filesystem::path& filepath);
 		static void CreateScriptProject();
-		static void CreatePremakeFile(const PremakeProjectConfig& config, std::ostream& os);
 	};
 }

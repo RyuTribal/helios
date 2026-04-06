@@ -167,84 +167,42 @@ namespace Engine {
 	{
 		auto& project_settings = Project::GetActive()->GetSettings();
 
-		std::filesystem::path external_scripts_path = project_settings.RootPath / "ScriptProject"; // Note this is scripts for building stuff in the project, such as our scripts assembly
-		std::filesystem::create_directory(external_scripts_path);
+		std::filesystem::path script_project_path = project_settings.RootPath / "ScriptProject";
+		std::filesystem::create_directory(script_project_path);
 
-		PremakeProjectConfig config;
-		config.Name = project_settings.ProjectName;
-		config.Namespace = project_settings.ProjectName;
-		config.Files = "../Assets/Scripts/**.cs";
-		HVE_CORE_WARN(external_scripts_path.string());
-		std::ofstream outFile(external_scripts_path / "premake5.lua");
-		CreatePremakeFile(config, outFile);
-		outFile.close();
-
-		CommandArgs args{};
-		args.SleepUntilFinished = true;
+		// Find ScriptCore.dll path
 		std::filesystem::path root_path = ROOT_PATH;
 		root_path = root_path.parent_path();
-#ifdef PLATFORM_WINDOWS
-		std::filesystem::path premake_executable = root_path / std::filesystem::path("vendor/premake/bin/premake5.exe");
-		std::string command = premake_executable.string() + " --file=" + project_settings.RootPath.string() + "/ScriptProject/premake5.lua" + " vs2022";
-		// Ugly fix
-		std::replace(command.begin(), command.end(), '/', '\\');
-#elif defined(PLATFORM_LINUX)
-		std::filesystem::path premake_executable = root_path / std::filesystem::path("vendor/premake/premake5");
-		std::string command = premake_executable.string() + " --file=" + project_settings.RootPath.string() + "/ScriptProject/premake5.lua" + " gmake2";
-#endif
+		std::filesystem::path scriptcore_dll = root_path / "Editor/Resources/Scripts/ScriptCore.dll";
+
+		// Create .csproj
+		std::ofstream csproj(script_project_path / (project_settings.ProjectName + ".csproj"));
+		csproj << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
+		csproj << "  <PropertyGroup>\n";
+		csproj << "    <TargetFramework>net10.0</TargetFramework>\n";
+		csproj << "    <RootNamespace>" << project_settings.ProjectName << "</RootNamespace>\n";
+		csproj << "    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n";
+		csproj << "    <OutputPath>../Binaries/</OutputPath>\n";
+		csproj << "    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>\n";
+		csproj << "    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>\n";
+		csproj << "  </PropertyGroup>\n";
+		csproj << "  <ItemGroup>\n";
+		csproj << "    <Reference Include=\"ScriptCore\">\n";
+		csproj << "      <HintPath>" << scriptcore_dll.string() << "</HintPath>\n";
+		csproj << "    </Reference>\n";
+		csproj << "  </ItemGroup>\n";
+		csproj << "  <ItemGroup>\n";
+		csproj << "    <Compile Include=\"../Assets/Scripts/**/*.cs\" />\n";
+		csproj << "  </ItemGroup>\n";
+		csproj << "</Project>\n";
+		csproj.close();
+
+		// Build
+		CommandArgs args{};
+		args.SleepUntilFinished = true;
+		std::string command = "dotnet build \"" + (script_project_path / (project_settings.ProjectName + ".csproj")).string() + "\"";
 		CommandLine::Create()->ExecuteCommand(command, args);
 
 		project_settings.ScriptAssemblyPath = std::filesystem::path("Binaries/" + project_settings.ProjectName + ".dll");
-	}
-	void ProjectSerializer::CreatePremakeFile(const PremakeProjectConfig& config, std::ostream& os)
-	{
-
-		// Yep, this is happening...
-
-		os << "include(os.getenv(\"HVE_ROOT_DIR\") .. \"/vendor/premake/premake_customization/solution_items.lua\")\n";
-
-		os << "workspace \"" << config.Name << "\"\n";
-		os << "architecture \"x86_64\"\n";
-		os << "startproject \"" << config.Name << "\"\n";
-		os << "configurations { \"Debug\", \"Release\", \"Dist\" }\n";
-		os << "flags {\n";
-		os << "\t\"MultiProcessorCompile\",\n";
-		os << "}\n";
-
-		os << "project \"" << config.Name << "\"\n";
-		os << "kind \"SharedLib\"\n";
-		os << "language \"C#\"\n";
-		os << "dotnetframework \"4.7.2\"\n";
-		os << "targetdir \"../Binaries\"\n";
-		os << "objdir \"../Binaries/Intermediates\"\n";
-		os << "namespace \"" << config.Namespace << "\"\n";
-		os << "location" << "\"../Assets/Scripts\"\n";
-
-		os << "links {\n";
-		os << "\tos.getenv(\"HVE_ROOT_DIR\") .. \"/Editor/Resources/Scripts/ScriptCore\",\n";
-		os << "\tos.getenv(\"HVE_ROOT_DIR\") .. \"/Editor/mono/lib/mono/4.5/System.Numerics\",\n";
-		os << "\tos.getenv(\"HVE_ROOT_DIR\") .. \"/Editor/mono/lib/mono/4.5/System.Numerics.Vectors\",\n";
-		os << "}\n";
-
-		os << "files {\n";
-		os << "\t\"" << config.Files << "\",\n";
-		os << "}\n";
-
-		os << "vpaths {\n";
-		os << "\t" << "[\"Scripts\"] = {\"" + config.Files + "\"}" << ",\n";
-		os << "}\n";
-
-		os << "filter \"configurations:Debug\"\n";
-		os << "optimize \"Off\"\n";
-		os << "symbols \"Default\"\n";
-		os << "filter \"configurations:Release\"\n";
-		os << "optimize \"On\"\n";
-		os << "symbols \"Default\"\n";
-		os << "filter \"configurations:Dist\"\n";
-		os << "optimize \"Full\"\n";
-		os << "symbols \"Off\"\n";
-
-		os << "group \"Helios\"\n";
-		os << "include(os.getenv(\"HVE_ROOT_DIR\") .. \"/ScriptCore\")\n";
 	}
 }
