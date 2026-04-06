@@ -58,7 +58,7 @@ namespace Engine {
 			{
 				auto aiMaterial = scene->mMaterials[i];
 				auto aiMaterialName = aiMaterial->GetName();
-				Ref<Material> material = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("default_static_pbr"));
+				Ref<Material> material = CreateRef<Material>();
 				materials[i] = material;
 
 				HVE_CORE_TRACE_TAG("Model Library","  {0} (Index = {1})", aiMaterialName.data, i);
@@ -541,7 +541,7 @@ namespace Engine {
 		}
 		else
 		{
-			Ref<Material> material = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("default_static_pbr"));
+			Ref<Material> material = CreateRef<Material>();
 			material->Set("u_MaterialUniforms.AlbedoColor", glm::vec3(0.8f));
 			material->Set("u_MaterialUniforms.Emission", 0.0f);
 			material->Set("u_MaterialUniforms.Metalness", 0.0f);
