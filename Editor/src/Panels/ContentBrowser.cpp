@@ -425,6 +425,69 @@ namespace EditorPanels {
 					strcpy(m_NameBuffer, "New Folder");
 				}
 			}
+			if (ImGui::MenuItem("Create Script"))
+			{
+				ImGui::OpenPopup("##CreateScriptPopup");
+			}
+			ImGui::EndPopup();
+		}
+
+		if (ImGui::BeginPopup("##CreateScriptPopup"))
+		{
+			static char scriptNameBuf[128] = "NewScript";
+			ImGui::Text("Script Name:");
+			ImGui::InputText("##ScriptName", scriptNameBuf, sizeof(scriptNameBuf));
+
+			if (ImGui::Button("Create", ImVec2(120, 0)))
+			{
+				std::string scriptName = scriptNameBuf;
+				if (!scriptName.empty())
+				{
+					// Ensure Scripts directory exists
+					auto& settings = Project::GetActive()->GetSettings();
+					std::filesystem::path scriptsDir = settings.RootPath / settings.AssetPath / "Scripts";
+					std::filesystem::create_directories(scriptsDir);
+
+					std::filesystem::path scriptPath = scriptsDir / (scriptName + ".cs");
+					if (!std::filesystem::exists(scriptPath))
+					{
+						std::ofstream file(scriptPath);
+						file << "using Helios;\n";
+						file << "using System.Numerics;\n";
+						file << "\n";
+						file << "public class " << scriptName << " : Entity\n";
+						file << "{\n";
+						file << "    public void OnCreate()\n";
+						file << "    {\n";
+						file << "    }\n";
+						file << "\n";
+						file << "    public void OnUpdate(float deltaTime)\n";
+						file << "    {\n";
+						file << "    }\n";
+						file << "}\n";
+						file.close();
+
+						HVE_CORE_TRACE_TAG("ContentBrowser", "Created script: {}", scriptPath.string());
+
+						// Build the script project
+						Project::CreateScriptProject();
+						ScriptEngine::MarkForReload();
+					}
+					else
+					{
+						HVE_CORE_WARN_TAG("ContentBrowser", "Script already exists: {}", scriptPath.string());
+					}
+				}
+				strcpy(scriptNameBuf, "NewScript");
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(120, 0)))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+
 			ImGui::EndPopup();
 		}
 	}
