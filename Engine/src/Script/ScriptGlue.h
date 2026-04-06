@@ -1,13 +1,12 @@
 #pragma once
 
+#include "NativeEngineAPI.h"
 
 namespace Engine {
 
-	// Karlssons klister
-	class ScriptGlue
-	{
-	public:
-		static void RegisterComponents();
-		static void RegisterFunctions();
-	};
+    class ScriptGlue
+    {
+    public:
+        static void FillNativeAPI(NativeEngineAPI& api);
+    };
 }
