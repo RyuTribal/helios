@@ -21,6 +21,7 @@ project "Engine"
         "vendor/SoLoud/**.cpp",
         "vendor/SoLoud/**.h",
         "vendor/SoLoud/**.c",
+        "vendor/vk-bootstrap/VkBootstrap.cpp",
 
     }
 
@@ -65,6 +66,9 @@ project "Engine"
         "%{IncludeDir.Assimp}",
         "%{IncludeDir.YamlCpp}",
         "%{IncludeDir.nfd}",
+        "%{IncludeDir.VulkanSDK}",
+        "%{IncludeDir.vma}",
+        "%{IncludeDir.vkbootstrap}",
         "vendor/filewatch/include",
         "%{IncludeDir.nethost}",
         "src/",
@@ -123,6 +127,7 @@ project "Engine"
 
         links
         {
+            "vulkan",
             "GL",
             "X11",
             "assimp",

@@ -10,6 +10,9 @@ IncludeDir["YamlCpp"] = "%{wks.location}/Engine/vendor/yaml-cpp/include"
 IncludeDir["nethost"] = "%{wks.location}/Engine/vendor/dotnet/include"
 IncludeDir["FileWatcher"] = "%{wks.location}/Engine/vendor/filewatch/include"
 IncludeDir["nfd"] = "%{wks.location}/Engine/vendor/nativefiledialog-extended/src/include"
+IncludeDir["VulkanSDK"] = "/usr/include"
+IncludeDir["vma"] = "%{wks.location}/Engine/vendor/vma"
+IncludeDir["vkbootstrap"] = "%{wks.location}/Engine/vendor/vk-bootstrap"
 
 rootPath = path.getabsolute(".")
 
