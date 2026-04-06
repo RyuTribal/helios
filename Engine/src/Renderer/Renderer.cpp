@@ -344,11 +344,12 @@ namespace Engine
 
 		m_RendererAPI.SetClearColor(glm::vec4(r, g, b, 1.f));
 
-		if (m_CurrentCamera) {
+		if (camera && m_CurrentCamera) {
 			camera->SetAspectRatio(m_CurrentCamera->GetAspectRatio());
 		}
         SetCamera(camera);
-        camera->UpdateCamera();
+        if (camera)
+            camera->UpdateCamera();
 
 		m_RendererAPI.UnBindBuffer();
 		ResetStats();
