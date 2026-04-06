@@ -659,10 +659,7 @@ namespace Engine {
 			}
 		}
 
-		mesh_destination[mesh_destination.size() - 1].VertexArray = VertexArray::Create();
-
-
-		auto vertexBuffer = VertexBuffer::Create(vertices.size() * sizeof(Vertex));
+		auto vertexBuffer = VertexBuffer::Create(static_cast<uint32_t>(vertices.size() * sizeof(Vertex)));
 		vertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_coords" },
 			{ ShaderDataType::Float4, "a_colors" },
@@ -671,11 +668,12 @@ namespace Engine {
 			{ ShaderDataType::Float3, "a_tangent" },
 			{ ShaderDataType::Float3, "a_bitangent" },
 			});
-		vertexBuffer->SetData(vertices.data(), vertices.size() * sizeof(Vertex));
+		vertexBuffer->SetData(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Vertex)));
 
-		auto indexBuffer = IndexBuffer::Create(indices.data(), indices.size());
-		mesh_destination[mesh_destination.size() - 1].VertexArray->AddVertexBuffer(vertexBuffer);
-		mesh_destination[mesh_destination.size() - 1].VertexArray->SetIndexBuffer(indexBuffer);
+		auto indexBuffer = IndexBuffer::Create(indices.data(), static_cast<uint32_t>(indices.size()));
+		mesh_destination[mesh_destination.size() - 1].VBO = vertexBuffer;
+		mesh_destination[mesh_destination.size() - 1].IBO = indexBuffer;
+		mesh_destination[mesh_destination.size() - 1].IndexCount = static_cast<uint32_t>(indices.size());
 
 		vertex_count += (int)vertices.size();
 		index_count += (int)indices.size();

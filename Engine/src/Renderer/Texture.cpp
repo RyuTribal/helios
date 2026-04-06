@@ -1,204 +1,158 @@
 #include "pch.h"
 #include "Texture.h"
 
+// Forward declare to avoid circular include - Renderer::GetDevice() is used to get the RHI device
+namespace Engine { class Renderer; }
+
 namespace Engine {
-	namespace Utils {
 
-		static GLenum HeliosImageFormatToGLDataFormat(ImageFormat format)
-		{
-			switch (format)
-			{
-			case ImageFormat::R8:		return GL_RED_INTEGER;
-			case ImageFormat::RG8:		return GL_RG;
-			case ImageFormat::RGB8:		return GL_RGB;
-			case ImageFormat::RGBA8:	return GL_RGBA;
-			case ImageFormat::RGB16F:	return GL_RGB;
-			case ImageFormat::RGBA16F:	return GL_RGBA;
-			case ImageFormat::RG32F:	return GL_RG;
-			case ImageFormat::RGB32F:	return GL_RGB;
-			case ImageFormat::RGBA32F:	return GL_RGBA;
-			}
+    // Defined in Renderer.cpp - we use a free function to avoid circular header dependency
+    extern RHIDevice* GetRendererDevice();
 
-			HVE_CORE_ASSERT(false);
-			return 0;
-		}
+    namespace Utils {
 
-		static GLenum HeliosImageFormatToGLInternalFormat(ImageFormat format)
-		{
-			switch (format)
-			{
-			case ImageFormat::R8:		return GL_RED_INTEGER;
-			case ImageFormat::RG8:		return GL_RG8;
-			case ImageFormat::RGB8:		return GL_RGB8;
-			case ImageFormat::RGBA8:	return GL_RGBA8;
-			case ImageFormat::RGB16F:	return GL_RGB16F;
-			case ImageFormat::RGBA16F:	return GL_RGBA16F;
-			case ImageFormat::RG32F:	return GL_RG32F;
-			case ImageFormat::RGB32F:	return GL_RGB32F;
-			case ImageFormat::RGBA32F:	return GL_RGBA32F;
-			}
+        static uint32_t ImageFormatToChannels(ImageFormat format)
+        {
+            switch (format)
+            {
+                case ImageFormat::R8:       return 1;
+                case ImageFormat::RG8:      return 2;
+                case ImageFormat::RGB8:     return 3;
+                case ImageFormat::RGBA8:    return 4;
+                case ImageFormat::RG16F:    return 2;
+                case ImageFormat::RGBA16F:  return 4;
+                case ImageFormat::RG32F:    return 2;
+                case ImageFormat::RGB32F:   return 3;
+                case ImageFormat::RGBA32F:  return 4;
+                default: break;
+            }
+            HVE_CORE_ASSERT(false, "Unknown image format for channel count");
+            return 0;
+        }
 
-			HVE_CORE_ASSERT(false);
-			return 0;
-		}
+        static uint32_t ImageFormatBytesPerPixel(ImageFormat format)
+        {
+            switch (format)
+            {
+                case ImageFormat::R8:       return 1;
+                case ImageFormat::RG8:      return 2;
+                case ImageFormat::RGB8:     return 3;
+                case ImageFormat::RGBA8:    return 4;
+                case ImageFormat::RG16F:    return 4;
+                case ImageFormat::RGBA16F:  return 8;
+                case ImageFormat::RG32F:    return 8;
+                case ImageFormat::RGB32F:   return 12;
+                case ImageFormat::RGBA32F:  return 16;
+                default: break;
+            }
+            return 4;
+        }
+    }
 
-		static uint32_t ImageFormatToChannels(ImageFormat format)
-		{
-			switch (format)
-			{
-				case ImageFormat::R8:		return 1;
-				case ImageFormat::RG8:		return 2;
-				case ImageFormat::RGB8:		return 3;
-				case ImageFormat::RGBA8:	return 4;
-				case ImageFormat::RGB16F:	return 3;
-				case ImageFormat::RGBA16F:	return 4;
-				case ImageFormat::RG32F:	return 2;
-				case ImageFormat::RGB32F:	return 3;
-				case ImageFormat::RGBA32F:	return 4;
-			}
+    // ---- Texture2D ----
 
-			HVE_CORE_ASSERT(false);
-			return 0;
-		}
-	}
+    Ref<Texture2D> Texture2D::Create(const TextureSpecification& specification, Buffer data)
+    {
+        return CreateRef<Texture2D>(specification, data);
+    }
 
-	Texture2D::Texture2D(const TextureSpecification& specification, Buffer data)
-		: m_Specification(specification), m_Width(m_Specification.Width), m_Height(m_Specification.Height)
-	{
-		
+    Texture2D::Texture2D(const TextureSpecification& specification, Buffer data)
+        : m_Specification(specification)
+    {
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+        {
+            HVE_CORE_ERROR_TAG("Texture", "Texture2D::Create called before Renderer is initialized");
+            return;
+        }
 
-		m_InternalFormat = Utils::HeliosImageFormatToGLInternalFormat(m_Specification.Format);
-		m_DataFormat = Utils::HeliosImageFormatToGLDataFormat(m_Specification.Format);
-		m_IsFloat = m_InternalFormat == GL_RGB16F || m_InternalFormat == GL_RGBA16F || m_InternalFormat == GL_RGBA32F || m_InternalFormat == GL_RGB32F || m_InternalFormat == GL_RG32F;
+        TextureDesc desc;
+        desc.Width = m_Specification.Width;
+        desc.Height = m_Specification.Height;
+        desc.Format = m_Specification.Format;
+        desc.Type = TextureType::Texture2D;
+        desc.MipLevels = m_Specification.GenerateMips ? 1 : 1; // TODO: calculate mip count
+        desc.Usage = TextureUsage::Sampled | TextureUsage::Transfer;
+        desc.DebugName = "Texture2D";
 
-		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-		if (m_Specification.Format == ImageFormat::DEPTH_COMPONENT) {
-			glTextureStorage2D(m_RendererID, 1, GL_DEPTH_COMPONENT24, m_Width, m_Height);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-			GLfloat borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-			glTextureParameterfv(m_RendererID, GL_TEXTURE_BORDER_COLOR, borderColor);
-		}
-		else {
-			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
+        const void* initialData = data ? data.Data : nullptr;
+        m_RHITexture = device->CreateTexture(desc, initialData);
+    }
 
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    Texture2D::Texture2D(Ref<Texture2D> other)
+        : m_Specification(other->GetSpecification())
+    {
+        // For Vulkan we just share the texture reference for now
+        // A proper copy would require a blit command
+        m_RHITexture = other->m_RHITexture;
+    }
 
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		}
+    Texture2D::~Texture2D()
+    {
+        // Ref<RHITexture> will clean up automatically
+    }
 
-		if (data)
-		{
-			SetData(data);
-		}
-	}
+    void Texture2D::SetData(Buffer data)
+    {
+        if (!m_RHITexture)
+            return;
 
-	Texture2D::Texture2D(Ref<Texture2D> other)
-		: m_Specification(other->GetSpecification()), m_Width(other->m_Width), m_Height(other->m_Height)
-	{
-		m_InternalFormat = Utils::HeliosImageFormatToGLInternalFormat(m_Specification.Format);
-		m_DataFormat = Utils::HeliosImageFormatToGLDataFormat(m_Specification.Format);
-		m_IsFloat = m_InternalFormat == GL_RGB16F || m_InternalFormat == GL_RGBA16F || m_InternalFormat == GL_RGBA32F || m_InternalFormat == GL_RGB32F || m_InternalFormat == GL_RG32F;
+        // Re-create the texture with new data
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+            return;
 
-		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        TextureDesc desc;
+        desc.Width = m_Specification.Width;
+        desc.Height = m_Specification.Height;
+        desc.Format = m_Specification.Format;
+        desc.Type = TextureType::Texture2D;
+        desc.MipLevels = 1;
+        desc.Usage = TextureUsage::Sampled | TextureUsage::Transfer;
+        desc.DebugName = "Texture2D";
 
-		CopyTextureData(other->m_RendererID);
-		m_IsLoaded = true;
-	}
-
-	void Texture2D::CopyTextureData(GLuint srcTextureID)
-	{
-		GLuint fbo;
-		glGenFramebuffers(1, &fbo);
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, srcTextureID, 0);
-
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		{
-			HVE_CORE_ERROR_TAG("Texture", "Framebuffer is not complete!");
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glDeleteFramebuffers(1, &fbo);
-			return;
-		}
-
-		glBindTexture(GL_TEXTURE_2D, m_RendererID);
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, m_Width, m_Height);
-
-		// Clean up
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDeleteFramebuffers(1, &fbo);
-	}
-
-	Texture2D::~Texture2D()
-	{
-		glDeleteTextures(1, &m_RendererID);
-	}
-
-	void Texture2D::SetData(Buffer data)
-	{
-		//uint32_t bpp = m_DataFormat == GL_RGBA ? 4 : 3;
-		m_Channels = Utils::ImageFormatToChannels(m_Specification.Format);
-		HVE_CORE_ASSERT(data.Size == m_Width * m_Height * m_Channels, "Data must be entire texture!");
-		m_IsLoaded = true;
-
-		glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, m_IsFloat ? GL_FLOAT : GL_UNSIGNED_BYTE, data.Data);
-	}
-
-	void Texture2D::Bind(uint32_t slot) const
-	{
-		glBindTextureUnit(slot, m_RendererID);
-	}
+        m_RHITexture = device->CreateTexture(desc, data.Data);
+    }
 
 
-	TextureCube::TextureCube(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format) : m_FlattenedTexture(map_texture), m_Size(size)
-	{
-		bool is_proper_format = format == ImageFormat::RGB16F || format == ImageFormat::RGBA16F || format == ImageFormat::RGB32F || format == ImageFormat::RGBA32F;
-		HVE_CORE_ASSERT(is_proper_format, "Cubemap pixels must be of type float to capture those sweet sweet details");
+    // ---- TextureCube ----
 
-		glGenTextures(1, &m_RendererID);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, m_RendererID);
-		for (unsigned int i = 0; i < 6; ++i)
-		{
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, Utils::HeliosImageFormatToGLInternalFormat(format), m_Size, m_Size, 0,
-						 GL_RGB, GL_FLOAT, nullptr);
-		}
+    TextureCube::TextureCube(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format)
+        : m_FlattenedTexture(map_texture), m_Size(size)
+    {
+        m_Specification.Width = size;
+        m_Specification.Height = size;
+        m_Specification.Format = format;
 
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+        {
+            HVE_CORE_ERROR_TAG("Texture", "TextureCube::Create called before Renderer is initialized");
+            return;
+        }
 
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        TextureDesc desc;
+        desc.Width = size;
+        desc.Height = size;
+        desc.Format = format;
+        desc.Type = TextureType::TextureCube;
+        desc.MipLevels = 1;
+        desc.ArrayLayers = 6;
+        desc.Usage = TextureUsage::Sampled | TextureUsage::Transfer;
+        desc.DebugName = "TextureCube";
 
-		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-	}
+        m_RHITexture = device->CreateTexture(desc);
+    }
 
-	TextureCube::~TextureCube()
-	{
-		glDeleteTextures(1, &m_RendererID);
-	}
+    TextureCube::~TextureCube()
+    {
+    }
 
-	void TextureCube::Bind(uint32_t slot) const
-	{
-		glBindTextureUnit(slot, m_RendererID);
-	}
-	void TextureCube::SetData(Buffer data)
-	{
-		m_FlattenedTexture->SetData(data);
-	}
-	void TextureCube::GenerateMipMap()
-	{
-		Bind();
-		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-	}
+    void TextureCube::SetData(Buffer data)
+    {
+        // TODO: upload cubemap face data through RHI
+        if (m_FlattenedTexture)
+            m_FlattenedTexture->SetData(data);
+    }
+
 }

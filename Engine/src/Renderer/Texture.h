@@ -1,160 +1,127 @@
 #pragma once
-#include <glad/gl.h>
-
 #include "Assets/Asset.h"
 #include "Core/Buffer.h"
+#include "RHI/RHI.h"
 
 namespace Engine {
-	enum class ImageFormat
-	{
-		None = 0,
-		R8,
-		RG8,
-		RGB8,
-		RGBA8,
-		RGB16F,
-		RGBA16F,
-		RG32F,
-		RGB32F,
-		RGBA32F,
-		DEPTH_COMPONENT
-	};
 
-	struct TextureSpecification
-	{
-		uint32_t Width = 1;
-		uint32_t Height = 1;
-		uint32_t Size = 0;
-		ImageFormat Format = ImageFormat::RGBA8;
-		bool GenerateMips = true;
-	};
+    // Keep TextureSpecification for compatibility with existing code (ModelImporter, etc.)
+    struct TextureSpecification
+    {
+        uint32_t Width = 1;
+        uint32_t Height = 1;
+        uint32_t Size = 0;
+        ImageFormat Format = ImageFormat::RGBA8;
+        bool GenerateMips = true;
+    };
 
-	class Texture : public Asset
-	{
-	public:
-		virtual ~Texture() = default;
+    class Texture : public Asset
+    {
+    public:
+        virtual ~Texture() = default;
 
-		virtual const TextureSpecification& GetSpecification() const = 0;
+        virtual const TextureSpecification& GetSpecification() const = 0;
 
-		virtual uint32_t GetWidth() const = 0;
-		virtual uint32_t GetHeight() const = 0;
-		virtual uint32_t GetRendererID() const = 0;
+        virtual uint32_t GetWidth() const = 0;
+        virtual uint32_t GetHeight() const = 0;
 
-		virtual void SetData(Buffer data) = 0;
+        // Returns 0 for Vulkan. Kept for ImGui compatibility (ImGui Vulkan uses VkDescriptorSet, not texture IDs).
+        virtual uint32_t GetRendererID() const { return 0; }
 
-		virtual void Bind(uint32_t slot = 0) const = 0;
+        virtual void SetData(Buffer data) = 0;
 
-		virtual bool IsLoaded() const = 0;
+        virtual void Bind(uint32_t slot = 0) const {}
 
-		virtual bool operator==(const Texture& other) const = 0;
-	};
+        virtual bool IsLoaded() const = 0;
 
-	class Texture2D : public Texture {
-	public:
-		static Ref<Texture2D> Create(const TextureSpecification& specification, Buffer data) {
-			return CreateRef<Texture2D>(specification, data);
-		}
+        virtual bool operator==(const Texture& other) const = 0;
 
-		Texture2D(const TextureSpecification& specification, Buffer data);
-		Texture2D(Ref<Texture2D> other);
-		~Texture2D();
+        virtual RHITexture* GetRHITexture() const = 0;
+    };
 
-		const TextureSpecification& GetSpecification() const { return m_Specification; }
+    class Texture2D : public Texture {
+    public:
+        static Ref<Texture2D> Create(const TextureSpecification& specification, Buffer data);
 
-		uint32_t GetWidth() const { return m_Width; }
-		uint32_t GetHeight() const { return m_Height; }
-		uint32_t GetRendererID() const { return m_RendererID; }
-		void CopyTextureData(GLuint srcTextureID);
+        Texture2D(const TextureSpecification& specification, Buffer data);
+        Texture2D(Ref<Texture2D> other);
+        ~Texture2D();
 
-		void SetData(Buffer data);
+        const TextureSpecification& GetSpecification() const override { return m_Specification; }
 
-		void Bind(uint32_t slot = 0) const;
+        uint32_t GetWidth() const override { return m_Specification.Width; }
+        uint32_t GetHeight() const override { return m_Specification.Height; }
+        uint32_t GetRendererID() const override { return 0; }
 
-		bool IsLoaded() const 
-		{ 
-			if (!m_IsLoaded || m_RendererID == 0)
-			{
-				return false;
-			}
-			return glIsTexture(m_RendererID) == GL_TRUE;
-		}
+        void SetData(Buffer data) override;
 
-		bool operator==(const Texture& other) const
-		{
-			return m_RendererID == other.GetRendererID();
-		}
+        void Bind(uint32_t slot = 0) const override {} // No-op for Vulkan
+
+        bool IsLoaded() const override { return m_RHITexture != nullptr; }
+
+        bool operator==(const Texture& other) const override
+        {
+            return GetRHITexture() == other.GetRHITexture();
+        }
+
+        RHITexture* GetRHITexture() const override { return m_RHITexture.get(); }
+
+        static AssetType GetStaticType() { return AssetType::Texture; }
+        AssetType GetType() const override { return GetStaticType(); }
+
+    private:
+        TextureSpecification m_Specification;
+        Ref<RHITexture> m_RHITexture;
+    };
 
 
-		static AssetType GetStaticType() { return AssetType::Texture; } // Good for templated functions
-		AssetType GetType() const { return GetStaticType(); }
+    class TextureCube : public Texture
+    {
+    public:
+        static Ref<TextureCube> Create(Ref<Texture2D> map_texture, uint32_t size)
+        {
+            return CreateRef<TextureCube>(map_texture, size, ImageFormat::RGBA16F);
+        }
 
-	private:
-		TextureSpecification m_Specification;
-		bool m_IsLoaded = false;
-		bool m_IsFloat = false;
-		uint32_t m_Width, m_Height;
-		uint32_t m_RendererID;
-		GLenum m_InternalFormat, m_DataFormat;
+        static Ref<TextureCube> Create(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format)
+        {
+            return CreateRef<TextureCube>(map_texture, size, format);
+        }
 
-		uint32_t m_Channels = 4;
-	};
+        TextureCube(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format);
+        ~TextureCube();
 
+        const TextureSpecification& GetSpecification() const override { return m_Specification; }
 
-	class TextureCube : public Texture
-	{
-	public:
-		static Ref<TextureCube> Create(Ref<Texture2D> map_texture, uint32_t size)
-		{
-			return CreateRef<TextureCube>(map_texture, size, map_texture->GetSpecification().Format);
-		}
+        uint32_t GetWidth() const override { return m_Size; }
+        uint32_t GetHeight() const override { return m_Size; }
+        uint32_t GetRendererID() const override { return 0; }
 
-		static Ref<TextureCube> Create(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format)
-		{
-			return CreateRef<TextureCube>(map_texture, size, format);
-		}
+        void Bind(uint32_t slot = 0) const override {} // No-op for Vulkan
 
-		TextureCube(Ref<Texture2D> map_texture, uint32_t size, ImageFormat format);
-		~TextureCube();
+        Ref<Texture2D> GetFlatTexture() { return m_FlattenedTexture; }
 
-		const TextureSpecification& GetSpecification() const { return m_FlattenedTexture->GetSpecification(); }
+        void SetData(Buffer data) override;
 
-		uint32_t GetWidth() const { return m_Size; }
-		uint32_t GetHeight() const { return m_Size; }
-		uint32_t GetRendererID() const { return m_RendererID; }
+        void GenerateMipMap() {} // TODO: implement with RHI
 
-		void Bind(uint32_t slot = 0) const;
+        bool IsLoaded() const override { return m_RHITexture != nullptr; }
 
-		Ref<Texture2D> GetFlatTexture() { return m_FlattenedTexture; }
+        bool operator==(const Texture& other) const override
+        {
+            return GetRHITexture() == other.GetRHITexture();
+        }
 
-		void SetData(Buffer data);
+        RHITexture* GetRHITexture() const override { return m_RHITexture.get(); }
 
-		void GenerateMipMap();
+        static AssetType GetStaticType() { return AssetType::CubeMap; }
+        AssetType GetType() const override { return GetStaticType(); }
 
-
-		bool IsLoaded() const
-		{
-			if (!m_IsLoaded || m_RendererID == 0)
-			{
-				return false;
-			}
-			return glIsTexture(m_RendererID) == GL_TRUE;
-		}
-
-		bool operator==(const Texture& other) const
-		{
-			return m_RendererID == other.GetRendererID();
-		}
-
-
-		static AssetType GetStaticType() { return AssetType::CubeMap; } // Good for templated functions
-		AssetType GetType() const { return GetStaticType(); }
-
-	private:
-		bool m_IsLoaded = false;
-		uint32_t m_Size;
-		uint32_t m_RendererID;
-		Ref<Texture2D> m_FlattenedTexture;
-	};
-
+    private:
+        TextureSpecification m_Specification;
+        uint32_t m_Size;
+        Ref<RHITexture> m_RHITexture;
+        Ref<Texture2D> m_FlattenedTexture;
+    };
 
 }

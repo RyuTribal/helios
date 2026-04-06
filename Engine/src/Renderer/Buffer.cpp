@@ -1,94 +1,94 @@
 #include "pch.h"
 #include "Buffer.h"
-#include <glad/gl.h>
 
 namespace Engine {
-	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
-	{
-		return CreateRef<VertexBuffer>(size);
-	}
 
-	Ref<VertexBuffer> VertexBuffer::Create(float* vertices, uint32_t size)
-	{
-		return CreateRef<VertexBuffer>(vertices, size);
-	}
+    // Defined in Renderer.cpp
+    extern RHIDevice* GetRendererDevice();
 
-	Ref<IndexBuffer> IndexBuffer::Create(uint32_t* indices, uint32_t size)
-	{
-		return CreateRef<IndexBuffer>(indices, size);
-	}
+    // ---- VertexBuffer ----
 
+    Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
+    {
+        return CreateRef<VertexBuffer>(size);
+    }
 
-	/////////////////////////////////////////////////////////////////////////////
-	// VertexBuffer /////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////
+    Ref<VertexBuffer> VertexBuffer::Create(float* vertices, uint32_t size)
+    {
+        return CreateRef<VertexBuffer>(vertices, size);
+    }
 
-	VertexBuffer::VertexBuffer(uint32_t size)
-	{
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
-	}
+    VertexBuffer::VertexBuffer(uint32_t size)
+    {
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+        {
+            HVE_CORE_ERROR_TAG("Buffer", "VertexBuffer::Create called before Renderer is initialized");
+            return;
+        }
 
-	VertexBuffer::VertexBuffer(float* vertices, uint32_t size)
-	{
+        BufferDesc desc;
+        desc.Size = size;
+        desc.Usage = BufferUsage::Vertex | BufferUsage::Transfer;
+        desc.Access = MemoryAccess::CPU_to_GPU;
+        desc.DebugName = "DynamicVertexBuffer";
+        m_Buffer = device->CreateBuffer(desc);
+    }
 
-		glCreateBuffers(1, &m_RendererID);
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
-	}
+    VertexBuffer::VertexBuffer(float* vertices, uint32_t size)
+    {
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+        {
+            HVE_CORE_ERROR_TAG("Buffer", "VertexBuffer::Create called before Renderer is initialized");
+            return;
+        }
 
-	VertexBuffer::~VertexBuffer()
-	{
+        BufferDesc desc;
+        desc.Size = size;
+        desc.Usage = BufferUsage::Vertex | BufferUsage::Transfer;
+        desc.Access = MemoryAccess::GPU_Only;
+        desc.DebugName = "StaticVertexBuffer";
+        m_Buffer = device->CreateBuffer(desc, vertices);
+    }
 
-		glDeleteBuffers(1, &m_RendererID);
-	}
+    VertexBuffer::~VertexBuffer()
+    {
+    }
 
-	void VertexBuffer::Bind() const
-	{
+    void VertexBuffer::SetData(const void* data, uint32_t size)
+    {
+        if (m_Buffer)
+            m_Buffer->SetData(data, size);
+    }
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-	}
+    // ---- IndexBuffer ----
 
-	void VertexBuffer::Unbind() const
-	{
+    Ref<IndexBuffer> IndexBuffer::Create(uint32_t* indices, uint32_t count)
+    {
+        return CreateRef<IndexBuffer>(indices, count);
+    }
 
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	}
+    IndexBuffer::IndexBuffer(uint32_t* indices, uint32_t count)
+        : m_Count(count)
+    {
+        RHIDevice* device = GetRendererDevice();
+        if (!device)
+        {
+            HVE_CORE_ERROR_TAG("Buffer", "IndexBuffer::Create called before Renderer is initialized");
+            return;
+        }
 
-	void VertexBuffer::SetData(const void* data, uint32_t size)
-	{
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
-	}
+        BufferDesc desc;
+        desc.Size = count * sizeof(uint32_t);
+        desc.Usage = BufferUsage::Index | BufferUsage::Transfer;
+        desc.Access = MemoryAccess::GPU_Only;
+        desc.DebugName = "IndexBuffer";
+        m_Buffer = device->CreateBuffer(desc, indices);
+    }
 
-	/////////////////////////////////////////////////////////////////////////////
-	// IndexBuffer //////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////
+    IndexBuffer::~IndexBuffer()
+    {
+    }
 
-	IndexBuffer::IndexBuffer(uint32_t* indices, uint32_t count)
-		: m_Count(count)
-	{
-		glCreateBuffers(1, &m_RendererID);
-
-		// GL_ELEMENT_ARRAY_BUFFER is not valid without an actively bound VAO
-		// Binding with GL_ARRAY_BUFFER allows the data to be loaded regardless of VAO state. 
-		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
-		glBufferData(GL_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
-	}
-
-	IndexBuffer::~IndexBuffer()
-	{
-		glDeleteBuffers(1, &m_RendererID);
-	}
-
-	void IndexBuffer::Bind() const
-	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
-	}
-
-	void IndexBuffer::Unbind() const
-	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	}
 }
