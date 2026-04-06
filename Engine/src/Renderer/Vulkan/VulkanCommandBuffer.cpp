@@ -7,6 +7,7 @@
 #include "Renderer/Vulkan/VulkanRenderPass.h"
 #include "Renderer/Vulkan/VulkanFramebuffer.h"
 #include "Renderer/Vulkan/VulkanUtils.h"
+#include "Renderer/Vulkan/VulkanDescriptor.h"
 
 namespace Engine {
 
@@ -211,13 +212,12 @@ namespace Engine {
 
     void VulkanCommandBuffer::BindDescriptorSet(uint32_t set, RHIDescriptorSet* descriptorSet)
     {
-        if (!descriptorSet) return;
+        if (!descriptorSet || m_CurrentPipelineLayout == VK_NULL_HANDLE) return;
 
-        // TODO: Cast to VulkanDescriptorSet and bind once available (Task 7).
-        // VulkanDescriptorSet* vkSet = static_cast<VulkanDescriptorSet*>(descriptorSet);
-        // VkDescriptorSet ds = vkSet->GetVkDescriptorSet();
-        // vkCmdBindDescriptorSets(m_CommandBuffer, m_CurrentBindPoint,
-        //                         m_CurrentPipelineLayout, set, 1, &ds, 0, nullptr);
+        auto* vkSet = static_cast<VulkanDescriptorSet*>(descriptorSet);
+        VkDescriptorSet ds = vkSet->GetVkSet();
+        vkCmdBindDescriptorSets(m_CommandBuffer, m_CurrentBindPoint,
+                                m_CurrentPipelineLayout, set, 1, &ds, 0, nullptr);
     }
 
     void VulkanCommandBuffer::PushConstants(ShaderStage stage, uint32_t offset, uint32_t size, const void* data)

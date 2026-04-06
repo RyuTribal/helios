@@ -7,6 +7,8 @@
 #include "Renderer/Vulkan/VulkanRenderPass.h"
 #include "Renderer/Vulkan/VulkanFramebuffer.h"
 #include "Renderer/Vulkan/VulkanPipeline.h"
+#include "Renderer/Vulkan/VulkanTexture.h"
+#include "Renderer/Vulkan/VulkanDescriptor.h"
 
 #include <VkBootstrap.h>
 
@@ -117,11 +119,29 @@ namespace Engine {
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         vkCreateFence(m_Device, &fenceInfo, nullptr, &m_ImmediateFence);
 
+        // --- Descriptor pool ---
+        std::vector<VkDescriptorPoolSize> poolSizes = {
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         100 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,           20 },
+        };
+
+        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+        descriptorPoolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        descriptorPoolInfo.maxSets       = 200;
+        descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        descriptorPoolInfo.pPoolSizes    = poolSizes.data();
+        descriptorPoolInfo.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+        vkCreateDescriptorPool(m_Device, &descriptorPoolInfo, nullptr, &m_DescriptorPool);
+
         // --- Debug names ---
         VulkanContext::SetDebugName(m_Device, VK_OBJECT_TYPE_DEVICE, (uint64_t)m_Device, "MainDevice");
         VulkanContext::SetDebugName(m_Device, VK_OBJECT_TYPE_QUEUE, (uint64_t)m_GraphicsQueue, "GraphicsQueue");
         VulkanContext::SetDebugName(m_Device, VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)m_ImmediateCommandPool, "ImmediateCommandPool");
         VulkanContext::SetDebugName(m_Device, VK_OBJECT_TYPE_FENCE, (uint64_t)m_ImmediateFence, "ImmediateFence");
+        VulkanContext::SetDebugName(m_Device, VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)m_DescriptorPool, "MainDescriptorPool");
 
         HVE_CORE_INFO_TAG("Vulkan", "Vulkan device and VMA allocator created");
     }
@@ -136,6 +156,9 @@ namespace Engine {
 
             if (m_ImmediateCommandPool != VK_NULL_HANDLE)
                 vkDestroyCommandPool(m_Device, m_ImmediateCommandPool, nullptr);
+
+            if (m_DescriptorPool != VK_NULL_HANDLE)
+                vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
 
             if (m_Allocator != VK_NULL_HANDLE)
                 vmaDestroyAllocator(m_Allocator);
@@ -179,8 +202,7 @@ namespace Engine {
 
     Ref<RHITexture> VulkanDevice::CreateTexture(const TextureDesc& desc, const void* initialData)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateTexture not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanTexture>(this, desc, initialData);
     }
 
     Ref<RHIBuffer> VulkanDevice::CreateBuffer(const BufferDesc& desc, const void* initialData)
@@ -215,19 +237,97 @@ namespace Engine {
 
     Ref<RHIDescriptorSetLayout> VulkanDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateDescriptorSetLayout not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanDescriptorSetLayout>(this, desc);
     }
 
     Ref<RHIDescriptorSet> VulkanDevice::AllocateDescriptorSet(RHIDescriptorSetLayout* layout)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "AllocateDescriptorSet not yet implemented");
-        return nullptr;
+        auto* vkLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
+        VkDescriptorSetLayout dsl = vkLayout->GetVkLayout();
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool     = m_DescriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts        = &dsl;
+
+        VkDescriptorSet set;
+        VkResult result = vkAllocateDescriptorSets(m_Device, &allocInfo, &set);
+        if (result != VK_SUCCESS) {
+            HVE_CORE_ERROR_TAG("Vulkan", "Failed to allocate descriptor set");
+            return nullptr;
+        }
+
+        return CreateRef<VulkanDescriptorSet>(set, this);
     }
 
     void VulkanDevice::UpdateDescriptorSet(RHIDescriptorSet* set, const std::vector<DescriptorWrite>& writes)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "UpdateDescriptorSet not yet implemented");
+        auto* vkSet = static_cast<VulkanDescriptorSet*>(set);
+        VkDescriptorSet ds = vkSet->GetVkSet();
+
+        std::vector<VkWriteDescriptorSet> vkWrites;
+        std::vector<VkDescriptorBufferInfo> bufferInfos;
+        std::vector<VkDescriptorImageInfo> imageInfos;
+        vkWrites.reserve(writes.size());
+        bufferInfos.reserve(writes.size());
+        imageInfos.reserve(writes.size());
+
+        for (const auto& write : writes) {
+            VkWriteDescriptorSet vkWrite{};
+            vkWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            vkWrite.dstSet          = ds;
+            vkWrite.dstBinding      = write.Binding;
+            vkWrite.dstArrayElement = 0;
+            vkWrite.descriptorCount = 1;
+
+            switch (write.Type) {
+                case DescriptorType::UniformBuffer:
+                case DescriptorType::StorageBuffer: {
+                    auto* vkBuffer = static_cast<VulkanBuffer*>(write.Buffer);
+                    VkDescriptorBufferInfo bufInfo{};
+                    bufInfo.buffer = vkBuffer->GetVkBuffer();
+                    bufInfo.offset = write.Offset;
+                    bufInfo.range  = write.Range > 0 ? write.Range : VK_WHOLE_SIZE;
+                    bufferInfos.push_back(bufInfo);
+
+                    vkWrite.descriptorType = (write.Type == DescriptorType::UniformBuffer)
+                        ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+                        : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                    vkWrite.pBufferInfo = &bufferInfos.back();
+                    break;
+                }
+                case DescriptorType::CombinedImageSampler: {
+                    auto* vkTex = static_cast<VulkanTexture*>(write.Texture);
+                    VkDescriptorImageInfo imgInfo{};
+                    imgInfo.sampler     = vkTex->GetVkSampler();
+                    imgInfo.imageView   = vkTex->GetVkImageView();
+                    imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    imageInfos.push_back(imgInfo);
+
+                    vkWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    vkWrite.pImageInfo = &imageInfos.back();
+                    break;
+                }
+                case DescriptorType::StorageImage: {
+                    auto* vkTex = static_cast<VulkanTexture*>(write.Texture);
+                    VkDescriptorImageInfo imgInfo{};
+                    imgInfo.sampler     = VK_NULL_HANDLE;
+                    imgInfo.imageView   = vkTex->GetVkImageView();
+                    imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                    imageInfos.push_back(imgInfo);
+
+                    vkWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                    vkWrite.pImageInfo = &imageInfos.back();
+                    break;
+                }
+            }
+
+            vkWrites.push_back(vkWrite);
+        }
+
+        vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(vkWrites.size()),
+                               vkWrites.data(), 0, nullptr);
     }
 
     Ref<RHICommandBuffer> VulkanDevice::CreateCommandBuffer()
@@ -237,7 +337,18 @@ namespace Engine {
 
     void VulkanDevice::SubmitCommandBuffer(RHICommandBuffer* cmd)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "SubmitCommandBuffer not yet implemented");
+        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+        VkCommandBuffer cmdBuffer = vkCmd->GetVkCommandBuffer();
+
+        // TODO: Integrate proper synchronization with swapchain (fences/semaphores).
+        // For now, submit with no sync and wait idle.
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &cmdBuffer;
+
+        vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(m_GraphicsQueue);
     }
 
 }

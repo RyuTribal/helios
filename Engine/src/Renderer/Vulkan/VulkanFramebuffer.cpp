@@ -4,9 +4,7 @@
 #include "Renderer/Vulkan/VulkanDevice.h"
 #include "Renderer/Vulkan/VulkanContext.h"
 
-// NOTE: VulkanTexture does not exist yet (Task 7). Once it does, include its
-// header here and extract VkImageView from each attachment in the constructor.
-// #include "Renderer/Vulkan/VulkanTexture.h"
+#include "Renderer/Vulkan/VulkanTexture.h"
 
 namespace Engine {
 
@@ -18,16 +16,13 @@ namespace Engine {
             m_RenderPass = static_cast<VulkanRenderPass*>(desc.RenderPass);
         }
 
-        // TODO (Task 7): Once VulkanTexture is implemented, extract VkImageView
-        // from each attachment:
-        //
-        // for (auto* attachment : desc.Attachments) {
-        //     auto* vkTex = static_cast<VulkanTexture*>(attachment);
-        //     m_AttachmentViews.push_back(vkTex->GetImageView());
-        // }
-        //
-        // For now the views vector stays empty. Dynamic rendering in the command
-        // buffer will check for empty views and skip rendering gracefully.
+        // Extract VkImageView from each texture attachment
+        for (auto* attachment : desc.Attachments) {
+            if (attachment) {
+                auto* vkTex = static_cast<VulkanTexture*>(attachment);
+                m_AttachmentViews.push_back(vkTex->GetVkImageView());
+            }
+        }
 
         HVE_CORE_INFO_TAG("Vulkan", "Created framebuffer '{}' ({}x{}, {} attachments)",
                            desc.DebugName, desc.Width, desc.Height, desc.Attachments.size());

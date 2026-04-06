@@ -42,6 +42,9 @@ namespace Engine {
         uint32_t m_GraphicsQueueFamily = 0;
         VmaAllocator m_Allocator = VK_NULL_HANDLE;
 
+        // Descriptor pool
+        VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+
         // For immediate submit
         VkCommandPool m_ImmediateCommandPool = VK_NULL_HANDLE;
         VkCommandBuffer m_ImmediateCommandBuffer = VK_NULL_HANDLE;

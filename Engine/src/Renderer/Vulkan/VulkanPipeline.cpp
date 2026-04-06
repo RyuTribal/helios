@@ -6,9 +6,7 @@
 #include "Renderer/Vulkan/VulkanRenderPass.h"
 #include "Renderer/Vulkan/VulkanUtils.h"
 
-// NOTE: VulkanDescriptorSetLayout does not exist yet (Task 7).
-// Once available, include its header and extract VkDescriptorSetLayout handles.
-// #include "Renderer/Vulkan/VulkanDescriptorSetLayout.h"
+#include "Renderer/Vulkan/VulkanDescriptor.h"
 
 namespace Engine {
 
@@ -189,13 +187,10 @@ namespace Engine {
         // -- 9. Pipeline layout --
         std::vector<VkDescriptorSetLayout> setLayouts;
         for (auto* layout : desc.DescriptorLayouts) {
-            // NOTE: VulkanDescriptorSetLayout not yet implemented (Task 7).
-            // Once available, cast and extract the Vulkan handle:
-            // if (layout) {
-            //     auto* vkLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
-            //     setLayouts.push_back(vkLayout->GetVkLayout());
-            // }
-            (void)layout;
+            if (layout) {
+                auto* vkLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
+                setLayouts.push_back(vkLayout->GetVkLayout());
+            }
         }
 
         VkPushConstantRange pushConstantRange{};
@@ -280,8 +275,10 @@ namespace Engine {
         // -- 2. Pipeline layout --
         std::vector<VkDescriptorSetLayout> setLayouts;
         for (auto* layout : desc.DescriptorLayouts) {
-            // NOTE: VulkanDescriptorSetLayout not yet implemented (Task 7).
-            (void)layout;
+            if (layout) {
+                auto* vkLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
+                setLayouts.push_back(vkLayout->GetVkLayout());
+            }
         }
 
         VkPushConstantRange pushConstantRange{};
