@@ -88,12 +88,15 @@ namespace Engine {
         std::string pathStr = filepath.string();
         s_Bridge.LoadAppAssembly(pathStr.c_str());
 
-        // Set up file watcher for hot-reload
-        s_WatcherHandle = std::make_unique<filewatch::FileWatch<WatcherString>>(
-            filepath,
-            [](const auto& file, filewatch::Event eventType) {
-                s_ShouldReload = true;
-            });
+        // Set up file watcher for hot-reload (only if file exists)
+        if (std::filesystem::exists(filepath))
+        {
+            s_WatcherHandle = std::make_unique<filewatch::FileWatch<WatcherString>>(
+                filepath,
+                [](const auto& file, filewatch::Event eventType) {
+                    s_ShouldReload = true;
+                });
+        }
 
         HVE_CORE_TRACE_TAG("ScriptEngine", "Loaded app assembly: {}", filepath.string());
     }
