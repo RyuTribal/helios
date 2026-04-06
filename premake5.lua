@@ -79,4 +79,7 @@ group "Tools"
     include "Editor"
     include "EditorLauncher"
 
+group "Tests"
+    include "VulkanTest"
+
 group ""

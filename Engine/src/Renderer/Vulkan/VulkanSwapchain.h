@@ -29,6 +29,8 @@ namespace Engine {
         VkFormat GetVkFormat() const { return m_ImageFormat; }
         VkImageView GetCurrentImageView() const { return m_ImageViews[m_CurrentImageIndex]; }
         VkImage GetCurrentVkImage() const { return m_Images[m_CurrentImageIndex]; }
+        const std::vector<VkImage>& GetImages() const { return m_Images; }
+        const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }
 
         // Sync objects for the current frame-in-flight
         VkSemaphore GetImageAvailableSemaphore() const { return m_ImageAvailable[m_CurrentFrame]; }
