@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Renderer/Vulkan/VulkanDevice.h"
 #include "Renderer/Vulkan/VulkanContext.h"
+#include "Renderer/Vulkan/VulkanBuffer.h"
+#include "Renderer/Vulkan/VulkanShader.h"
+#include "Renderer/Vulkan/VulkanCommandBuffer.h"
 
 #include <VkBootstrap.h>
 
@@ -179,14 +182,12 @@ namespace Engine {
 
     Ref<RHIBuffer> VulkanDevice::CreateBuffer(const BufferDesc& desc, const void* initialData)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateBuffer not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanBuffer>(this, desc, initialData);
     }
 
     Ref<RHIShader> VulkanDevice::CreateShader(const ShaderDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateShader not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanShader>(this, desc);
     }
 
     Ref<RHIPipeline> VulkanDevice::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
@@ -232,8 +233,7 @@ namespace Engine {
 
     Ref<RHICommandBuffer> VulkanDevice::CreateCommandBuffer()
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateCommandBuffer not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanCommandBuffer>(this);
     }
 
     void VulkanDevice::SubmitCommandBuffer(RHICommandBuffer* cmd)
