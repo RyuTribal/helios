@@ -178,7 +178,6 @@ namespace Engine {
 				return shader;
 			}
 		}
-		HVE_CORE_ASSERT(false, "Shader with given ID not found");
 		static Ref<ShaderProgram> null_shader;
 		return null_shader;
 	}
