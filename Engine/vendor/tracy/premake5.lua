@@ -34,6 +34,8 @@ project "Tracy"
 		systemversion "latest"
 
 	filter "system:linux"
+		pic "On"
+		buildoptions { "-include cstring" }
 		files {
 			"tracy/public/libbacktrace/posix.cpp",
 			"tracy/public/libbacktrace/mmapio.cpp",

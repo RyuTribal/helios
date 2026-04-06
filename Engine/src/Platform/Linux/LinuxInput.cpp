@@ -10,17 +10,21 @@ namespace Engine
 
 	bool LinuxInput::IsKeyPressedImpl(int keycode)
 	{
-		auto window = static_cast<GLFWwindow *>(Application::Get().GetWindow().GetNativeWindow());
+		auto& window = Application::Get().GetWindow();
+		auto native_window = static_cast<GLFWwindow *>(window.GetNativeWindow());
 
-		auto state = glfwGetKey(window, keycode);
-		return state == GLFW_PRESS || state == GLFW_REPEAT;
+		auto state = glfwGetKey(native_window, keycode);
+		return window.IsKeyPressed(keycode) || state == GLFW_REPEAT;
 	}
 
 	void LinuxInput::SetLockMouseModeImpl(bool lock_mouse)
 	{
-		auto window = static_cast<GLFWwindow*>(Application::Get().GetWindow().GetNativeWindow());
-		glfwSetCursorPos(window, Application::Get().GetWindow().GetWidth() / 2, Application::Get().GetWindow().GetHeight() / 2);
-		lock_mouse ? glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED) : glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (lock_mouse != b_IsLocked) {
+			auto window = static_cast<GLFWwindow*>(Application::Get().GetWindow().GetNativeWindow());
+			glfwSetCursorPos(window, Application::Get().GetWindow().GetWidth() / 2, Application::Get().GetWindow().GetHeight() / 2);
+			lock_mouse ? glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED) : glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			b_IsLocked = lock_mouse;
+		}
 	}
 
 	bool LinuxInput::IsMouseButtonPressedImpl(int button)
@@ -50,5 +54,9 @@ namespace Engine
 		glfwGetCursorPos(window, &xpos, &ypos);
 
 		return {(float)xpos, (float)ypos};
+	}
+	void LinuxInput::ClearKeyStatesImpl()
+	{
+		Application::Get().GetWindow().ClearKeyStates();
 	}
 }

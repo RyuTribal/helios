@@ -9,13 +9,15 @@
 
 #if defined(__clang__)
 #define HVE_COMPILER_CLANG
+#elif defined(__GNUC__)
+#define HVE_COMPILER_GCC
 #elif defined(_MSC_VER)
 #define HVE_COMPILER_MSVC
 #endif
 
 #ifdef HVE_COMPILER_MSVC
 #define HVE_FORCE_INLINE __forceinline
-#elif defined(HVE_COMPILER_CLANG)
+#elif defined(HVE_COMPILER_CLANG) || defined(HVE_COMPILER_GCC)
 #define HVE_FORCE_INLINE __attribute__((always_inline)) inline
 #else
 #define HVE_FORCE_INLINE inline

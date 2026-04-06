@@ -29,7 +29,7 @@ Engine::Application* Engine::CreateApplication(int argc, char** argv)
 	}
 	else
 	{
-		std::filesystem::path full_sandbox_path = std::filesystem::current_path() / "Sandbox/Sandbox.hveproject";
+		std::filesystem::path full_sandbox_path = std::filesystem::current_path() / "SandBox/SandBox.hveproject";
 		projectPath = full_sandbox_path.string();
 	}
 	 

@@ -14,8 +14,8 @@ namespace Editor {
 		{".wav", "WAV.png"} , {".ogg", "OGG.png"}, {".mp3", "MP3.png"},
 		{".cs", "CSHARP.png"},
 		{".hvescn", "SCENE.png"},
-		{"default", "File.png"}, {"", "FOLDER.png"}, {"back", "BACK.png"}, {"unregistered", "UNREG.png"}, {"refresh", "REFRESH.png"},
-		{"play", "PLAY.PNG"}, {"pause", "PAUSE.PNG"}, {"stop", "STOP.PNG"}
+		{"default", "FILE.png"}, {"", "FOLDER.png"}, {"back", "BACK.png"}, {"unregistered", "UNREG.png"}, {"refresh", "REFRESH.png"},
+		{"play", "PLAY.png"}, {"pause", "PAUSE.png"}, {"stop", "STOP.png"}
 		};
 
 		for (const auto& [ext, file] : iconFiles)

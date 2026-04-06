@@ -7,38 +7,43 @@ PROJECT_ROOT="$(dirname "$0")"
 mkdir -p "$PROJECT_ROOT/.vscode"
 
 # Create tasks.json for building the project
-cat > "$PROJECT_ROOT/.vscode/tasks.json" << EOF
+cat > "$PROJECT_ROOT/.vscode/tasks.json" << 'EOF'
 {
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build-debug",
             "type": "shell",
             "command": "make",
+            "args": ["config=debug_linux-x86_64"],
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "build-release",
+            "type": "shell",
+            "command": "make",
+            "args": ["config=release_linux-x86_64"]
         }
     ]
 }
 EOF
 
 # Create launch.json for debugging
-cat > "$PROJECT_ROOT/.vscode/launch.json" << EOF
+cat > "$PROJECT_ROOT/.vscode/launch.json" << 'EOF'
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "(gdb) Launch Editor",
             "type": "cppdbg",
             "request": "launch",
-            "program": "\${workspaceFolder}/bin/Debug-linux-x86_64/App/App",
+            "program": "${workspaceFolder}/bin/Debug-linux-x86_64/Editor/Editor",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "\${workspaceFolder}",
+            "cwd": "${workspaceFolder}/Editor",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -49,30 +54,31 @@ cat > "$PROJECT_ROOT/.vscode/launch.json" << EOF
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build",
+            "preLaunchTask": "build-debug",
             "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
 }
 EOF
 
-cat > $PROJECT_ROOT/.vscode/c_cpp_properties.json << EOF
+cat > "$PROJECT_ROOT/.vscode/c_cpp_properties.json" << 'EOF'
 {
     "configurations": [
         {
             "name": "Linux",
             "includePath": [
-                "\${workspaceFolder}/Engine/**",
-                "\${workspaceFolder}/App/**",
+                "${workspaceFolder}/Engine/**",
+                "${workspaceFolder}/Editor/**"
             ],
             "defines": [
                 "DEBUG",
-                "UNICODE"
+                "PLATFORM_LINUX",
+                "GLFW_INCLUDE_NONE"
             ],
-            "compilerPath": "/usr/bin/gcc",  # Specify the compiler path
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "\${default}"
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "${default}"
         }
     ],
     "version": 4
@@ -80,3 +86,5 @@ cat > $PROJECT_ROOT/.vscode/c_cpp_properties.json << EOF
 EOF
 
 echo "VS Code configuration files have been created/updated."
+echo ""
+echo "To build: make config=debug_linux-x86_64"

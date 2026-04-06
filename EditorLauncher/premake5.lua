@@ -23,61 +23,81 @@ project "EditorLauncher"
         "%{IncludeDir.Assimp}",
         "%{wks.location}/Engine/vendor",
         "%{wks.location}/Engine/src",
-        "%{wks.location}/Engine/vendor/nativefiledialog-extended/src/include",
+        "%{IncludeDir.nfd}",
         "%{wks.location}/Engine/vendor/SoLoud",
     }
 
     links
     {
         "Engine",
+        "GLFW",
         "Glad",
+        "ImGui",
         "JoltPhysics",
         "%{Library.Tracy}",
-        "%{wks.location}/Engine/vendor/nativefiledialog-extended/lib/nfd.lib",
-        
+        "nfd",
     }
 
     defines
     {
         "ROOT_PATH=\"" .. rootPath .. "/" .. "%{prj.name}\"",
-        'EDITOR_EXECUTABLE_PATH="'.. rootPath ..'/bin/' .. outputdir .. '/Editor/Editor.exe"',
-        'EDITOR_WORKING_DIRECTORY="'.. rootPath ..'/Editor/"',
         "JPH_USE_LZCNT",
         "JPH_USE_TZCNT",
         "JPH_USE_FMADD"
-    }
-
-    postbuildcommands
-    {
-        '{COPY} "%{wks.location}/Engine/vendor/assimp/shared/x64/assimp-vc143-mt.dll" "%{cfg.targetdir}"'
     }
 
     filter "system:windows"
         systemversion "latest"
         defines
         {
-            "PLATFORM_WINDOWS"
+            "PLATFORM_WINDOWS",
+            'EDITOR_EXECUTABLE_PATH="'.. rootPath ..'/bin/' .. outputdir .. '/Editor/Editor.exe"',
+            'EDITOR_WORKING_DIRECTORY="'.. rootPath ..'/Editor/"',
         }
-        links 
+        links
         {
             "opengl32.lib"
+        }
+        postbuildcommands
+        {
+            '{COPY} "%{wks.location}/Engine/vendor/assimp/shared/x64/assimp-vc143-mt.dll" "%{cfg.targetdir}"'
         }
 
     filter "system:linux"
         systemversion "latest"
+        pic "On"
+        buildoptions { "-Wno-changes-meaning" }
         defines
         {
             "PLATFORM_LINUX",
-            
+            'EDITOR_EXECUTABLE_PATH="'.. rootPath ..'/bin/' .. outputdir .. '/Editor/Editor"',
+            'EDITOR_WORKING_DIRECTORY="'.. rootPath ..'/Editor/"',
         }
-        links 
+
+        libdirs
         {
-            "GL"
+            "%{LibraryDir.assimp_linux}",
+            "%{LibraryDir.mono_linux}"
         }
+
+        links
+        {
+            "GL",
+            "X11",
+            "assimp",
+            "%{Library.mono_linux}",
+            "pthread",
+            "dl",
+            "m",
+            "rt",
+        }
+        linkgroups "On"
+        linkoptions { "`pkg-config --libs gtk+-3.0`" }
 
     filter "configurations:Debug"
         defines {
             "DEBUG",
+            "JPH_ENABLE_ASSERTS",
             "JPH_DEBUG_RENDERER",
             "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
             -- "JPH_EXTERNAL_PROFILE"
@@ -88,6 +108,7 @@ project "EditorLauncher"
     filter "configurations:Release"
         defines {
             "RELEASE",
+            "JPH_ENABLE_ASSERTS",
             "JPH_DEBUG_RENDERER",
             "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
             "JPH_EXTERNAL_PROFILE"

@@ -222,7 +222,9 @@ namespace Engine {
 		{
 			AssetHandle handle = node["Handle"].as<AssetHandle>(0);
 			auto& metadata = m_AssetRegistry[handle];
-			metadata.FilePath = std::filesystem::path(node["FilePath"].as<std::string>());
+			std::string filePath = node["FilePath"].as<std::string>();
+			std::replace(filePath.begin(), filePath.end(), '\\', '/');
+			metadata.FilePath = std::filesystem::path(filePath);
 			metadata.Type = Utils::StringToAssetType(node["Type"].as<std::string>());
 		}
 	}

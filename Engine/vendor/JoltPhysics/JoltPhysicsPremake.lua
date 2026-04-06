@@ -17,6 +17,10 @@ project "JoltPhysics"
 
     includedirs { "JoltPhysics/Jolt", "JoltPhysics/" }
 
+    filter "system:linux"
+        pic "On"
+        buildoptions { "-fpermissive", "-Wno-inline", "-include cstdint", "-include cstring" }
+
     filter "system:windows"
         systemversion "latest"
 
@@ -29,6 +33,7 @@ project "JoltPhysics"
         defines
         {
             "_DEBUG",
+            "JPH_ENABLE_ASSERTS",
             "JPH_DEBUG_RENDERER",
             "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
             -- "JPH_EXTERNAL_PROFILE"

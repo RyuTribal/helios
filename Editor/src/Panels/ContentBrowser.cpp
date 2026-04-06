@@ -299,28 +299,30 @@ namespace EditorPanels {
 
 			ImGui::EndDragDropSource();
 		}
-
-		if (ImGui::BeginDragDropTarget() && path.extension() != ".cs" && std::filesystem::is_directory(path))
+		else if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+			if (path.extension() != ".cs" && std::filesystem::is_directory(path))
 			{
-				auto droppedPath = *(const std::filesystem::path*)payload->Data;
-				std::filesystem::path newPath = path / droppedPath.filename();
-				std::filesystem::rename(droppedPath, newPath);
-				auto iter = m_DirectoryElements.find(droppedPath.string());
-				if (iter != m_DirectoryElements.end())
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 				{
-					m_DirectoryElements.erase(iter);
-				}
-
-				if (!std::filesystem::is_directory(droppedPath) && Project::GetActiveDesignAssetManager()->IsAssetRegistered(droppedPath))
-				{
-					AssetHandle handle = Project::GetActiveDesignAssetManager()->GetHandleByPath(droppedPath);
-					Project::GetActiveDesignAssetManager()->UnregsiterAsset(handle);
-					Project::GetActiveDesignAssetManager()->RegisterAsset(handle, newPath);
-					if (droppedPath.extension() != Project::GetActiveDesignAssetManager()->GetFileExtensionFromAssetType(AssetType::Scene))
+					auto droppedPath = *(const std::filesystem::path*)payload->Data;
+					std::filesystem::path newPath = path / droppedPath.filename();
+					std::filesystem::rename(droppedPath, newPath);
+					auto iter = m_DirectoryElements.find(droppedPath.string());
+					if (iter != m_DirectoryElements.end())
 					{
-						m_Scene->ReloadScene();
+						m_DirectoryElements.erase(iter);
+					}
+
+					if (!std::filesystem::is_directory(droppedPath) && Project::GetActiveDesignAssetManager()->IsAssetRegistered(droppedPath))
+					{
+						AssetHandle handle = Project::GetActiveDesignAssetManager()->GetHandleByPath(droppedPath);
+						Project::GetActiveDesignAssetManager()->UnregsiterAsset(handle);
+						Project::GetActiveDesignAssetManager()->RegisterAsset(handle, newPath);
+						if (droppedPath.extension() != Project::GetActiveDesignAssetManager()->GetFileExtensionFromAssetType(AssetType::Scene))
+						{
+							m_Scene->ReloadScene();
+						}
 					}
 				}
 			}

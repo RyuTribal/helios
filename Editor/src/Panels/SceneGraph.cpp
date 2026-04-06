@@ -1,6 +1,6 @@
 #include "SceneGraph.h"
 #include <imgui/imgui_internal.h>
-#include <imgui/imGuIZMOquat.h>
+#include <ImGui/imGuIZMOquat.h>
 #include <Sound/AudioAsset.h>
 
 using namespace Engine;
@@ -97,8 +97,7 @@ namespace EditorPanels {
             ImGui::Text("Move %s", entity_header.c_str());
             ImGui::EndDragDropSource();
         }
-
-        if (ImGui::BeginDragDropTarget()) {
+        else if (ImGui::BeginDragDropTarget()) {
             const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_NODE");
             if (payload) {
                 UUID droppedNodeId = *(const UUID*)payload->Data;
@@ -328,7 +327,7 @@ namespace EditorPanels {
 
 			char buffer[256];
 			memset(buffer, 0, sizeof(buffer));
-			strncpy_s(buffer, sizeof(buffer), tag->name.c_str(), sizeof(buffer));
+			strncpy(buffer, tag->name.c_str(), sizeof(buffer) - 1);
 			if (ImGui::InputText("##Tag", buffer, sizeof(buffer)))
 			{
 				tag->name = std::string(buffer);
@@ -816,7 +815,7 @@ namespace EditorPanels {
 
 				char buffer[256];
 				memset(buffer, 0, sizeof(buffer));
-				strncpy_s(buffer, sizeof(buffer), sound->GetTitle().c_str(), sizeof(buffer));
+				strncpy(buffer, sound->GetTitle().c_str(), sizeof(buffer) - 1);
 
 				if (ImGui::InputText(("##SoundName" + idStr).c_str(), buffer, sizeof(buffer)))
 				{
@@ -908,7 +907,7 @@ namespace EditorPanels {
 
 				char buffer[256];
 				memset(buffer, 0, sizeof(buffer));
-				strncpy_s(buffer, sizeof(buffer), sound->GetTitle().c_str(), sizeof(buffer));
+				strncpy(buffer, sound->GetTitle().c_str(), sizeof(buffer) - 1);
 
 				if (ImGui::InputText(("##SoundName" + idStr).c_str(), buffer, sizeof(buffer)))
 				{

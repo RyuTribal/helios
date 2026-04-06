@@ -183,11 +183,14 @@ namespace Engine {
 		args.SleepUntilFinished = true;
 		std::filesystem::path root_path = ROOT_PATH;
 		root_path = root_path.parent_path();
-#ifdef PLATFORM_WINDOWS:
+#ifdef PLATFORM_WINDOWS
 		std::filesystem::path premake_executable = root_path / std::filesystem::path("vendor/premake/bin/premake5.exe");
 		std::string command = premake_executable.string() + " --file=" + project_settings.RootPath.string() + "/ScriptProject/premake5.lua" + " vs2022";
 		// Ugly fix
 		std::replace(command.begin(), command.end(), '/', '\\');
+#elif defined(PLATFORM_LINUX)
+		std::filesystem::path premake_executable = root_path / std::filesystem::path("vendor/premake/premake5");
+		std::string command = premake_executable.string() + " --file=" + project_settings.RootPath.string() + "/ScriptProject/premake5.lua" + " gmake2";
 #endif
 		CommandLine::Create()->ExecuteCommand(command, args);
 

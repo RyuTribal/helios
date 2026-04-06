@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "ScriptGlue.h"
 #include "Core/UUID.h"
+#ifndef HVE_COMPILER_MSVC
+#include <cxxabi.h>
+#endif
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/object.h>
 #include <mono/metadata/reflection.h>
@@ -14,7 +17,7 @@ namespace Engine {
 
 	static std::unordered_map<MonoType*, std::function<bool(Entity*)>> s_HasComponentFuncs;
 
-#define HVE_ADD_INTERNAL_CALL(Name) mono_add_internal_call("Helios.InternalCalls::" #Name, Name)
+#define HVE_ADD_INTERNAL_CALL(Name) mono_add_internal_call("Helios.InternalCalls::" #Name, (const void*)Name)
 
 	std::pair<Scene*, Entity*> GetSceneAndEntity(UUID entity_id)
 	{
@@ -464,8 +467,18 @@ namespace Engine {
 	{
 		([]() {
 			std::string_view class_name = typeid(Component).name();
-			size_t pos = class_name.find_last_of(':'); // If someone places a component outside of the Engine namespace, you messed up
+#ifdef HVE_COMPILER_MSVC
+			size_t pos = class_name.find_last_of(':');
 			std::string_view structName = class_name.substr(pos + 1);
+#else
+			// GCC/Clang return mangled names. Use abi::__cxa_demangle to get clean names.
+			int status = 0;
+			char* demangled = abi::__cxa_demangle(class_name.data(), nullptr, nullptr, &status);
+			std::string demangledStr = (status == 0 && demangled) ? demangled : std::string(class_name);
+			std::free(demangled);
+			size_t pos = demangledStr.find_last_of(':');
+			std::string_view structName = std::string_view(demangledStr).substr(pos + 1);
+#endif
 			std::string managedTypename = fmt::format("Helios.{}", structName);
 			MonoType* managed_type = mono_reflection_type_from_name(managedTypename.data(), ScriptEngine::GetCoreAssemblyImage());
 			s_HasComponentFuncs[managed_type] = [](Entity* entity) {return entity->HasComponent<Component>(); };

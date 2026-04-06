@@ -578,9 +578,12 @@ namespace Engine
 			Ref<Material> material = mesh->GetMeshSource()->GetMaterials()[mesh->GetMeshSource()->GetSubmeshes()[i].MaterialIndex];
 			if (use_material)
 			{
-				m_Settings.Skybox.IrradianceTexture->Bind(10);
-				m_Settings.Skybox.PrefilterMap->Bind(11);
-				m_RendererAPI.BindTexture(m_BRDFBuffer->GetColorAttachmentRendererID(), 12);
+				if (m_Settings.Skybox.IrradianceTexture)
+					m_Settings.Skybox.IrradianceTexture->Bind(10);
+				if (m_Settings.Skybox.PrefilterMap)
+					m_Settings.Skybox.PrefilterMap->Bind(11);
+				if (m_BRDFBuffer)
+					m_RendererAPI.BindTexture(m_BRDFBuffer->GetColorAttachmentRendererID(), 12);
 				/*m_RendererAPI.BindTexture(m_SunShadowBuffer->GetDepthAttachmentID(), 13);
 				material->Set("u_CascadeCount", (int)m_Settings.ShadowSettings.ShadowCascadeLevels.size());
 				for (size_t i = 0; i < m_Settings.ShadowSettings.ShadowCascadeLevels.size(); ++i)

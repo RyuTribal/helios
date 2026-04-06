@@ -171,13 +171,15 @@ namespace Engine {
 	}
 	const Ref<ShaderProgram>& ShaderLibrary::GetByShaderID(uint32_t id) const
 	{
-		for (auto [name, shader] : m_Shaders)
+		for (const auto& [name, shader] : m_Shaders)
 		{
 			if (shader->GetProgram() == id)
 			{
 				return shader;
 			}
 		}
-		HVE_CORE_ASSERT(false);
+		HVE_CORE_ASSERT(false, "Shader with given ID not found");
+		static Ref<ShaderProgram> null_shader;
+		return null_shader;
 	}
 }

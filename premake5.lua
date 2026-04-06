@@ -70,6 +70,7 @@ group "Dependencies"
     include "Engine/vendor/JoltPhysics/JoltPhysicsPremake.lua"
     include "Engine/vendor/JoltPhysics/JoltViewerPremake.lua"
     include "Engine/vendor/tracy"
+    include "Engine/vendor/nativefiledialog-extended"
 
 group "Core"
     include "Engine"

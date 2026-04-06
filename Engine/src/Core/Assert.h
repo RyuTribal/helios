@@ -7,6 +7,8 @@
 #define HVE_DEBUG_BREAK __debugbreak()
 #elif defined(HVE_COMPILER_CLANG)
 #define HVE_DEBUG_BREAK __builtin_debugtrap()
+#elif defined(PLATFORM_LINUX)
+#define HVE_DEBUG_BREAK __builtin_trap()
 #else
 #define HVE_DEBUG_BREAK
 #endif

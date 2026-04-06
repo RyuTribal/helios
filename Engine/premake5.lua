@@ -29,13 +29,6 @@ project "Engine"
         "src/Platform/**"
     }
 
-    libdirs
-    {
-        "vendor/GLFW/lib-vc2022",
-        "vendor/assimp/lib/x64",
-        "%{LibraryDir.mono}"
-    }
-
     links
     {
         "GLFW",
@@ -43,9 +36,7 @@ project "Engine"
         "ImGui",
         "JoltPhysics",
         "%{Library.Tracy}",
-        "assimp-vc143-mt.lib",
-        "vendor/nativefiledialog-extended/lib/nfd.lib",
-        "%{Library.mono}"
+        "nfd",
     }
 
     defines
@@ -73,11 +64,11 @@ project "Engine"
         "%{IncludeDir.Tracy}",
         "%{IncludeDir.Assimp}",
         "%{IncludeDir.YamlCpp}",
-        "vendor/nativefiledialog-extended/src/include",
+        "%{IncludeDir.nfd}",
         "vendor/filewatch/include",
         "%{IncludeDir.mono}",
         "src/",
-        
+
     }
 
     flags { "NoPCH" }
@@ -90,15 +81,24 @@ project "Engine"
             "BUILD_DLL",
             "GLFW_INCLUDE_NONE"
         }
-        
-        links 
+
+        libdirs
+        {
+            "vendor/GLFW/lib-vc2022",
+            "vendor/assimp/lib/x64",
+            "%{LibraryDir.mono_win}"
+        }
+
+        links
         {
             "%{Library.WinSock}",
 			"%{Library.WinMM}",
 			"%{Library.WinVersion}",
 			"%{Library.BCrypt}",
             "%{Library.DebugHelp}",
-            "opengl32.lib"
+            "opengl32.lib",
+            "assimp-vc143-mt.lib",
+            "%{Library.mono_win}"
         }
 
         files
@@ -106,8 +106,11 @@ project "Engine"
             "src/Platform/Windows/**.cpp",
             "src/Platform/Windows/**.h",
         }
+
     filter "system:linux"
         systemversion "latest"
+        pic "On"
+        buildoptions { "-Wno-changes-meaning" }
         defines
         {
             "PLATFORM_LINUX",
@@ -115,10 +118,26 @@ project "Engine"
             "GLFW_INCLUDE_NONE"
         }
 
+        libdirs
+        {
+            "%{LibraryDir.assimp_linux}",
+            "%{LibraryDir.mono_linux}"
+        }
+
         links
         {
-            "GL"
+            "GL",
+            "X11",
+            "assimp",
+            "%{Library.mono_linux}",
+            "pthread",
+            "dl",
+            "m",
+            "rt",
         }
+
+        linkoptions { "`pkg-config --libs gtk+-3.0`" }
+
         files
         {
             "src/Platform/Linux/**.cpp",
@@ -128,6 +147,7 @@ project "Engine"
     filter "configurations:Debug"
     defines {
             "DEBUG",
+            "JPH_ENABLE_ASSERTS",
             "JPH_DEBUG_RENDERER",
             "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
             -- "JPH_EXTERNAL_PROFILE"
@@ -138,6 +158,7 @@ project "Engine"
     filter "configurations:Release"
         defines {
             "RELEASE",
+            "JPH_ENABLE_ASSERTS",
             "JPH_DEBUG_RENDERER",
             "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
             "JPH_EXTERNAL_PROFILE"

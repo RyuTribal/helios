@@ -9,24 +9,26 @@ IncludeDir["Assimp"] = "%{wks.location}/Engine/vendor/assimp/include"
 IncludeDir["YamlCpp"] = "%{wks.location}/Engine/vendor/yaml-cpp/include"
 IncludeDir["mono"] = "%{wks.location}/Engine/vendor/mono/include"
 IncludeDir["FileWatcher"] = "%{wks.location}/Engine/vendor/filewatch/include"
-
+IncludeDir["nfd"] = "%{wks.location}/Engine/vendor/nativefiledialog-extended/src/include"
 
 rootPath = path.getabsolute(".")
 
 LibraryDir = {}
-LibraryDir["mono"] = "%{wks.location}/Engine/vendor/mono/lib/%{cfg.buildcfg}"
+LibraryDir["mono_win"] = "%{wks.location}/Engine/vendor/mono/lib/%{cfg.buildcfg}"
+LibraryDir["mono_linux"] = "%{wks.location}/Engine/vendor/mono/lib/linux"
+LibraryDir["assimp_linux"] = "%{wks.location}/Engine/vendor/assimp/lib/linux-x64"
 
 Library = {}
 Library["Jolt"] = "JoltPhysics";
 Library["Tracy"] = "Tracy";
-Library["mono"] = "%{LibraryDir.mono}/libmono-static-sgen.lib"
+Library["mono_win"] = "%{LibraryDir.mono_win}/libmono-static-sgen.lib"
+Library["mono_linux"] = "monosgen-2.0"
 
 Binaries = {}
 
--- Platform specific libraries
+-- Windows platform specific libraries
 Library["WinSock"] = "Ws2_32.lib"
 Library["WinMM"] = "Winmm.lib"
 Library["WinVersion"] = "Version.lib"
 Library["BCrypt"] = "Bcrypt.lib"
 Library["DebugHelp"] = "Dbghelp.lib"
-

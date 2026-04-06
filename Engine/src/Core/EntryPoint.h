@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(PLATFORM_WINDOWS)
+#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_LINUX)
 
 extern Engine::Application* Engine::CreateApplication(int argc, char** argv);
 
@@ -12,8 +12,6 @@ int main(int argc, char** argv)
 	app->run();
 	delete app;
 }
-
-// This code is halal certified
 
 #else
 #error This engine currently only supports Windows and Linux :(
