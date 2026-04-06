@@ -391,7 +391,8 @@ namespace Engine {
 			SyncPhysicsTransforms();
 		}
 
-		SoundEngine::SetListenerPosition(GetCurrentCamera()->CalculatePosition());
+		if (GetCurrentCamera())
+			SoundEngine::SetListenerPosition(GetCurrentCamera()->CalculatePosition());
 
 		DrawSystem();
 	}

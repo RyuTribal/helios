@@ -642,6 +642,8 @@ namespace Engine
 
 	void Renderer::BeginDrawing()
 	{
+		if (!m_CurrentCamera)
+			return;
 		DepthPrePass();
 		UploadLightData();
 		CullLights();
