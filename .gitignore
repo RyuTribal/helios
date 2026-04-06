@@ -15,4 +15,5 @@ Intermediates/
 **.vcxproj.filters
 **.vcxproj.user
 **.csproj
+!ScriptCore/ScriptCore.csproj
 Makefile
