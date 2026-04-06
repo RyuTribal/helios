@@ -413,6 +413,8 @@ namespace EditorPanels {
 
 	void ContentBrowser::HandleBackgroundContextMenu()
 	{
+		static bool s_OpenCreateScript = false;
+
 		if (ImGui::BeginPopupContextWindow())
 		{
 			if (ImGui::MenuItem("Add New Folder"))
@@ -427,9 +429,15 @@ namespace EditorPanels {
 			}
 			if (ImGui::MenuItem("Create Script"))
 			{
-				ImGui::OpenPopup("##CreateScriptPopup");
+				s_OpenCreateScript = true;
 			}
 			ImGui::EndPopup();
+		}
+
+		if (s_OpenCreateScript)
+		{
+			ImGui::OpenPopup("##CreateScriptPopup");
+			s_OpenCreateScript = false;
 		}
 
 		if (ImGui::BeginPopup("##CreateScriptPopup"))
@@ -443,7 +451,6 @@ namespace EditorPanels {
 				std::string scriptName = scriptNameBuf;
 				if (!scriptName.empty())
 				{
-					// Ensure Scripts directory exists
 					auto& settings = Project::GetActive()->GetSettings();
 					std::filesystem::path scriptsDir = settings.RootPath / settings.AssetPath / "Scripts";
 					std::filesystem::create_directories(scriptsDir);
@@ -469,7 +476,6 @@ namespace EditorPanels {
 
 						HVE_CORE_TRACE_TAG("ContentBrowser", "Created script: {}", scriptPath.string());
 
-						// Build the script project
 						Project::CreateScriptProject();
 						ScriptEngine::MarkForReload();
 					}

@@ -432,58 +432,50 @@ namespace EditorPanels {
 				}
 
 				ImGui::Separator();
-				if (ImGui::Button("Create New Script..."))
-				{
-					ImGui::OpenPopup("##CreateScriptFromSelector");
-				}
 
-				if (ImGui::BeginPopup("##CreateScriptFromSelector"))
+				static char newScriptName[128] = "NewScript";
+				ImGui::Text("New Script:");
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(150);
+				ImGui::InputText("##NewScriptName", newScriptName, sizeof(newScriptName));
+				ImGui::SameLine();
+				if (ImGui::Button("Create & Select"))
 				{
-					static char newScriptName[128] = "NewScript";
-					ImGui::Text("Script Name:");
-					ImGui::InputText("##NewScriptName", newScriptName, sizeof(newScriptName));
-
-					if (ImGui::Button("Create & Select", ImVec2(140, 0)))
+					std::string scriptName = newScriptName;
+					if (!scriptName.empty())
 					{
-						std::string scriptName = newScriptName;
-						if (!scriptName.empty())
+						auto& settings = Project::GetActive()->GetSettings();
+						std::filesystem::path scriptsDir = settings.RootPath / settings.AssetPath / "Scripts";
+						std::filesystem::create_directories(scriptsDir);
+
+						std::filesystem::path scriptPath = scriptsDir / (scriptName + ".cs");
+						if (!std::filesystem::exists(scriptPath))
 						{
-							auto& settings = Project::GetActive()->GetSettings();
-							std::filesystem::path scriptsDir = settings.RootPath / settings.AssetPath / "Scripts";
-							std::filesystem::create_directories(scriptsDir);
+							std::ofstream file(scriptPath);
+							file << "using Helios;\n";
+							file << "using System.Numerics;\n";
+							file << "\n";
+							file << "public class " << scriptName << " : Entity\n";
+							file << "{\n";
+							file << "    public void OnCreate()\n";
+							file << "    {\n";
+							file << "    }\n";
+							file << "\n";
+							file << "    public void OnUpdate(float deltaTime)\n";
+							file << "    {\n";
+							file << "    }\n";
+							file << "}\n";
+							file.close();
 
-							std::filesystem::path scriptPath = scriptsDir / (scriptName + ".cs");
-							if (!std::filesystem::exists(scriptPath))
-							{
-								std::ofstream file(scriptPath);
-								file << "using Helios;\n";
-								file << "using System.Numerics;\n";
-								file << "\n";
-								file << "public class " << scriptName << " : Entity\n";
-								file << "{\n";
-								file << "    public void OnCreate()\n";
-								file << "    {\n";
-								file << "    }\n";
-								file << "\n";
-								file << "    public void OnUpdate(float deltaTime)\n";
-								file << "    {\n";
-								file << "    }\n";
-								file << "}\n";
-								file.close();
+							Project::CreateScriptProject();
+							ScriptEngine::ReloadAssembly(
+								settings.RootPath / settings.ScriptAssemblyPath);
 
-								// Build and reload
-								Project::CreateScriptProject();
-								ScriptEngine::ReloadAssembly(
-									settings.RootPath / settings.ScriptAssemblyPath);
-
-								// Auto-select the new class
-								component->Name = scriptName;
-							}
+							component->Name = scriptName;
 						}
-						strcpy(newScriptName, "NewScript");
-						ImGui::CloseCurrentPopup();
 					}
-					ImGui::EndPopup();
+					strcpy(newScriptName, "NewScript");
+					ImGui::CloseCurrentPopup();
 				}
 
 				ImGui::EndPopup();
