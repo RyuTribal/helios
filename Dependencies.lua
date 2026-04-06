@@ -7,22 +7,18 @@ IncludeDir["Jolt"] = "%{wks.location}/Engine/vendor/JoltPhysics/JoltPhysics"
 IncludeDir["Tracy"] = "%{wks.location}/Engine/vendor/tracy/tracy/public"
 IncludeDir["Assimp"] = "%{wks.location}/Engine/vendor/assimp/include"
 IncludeDir["YamlCpp"] = "%{wks.location}/Engine/vendor/yaml-cpp/include"
-IncludeDir["mono"] = "%{wks.location}/Engine/vendor/mono/include"
+IncludeDir["nethost"] = "%{wks.location}/Engine/vendor/dotnet/include"
 IncludeDir["FileWatcher"] = "%{wks.location}/Engine/vendor/filewatch/include"
 IncludeDir["nfd"] = "%{wks.location}/Engine/vendor/nativefiledialog-extended/src/include"
 
 rootPath = path.getabsolute(".")
 
 LibraryDir = {}
-LibraryDir["mono_win"] = "%{wks.location}/Engine/vendor/mono/lib/%{cfg.buildcfg}"
-LibraryDir["mono_linux"] = "%{wks.location}/Engine/vendor/mono/lib/linux"
 LibraryDir["assimp_linux"] = "%{wks.location}/Engine/vendor/assimp/lib/linux-x64"
 
 Library = {}
 Library["Jolt"] = "JoltPhysics";
 Library["Tracy"] = "Tracy";
-Library["mono_win"] = "%{LibraryDir.mono_win}/libmono-static-sgen.lib"
-Library["mono_linux"] = "monosgen-2.0"
 
 Binaries = {}
 

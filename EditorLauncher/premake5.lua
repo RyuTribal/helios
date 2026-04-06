@@ -77,7 +77,6 @@ project "EditorLauncher"
         libdirs
         {
             "%{LibraryDir.assimp_linux}",
-            "%{LibraryDir.mono_linux}"
         }
 
         links
@@ -85,7 +84,6 @@ project "EditorLauncher"
             "GL",
             "X11",
             "assimp",
-            "%{Library.mono_linux}",
             "pthread",
             "dl",
             "m",

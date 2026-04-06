@@ -66,7 +66,7 @@ project "Engine"
         "%{IncludeDir.YamlCpp}",
         "%{IncludeDir.nfd}",
         "vendor/filewatch/include",
-        "%{IncludeDir.mono}",
+        "%{IncludeDir.nethost}",
         "src/",
 
     }
@@ -86,7 +86,6 @@ project "Engine"
         {
             "vendor/GLFW/lib-vc2022",
             "vendor/assimp/lib/x64",
-            "%{LibraryDir.mono_win}"
         }
 
         links
@@ -98,7 +97,6 @@ project "Engine"
             "%{Library.DebugHelp}",
             "opengl32.lib",
             "assimp-vc143-mt.lib",
-            "%{Library.mono_win}"
         }
 
         files
@@ -121,7 +119,6 @@ project "Engine"
         libdirs
         {
             "%{LibraryDir.assimp_linux}",
-            "%{LibraryDir.mono_linux}"
         }
 
         links
@@ -129,7 +126,6 @@ project "Engine"
             "GL",
             "X11",
             "assimp",
-            "%{Library.mono_linux}",
             "pthread",
             "dl",
             "m",
