@@ -4,6 +4,9 @@
 #include "Renderer/Vulkan/VulkanBuffer.h"
 #include "Renderer/Vulkan/VulkanShader.h"
 #include "Renderer/Vulkan/VulkanCommandBuffer.h"
+#include "Renderer/Vulkan/VulkanRenderPass.h"
+#include "Renderer/Vulkan/VulkanFramebuffer.h"
+#include "Renderer/Vulkan/VulkanPipeline.h"
 
 #include <VkBootstrap.h>
 
@@ -192,26 +195,22 @@ namespace Engine {
 
     Ref<RHIPipeline> VulkanDevice::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateGraphicsPipeline not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanPipeline>(this, desc);
     }
 
     Ref<RHIPipeline> VulkanDevice::CreateComputePipeline(const ComputePipelineDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateComputePipeline not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanPipeline>(this, desc);
     }
 
     Ref<RHIRenderPass> VulkanDevice::CreateRenderPass(const RenderPassDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateRenderPass not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanRenderPass>(this, desc);
     }
 
     Ref<RHIFramebuffer> VulkanDevice::CreateFramebuffer(const FramebufferDesc& desc)
     {
-        HVE_CORE_WARN_TAG("Vulkan", "CreateFramebuffer not yet implemented");
-        return nullptr;
+        return CreateRef<VulkanFramebuffer>(this, desc);
     }
 
     Ref<RHIDescriptorSetLayout> VulkanDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutDesc& desc)

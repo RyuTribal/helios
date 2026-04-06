@@ -3,6 +3,10 @@
 #include "Renderer/Vulkan/VulkanDevice.h"
 #include "Renderer/Vulkan/VulkanContext.h"
 #include "Renderer/Vulkan/VulkanBuffer.h"
+#include "Renderer/Vulkan/VulkanPipeline.h"
+#include "Renderer/Vulkan/VulkanRenderPass.h"
+#include "Renderer/Vulkan/VulkanFramebuffer.h"
+#include "Renderer/Vulkan/VulkanUtils.h"
 
 namespace Engine {
 
@@ -98,30 +102,68 @@ namespace Engine {
         vkEndCommandBuffer(m_CommandBuffer);
     }
 
-    void VulkanCommandBuffer::BeginRenderPass(RHIRenderPass* /*renderPass*/,
-                                               RHIFramebuffer* /*framebuffer*/,
-                                               const ClearValues& /*clear*/)
+    void VulkanCommandBuffer::BeginRenderPass(RHIRenderPass* renderPass,
+                                               RHIFramebuffer* framebuffer,
+                                               const ClearValues& clear)
     {
-        // TODO: Implement with Vulkan 1.3 dynamic rendering (vkCmdBeginRendering)
-        // once VulkanFramebuffer is available (Task 6). The renderPass parameter
-        // is used for pipeline compatibility only; actual rendering uses
-        // VkRenderingInfo with color/depth attachment views from the framebuffer.
+        if (!framebuffer) return;
+
+        auto* fb = static_cast<VulkanFramebuffer*>(framebuffer);
+        const auto& views = fb->GetAttachmentViews();
+
+        auto* rp = static_cast<VulkanRenderPass*>(renderPass);
+        const auto& rpDesc = rp->GetDesc();
+
+        // Build color attachments for dynamic rendering
+        std::vector<VkRenderingAttachmentInfo> colorAttachments;
+        for (size_t i = 0; i < rpDesc.ColorAttachments.size() && i < views.size(); i++) {
+            VkRenderingAttachmentInfo info{};
+            info.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            info.imageView   = views[i];
+            info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            info.loadOp      = ToVkLoadOp(rpDesc.ColorAttachments[i].Load);
+            info.storeOp     = ToVkStoreOp(rpDesc.ColorAttachments[i].Store);
+            info.clearValue.color = {{clear.Color.r, clear.Color.g, clear.Color.b, clear.Color.a}};
+            colorAttachments.push_back(info);
+        }
+
+        // Depth attachment if present
+        VkRenderingAttachmentInfo depthAttachment{};
+        bool hasDepth = rpDesc.HasDepth && views.size() > rpDesc.ColorAttachments.size();
+        if (hasDepth) {
+            depthAttachment.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            depthAttachment.imageView   = views.back();
+            depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depthAttachment.loadOp      = ToVkLoadOp(rpDesc.DepthAttachment.Load);
+            depthAttachment.storeOp     = ToVkStoreOp(rpDesc.DepthAttachment.Store);
+            depthAttachment.clearValue.depthStencil = {clear.Depth, clear.Stencil};
+        }
+
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.renderArea           = {{0, 0}, {fb->GetWidth(), fb->GetHeight()}};
+        renderingInfo.layerCount           = 1;
+        renderingInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+        renderingInfo.pColorAttachments    = colorAttachments.data();
+        if (hasDepth)
+            renderingInfo.pDepthAttachment = &depthAttachment;
+
+        vkCmdBeginRendering(m_CommandBuffer, &renderingInfo);
     }
 
     void VulkanCommandBuffer::EndRenderPass()
     {
-        // TODO: Call vkCmdEndRendering once BeginRenderPass is implemented (Task 6).
+        vkCmdEndRendering(m_CommandBuffer);
     }
 
     void VulkanCommandBuffer::BindPipeline(RHIPipeline* pipeline)
     {
         if (!pipeline) return;
 
-        // TODO: Cast to VulkanPipeline and bind once VulkanPipeline is available (Task 6).
-        // VulkanPipeline* vkPipeline = static_cast<VulkanPipeline*>(pipeline);
-        // vkCmdBindPipeline(m_CommandBuffer, vkPipeline->GetBindPoint(), vkPipeline->GetVkPipeline());
-        // m_CurrentPipelineLayout = vkPipeline->GetLayout();
-        // m_CurrentBindPoint = vkPipeline->GetBindPoint();
+        auto* vkPipeline = static_cast<VulkanPipeline*>(pipeline);
+        vkCmdBindPipeline(m_CommandBuffer, vkPipeline->GetBindPoint(), vkPipeline->GetVkPipeline());
+        m_CurrentPipelineLayout = vkPipeline->GetLayout();
+        m_CurrentBindPoint = vkPipeline->GetBindPoint();
     }
 
     void VulkanCommandBuffer::SetViewport(float x, float y, float width, float height)
