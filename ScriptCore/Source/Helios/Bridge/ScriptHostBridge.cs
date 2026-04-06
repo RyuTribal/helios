@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -92,7 +93,20 @@ public static unsafe class ScriptHostBridge
 
         // Scan for Entity subclasses
         s_EntityClasses.Clear();
-        foreach (var type in s_AppAssembly.GetTypes())
+        Type[] types;
+        try
+        {
+            types = s_AppAssembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            // Some types may fail to load — use the ones that succeeded
+            types = ex.Types.Where(t => t != null).ToArray()!;
+            foreach (var err in ex.LoaderExceptions)
+                Console.Error.WriteLine($"[ScriptBridge] Type load warning: {err?.Message}");
+        }
+
+        foreach (var type in types)
         {
             if (type.IsSubclassOf(typeof(Entity)) && !type.IsAbstract)
                 s_EntityClasses.Add(type);
