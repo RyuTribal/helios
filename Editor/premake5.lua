@@ -4,6 +4,11 @@ project "Editor"
 
     targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+
+    prebuildcommands
+    {
+        'dotnet build "%{wks.location}/ScriptCore/ScriptCore.csproj" -c Release --nologo -v quiet'
+    }
     files
     {
         "src/**.h",
