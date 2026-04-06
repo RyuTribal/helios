@@ -920,7 +920,8 @@ namespace Engine
 		}
 		current_window_width = width;
 		current_window_height = height ? height : 1;
-		m_CurrentCamera->SetAspectRatio(current_window_width / current_window_height);
+		if (m_CurrentCamera)
+			m_CurrentCamera->SetAspectRatio(current_window_width / current_window_height);
 		m_RendererAPI.SetViewport(0, 0, current_window_width, current_window_height);
 
 		ResizeBuffers();

@@ -245,8 +245,10 @@ namespace Engine {
 
 	void Scene::OnRuntimeStart()
 	{
+		HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: begin");
 		HVE_CORE_ASSERT(!Application::Get().GetProps().NoScripting, "The scene requires you to use scripting, which is currently set to false!");
 		ScriptEngine::OnRuntimeStart(this);
+		HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: scripts started");
 		SoundEngine::StopAll();
 
 		m_SceneState = SceneRunType::Runtime;
@@ -257,12 +259,16 @@ namespace Engine {
 		{
 			for (auto& [entity_id, script_component] : *script_registry)
 			{
+				HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: creating script instance for entity {}", entity_id);
 				ScriptEngine::OnCreateEntityClass(GetEntity(entity_id));
 			}
 		}
 
+		HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: creating physics scene");
 		PhysicsEngine::Get()->CreateScene(this, 10);
+		HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: starting physics");
 		PhysicsEngine::Get()->OnRuntimeStart(1, 1);
+		HVE_CORE_TRACE_TAG("Scene", "OnRuntimeStart: physics started");
 
 		std::set<UUID> finished_assets = std::set<UUID>();
 
@@ -352,6 +358,12 @@ namespace Engine {
 
 	void Scene::UpdateScene()
 	{
+		static bool s_FirstRuntimeFrame = true;
+		if (m_SceneState == SceneRunType::Runtime && s_FirstRuntimeFrame)
+		{
+			HVE_CORE_TRACE_TAG("Scene", "First runtime frame: UpdateScene begin");
+			s_FirstRuntimeFrame = false;
+		}
 		SetCurrentCamera(Renderer::Get()->GetCamera());
 		m_IsReloading = false;
 
