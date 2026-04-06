@@ -27,7 +27,35 @@ namespace Engine {
         }
 
         vkb::PhysicalDevice physicalDevice = physResult.value();
-        HVE_CORE_INFO_TAG("Vulkan", "Selected GPU: {}", physicalDevice.name);
+
+        // Log all available GPUs so the user knows what was considered
+        auto allDevices = selector.select_device_names();
+        if (allDevices) {
+            HVE_CORE_INFO_TAG("Vulkan", "Available GPUs:");
+            for (const auto& name : allDevices.value())
+                HVE_CORE_INFO_TAG("Vulkan", "  - {}", name);
+        }
+
+        // Log selected device properties
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(physicalDevice.physical_device, &props);
+        const char* deviceType = "Unknown";
+        switch (props.deviceType) {
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   deviceType = "Discrete GPU"; break;
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: deviceType = "Integrated GPU"; break;
+            case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    deviceType = "Virtual GPU"; break;
+            case VK_PHYSICAL_DEVICE_TYPE_CPU:            deviceType = "CPU"; break;
+            default: break;
+        }
+        HVE_CORE_INFO_TAG("Vulkan", "Selected GPU: {} ({})", physicalDevice.name, deviceType);
+        HVE_CORE_INFO_TAG("Vulkan", "  Vulkan API: {}.{}.{}",
+            VK_API_VERSION_MAJOR(props.apiVersion),
+            VK_API_VERSION_MINOR(props.apiVersion),
+            VK_API_VERSION_PATCH(props.apiVersion));
+        HVE_CORE_INFO_TAG("Vulkan", "  Driver: {}.{}.{}",
+            VK_API_VERSION_MAJOR(props.driverVersion),
+            VK_API_VERSION_MINOR(props.driverVersion),
+            VK_API_VERSION_PATCH(props.driverVersion));
 
         // --- Logical device creation ---
         vkb::DeviceBuilder deviceBuilder(physicalDevice);
