@@ -25,7 +25,21 @@ namespace Engine
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#ifdef PLATFORM_LINUX
+		// Disable viewports on Linux — Wayland doesn't support application-positioned windows,
+		// causing popups/menus to open as separate unpositioned OS windows.
+		const char* session = std::getenv("XDG_SESSION_TYPE");
+		if (!session || std::string(session) != "x11")
+		{
+			// Wayland or unknown — keep viewports disabled
+		}
+		else
+		{
+			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		}
+#else
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
 
 		std::string boldFontPath = "Resources/Fonts/opensans/static/OpenSans-Bold.ttf";
 		std::string regularFontPath = "Resources/Fonts/opensans/static/OpenSans-Regular.ttf";
