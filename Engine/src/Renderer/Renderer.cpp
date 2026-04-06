@@ -606,6 +606,11 @@ namespace Engine
 			}
 
 			auto current_shader = m_ShaderLibrary.GetByShaderID(m_RendererAPI.GetCurrentShaderProgram());
+			if (!current_shader)
+			{
+				HVE_CORE_ERROR_TAG("Renderer", "No active shader for DrawIndexed");
+				continue;
+			}
 			current_shader->Set("u_Transform", mesh->GetTransform() * mesh->GetMeshSource()->GetSubmeshes()[i].WorldTransform);
 			current_shader->Activate();
 
