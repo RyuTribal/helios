@@ -1,7 +1,6 @@
 #pragma once
 #include "pch.h"
 #include "Core/Base.h"
-#include "Renderer/RenderContext.h"
 #include "Events/Event.h"
 
 namespace Engine {
@@ -62,10 +61,5 @@ namespace Engine {
 		virtual void* GetNativeWindow() const = 0;
 
 		static Window* Create(const WindowProps& props = WindowProps());
-
-		RenderContext* GetContext() { return m_Context.get(); }
-
-	protected:
-		std::unique_ptr<RenderContext> m_Context;
 	};
 }

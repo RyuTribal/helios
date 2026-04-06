@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "LinuxWindow.h"
 
-#include "Renderer/RenderContext.h"
 #include "Events/ApplicationEvent.h"
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
@@ -123,8 +122,7 @@ namespace Engine
 		}
 
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
-		m_Context = RenderContext::Create(m_Window);
-		m_Context->Init();
+		// TODO Task 12: Initialize Vulkan surface/context here instead of OpenGL RenderContext
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		glfwSwapInterval(m_Data.VSync ? 1 : 0);
 
@@ -238,7 +236,7 @@ namespace Engine
 	void LinuxWindow::OnUpdate()
 	{
 		glfwPollEvents();
-		m_Context->SwapBuffers();
+		// TODO Task 12: Vulkan present is handled by Renderer/Swapchain, not here
 	}
 
 }

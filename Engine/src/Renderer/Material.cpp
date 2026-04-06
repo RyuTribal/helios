@@ -107,7 +107,7 @@ namespace Engine {
         DescriptorWrite uboWrite;
         uboWrite.Binding = 0;
         uboWrite.Type = DescriptorType::UniformBuffer;
-        uboWrite.Buffer = m_MaterialUBO;
+        uboWrite.Buffer = m_MaterialUBO.get();
         uboWrite.Range = sizeof(MaterialData);
         writes.push_back(uboWrite);
 

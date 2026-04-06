@@ -123,7 +123,7 @@ namespace Engine {
         }
     }
 
-    void SkyboxRenderer::Execute(RHICommandBuffer* cmd, RHIFramebuffer* framebuffer, Camera* camera, const SkyboxSettings& settings)
+    void SkyboxRenderer::Execute(RHICommandBuffer* cmd, RHIFramebuffer* framebuffer, Camera* camera, const SkyboxRenderData& settings)
     {
         if (!m_Pipeline || !camera || !settings.CubeTexture)
             return;

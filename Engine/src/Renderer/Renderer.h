@@ -70,6 +70,19 @@ namespace Engine {
         int Multiplier = 2;
     };
 
+    // Backward-compatible SkyboxSettings (uses engine texture types, not raw RHI)
+    struct SkyboxSettings
+    {
+        Ref<TextureCube> Texture;
+        float Brightness = 1.0f;
+        int IrradianceResolution = 32;
+        Ref<TextureCube> IrradianceTexture;
+        int PrefilterResolution = 128;
+        Ref<TextureCube> PrefilterMap;
+        // BRDFBuffer removed (was old Framebuffer), replaced by RHI texture
+        Ref<RHITexture> BRDFTexture;
+    };
+
     struct ShadowSettings
     {
         int Resolution = 4096;
