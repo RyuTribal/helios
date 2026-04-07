@@ -4,6 +4,7 @@
 #include "helios/ecs/dag_builder.h"
 #include "helios/ecs/schedule.h"
 #include "helios/ecs/system_descriptor.h"
+#include "helios/ecs/system_set.h"
 #include "helios/ecs/commands.h"
 #include "helios/ecs/system_param_traits.h"
 #include "helios/ecs/thread_pool.h"
@@ -34,6 +35,11 @@ public:
     ///   scheduler.add_system(Schedule::Update, my_other_system).after(id);
     template <typename F>
     SystemDescriptorBuilder add_system(Schedule schedule, F&& system,
+                                       std::string name = "");
+
+    /// Overload for SystemSet<F> -- applies embedded ordering constraints.
+    template <typename F>
+    SystemDescriptorBuilder add_system(Schedule schedule, SystemSet<F> set,
                                        std::string name = "");
 
     /// Run all systems in the given schedule.
@@ -113,6 +119,19 @@ SystemId Scheduler::id_of(F&& /*fn*/) const {
     auto it = m_function_ids.find(std::type_index(typeid(std::decay_t<F>)));
     if (it != m_function_ids.end()) return it->second;
     return SystemId{0};
+}
+
+template <typename F>
+SystemDescriptorBuilder Scheduler::add_system(Schedule schedule, SystemSet<F> set,
+                                              std::string name) {
+    auto builder = add_system(schedule, set.function(), std::move(name));
+    for (const auto& id : set.after_ids()) {
+        builder.after(id);
+    }
+    for (const auto& id : set.before_ids()) {
+        builder.before(id);
+    }
+    return builder;
 }
 
 } // namespace helios

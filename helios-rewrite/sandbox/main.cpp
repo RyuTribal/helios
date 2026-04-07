@@ -10,7 +10,6 @@
 using namespace helios;
 
 // Game-specific resources
-struct Time { float delta = 0.016f; float elapsed = 0.0f; };
 struct GameConfig { float gravity = -9.81f; };
 
 // Game-specific components
@@ -21,7 +20,7 @@ struct Enemy { float speed = 5.0f; };
 // Systems (free functions)
 void movement_system(Query<Transform, const Velocity>& query, const Time& time) {
     for (auto [transform, velocity] : query) {
-        transform.position += velocity.value * time.delta;
+        transform.position += velocity.value * time.delta();
     }
 }
 
@@ -29,7 +28,7 @@ int main() {
     std::printf("=== Helios ECS Sandbox ===\n\n");
 
     World world;
-    world.insert_resource(Time{});
+    world.insert_resource(Time{});  // helios::Time from engine
     world.insert_resource(GameConfig{});
 
     // --- Spawn scene ---
@@ -123,7 +122,7 @@ int main() {
         std::printf("  Frame %d: player at (%.2f, %.2f, %.2f)\n",
             frame, ppos.x, ppos.y, ppos.z);
 
-        time.elapsed += time.delta;
+        // Time resource is updated by App::tick(); manual sim just advances.
     }
 
     // --- Commands test ---
