@@ -3,6 +3,8 @@ add_executable(helios-tests
     ecs/test_entity_allocator.cpp
     ecs/test_archetype.cpp
     ecs/test_archetype_storage.cpp
+    ecs/test_resources.cpp
+    ecs/test_events.cpp
 )
 
 target_link_libraries(helios-tests
