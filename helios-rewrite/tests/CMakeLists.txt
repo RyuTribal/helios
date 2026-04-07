@@ -9,6 +9,15 @@ add_executable(helios-tests
     ecs/test_world.cpp
     ecs/test_commands.cpp
     ecs/test_components.cpp
+    ecs/test_access_descriptor.cpp
+    ecs/test_system_param.cpp
+    ecs/test_dag_builder.cpp
+    ecs/test_thread_pool.cpp
+    ecs/test_scheduler_sequential.cpp
+    ecs/test_scheduler_parallel.cpp
+    ecs/test_app.cpp
+    ecs/test_fixed_update.cpp
+    ecs/test_integration.cpp
     core/test_uuid.cpp
     core/test_logging.cpp
 )
