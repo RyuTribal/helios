@@ -1,5 +1,6 @@
 // Helios Engine - User Sandbox
-// Simulates a game using the ECS from Plan 1.
+// Demonstrates the full ECS + App + Plugin + Scheduler from Plans 1-2.
+// This is how a real game would use the engine.
 
 #include <helios/ecs/ecs.h>
 #include <helios/components/components.h>
@@ -9,190 +10,134 @@
 
 using namespace helios;
 
-// Game-specific resources
-struct GameConfig { float gravity = -9.81f; };
+// ============================================================
+// Game-specific components (aggregates, no constructors)
+// ============================================================
 
-// Game-specific components
 struct Velocity { glm::vec3 value{0.0f}; };
 struct Health { float current = 100.0f; float max = 100.0f; };
 struct Enemy { float speed = 5.0f; };
+struct GameConfig { float gravity = -9.81f; float arena_radius = 50.0f; };
+struct FrameCounter { int count = 0; };
 
-// Systems (free functions)
-void movement_system(Query<Transform, const Velocity>& query, const Time& time) {
+// ============================================================
+// Systems (free functions — scheduler auto-detects data access)
+// ============================================================
+
+void movement_system(Query<Transform, const Velocity> query, Res<Time> time) {
     for (auto [transform, velocity] : query) {
-        transform.position += velocity.value * time.delta();
+        transform.position += velocity.value * time->delta();
     }
 }
 
-int main() {
-    std::printf("=== Helios ECS Sandbox ===\n\n");
-
-    World world;
-    world.insert_resource(Time{});  // helios::Time from engine
-    world.insert_resource(GameConfig{});
-
-    // --- Spawn scene ---
-    std::printf("--- Spawning scene ---\n");
-
-    // Simple entities first
-    Entity camera = world.spawn(
-        Transform{ .position = glm::vec3{0, 5, -10} },
-        Camera{},
-        ActiveCamera{}
-    );
-    std::printf("  Camera spawned\n");
-
-    Entity light = world.spawn(
-        Transform{ .position = glm::vec3{0, 10, 0} },
-        PointLight{ .intensity = 2.0f }
-    );
-    std::printf("  Light spawned\n");
-
-    // Player with multiple components
-    Entity player = world.spawn(
-        Transform{ .position = glm::vec3{0, 1, 0} },
-        Velocity{ .value = glm::vec3{2.0f, 0, 0} },
-        Health{ .current = 100, .max = 100 },
-        Tag{ .name = "player" }
-    );
-    std::printf("  Player spawned: %s\n", world.get<Tag>(player).name.c_str());
-
-    // Enemies
-    for (int i = 0; i < 3; i++) {
-        float angle = (float)i / 3.0f * 6.28318f;
-        world.spawn(
-            Transform{ .position = glm::vec3{std::cos(angle) * 10.0f, 1, std::sin(angle) * 10.0f} },
-            Velocity{},
-            Health{ .current = 50, .max = 50 },
-            Enemy{ .speed = 3.0f },
-            Tag{ .name = std::string("enemy_") + std::to_string(i) }
-        );
+void gravity_system(Query<Velocity, Without<Enemy>> query, Res<GameConfig> config, Res<Time> time) {
+    for (auto [velocity] : query) {
+        velocity.value.y += config->gravity * time->delta();
     }
-    std::printf("  3 enemies spawned\n");
+}
 
-    // Disabled entity
-    world.spawn(
-        Transform{ .position = glm::vec3{999, 999, 999} },
-        Disabled{},
-        Tag{ .name = "hidden" }
-    );
-    std::printf("  1 disabled entity spawned\n\n");
+void count_frames(ResMut<FrameCounter> counter) {
+    counter->count++;
+}
 
-    // --- Query tests ---
-    std::printf("--- Query tests ---\n");
-    {
-        auto q = world.query<const Transform, const Tag>();
-        std::printf("  All tagged entities: %zu\n", q.count());
-        for (auto [t, tag] : q) {
-            std::printf("    %s at (%.1f, %.1f, %.1f)\n",
+void print_status(Query<const Transform, const Tag> query, Res<Time> time, Res<FrameCounter> counter) {
+    if (counter->count % 1 == 0) { // every frame for demo
+        std::printf("  Frame %d (dt=%.4f, elapsed=%.3f):\n",
+            counter->count, time->delta(), time->elapsed());
+        for (auto [t, tag] : query) {
+            std::printf("    %s at (%.2f, %.2f, %.2f)\n",
                 tag.name.c_str(), t.position.x, t.position.y, t.position.z);
         }
     }
-    {
-        auto q = world.query<const Tag, Without<Disabled>>();
-        std::printf("  Tagged entities (not disabled): %zu\n", q.count());
+}
+
+// ============================================================
+// Plugin (groups related systems + resources)
+// ============================================================
+
+struct GamePlugin {
+    void build(App& app) {
+        app.insert_resource(GameConfig{});
+        app.insert_resource(FrameCounter{});
+
+        app.add_system(Schedule::Update, movement_system, "movement");
+        app.add_system(Schedule::Update, gravity_system, "gravity");
+        app.add_system(Schedule::Update, count_frames, "count_frames");
+        app.add_system(Schedule::PostUpdate, print_status, "print_status");
     }
-    {
-        auto q = world.query<const Transform, With<ActiveCamera>>();
-        std::printf("  Active cameras: %zu\n", q.count());
-    }
-    {
-        auto q = world.query<const Health, With<Enemy>>();
-        std::printf("  Enemies with health: %zu\n", q.count());
-    }
-    {
-        auto q = world.query<const Transform, Optional<Health>>();
-        std::printf("  All transforms (optional health): %zu\n", q.count());
-        for (auto [t, hp] : q) {
-            if (hp) std::printf("    pos=(%.1f,%.1f,%.1f) hp=%.0f\n", t.position.x, t.position.y, t.position.z, hp->current);
-            else std::printf("    pos=(%.1f,%.1f,%.1f) no-health\n", t.position.x, t.position.y, t.position.z);
+};
+
+struct ScenePlugin {
+    void build(App& app) {
+        // Spawn scene directly (Commands via system params don't auto-apply yet —
+        // that's a scheduler gap to fix. For now, spawn via World directly.)
+        auto& world = app.world();
+
+        world.spawn(
+            Transform{ .position = glm::vec3{0, 5, -10} },
+            Camera{}, ActiveCamera{}, Tag{ .name = "camera" });
+
+        world.spawn(
+            Transform{ .position = glm::vec3{0, 1, 0} },
+            Velocity{ .value = glm::vec3{1.0f, 0, 0} },
+            Health{ .current = 100, .max = 100 },
+            Tag{ .name = "player" });
+
+        for (int i = 0; i < 3; i++) {
+            float angle = (float)i / 3.0f * 6.28318f;
+            world.spawn(
+                Transform{ .position = glm::vec3{
+                    std::cos(angle) * 8.0f, 1, std::sin(angle) * 8.0f} },
+                Velocity{},
+                Health{ .current = 50, .max = 50 },
+                Enemy{ .speed = 3.0f },
+                Tag{ .name = std::string("enemy_") + std::to_string(i) });
         }
+
+        std::printf("  [Setup] Scene spawned: camera + player + 3 enemies\n\n");
+    }
+};
+
+// Quit after N frames (for demo purposes)
+struct QuitAfterPlugin {
+    int max_frames = 5;
+
+    void build(App& app) {
+        // In a real game, you'd send an AppExit event to quit.
+        // For the sandbox, we use tick() manually instead of run().
+    }
+};
+
+// ============================================================
+// Main
+// ============================================================
+
+int main() {
+    std::printf("=== Helios Engine Sandbox (Plan 1 + 2) ===\n\n");
+
+    App app;
+
+    // Register plugins (order doesn't matter — scheduler handles dependencies)
+    app.add_plugin(GamePlugin{});
+    app.add_plugin(ScenePlugin{});
+
+    // Enable parallel system execution
+    app.enable_parallel(2);
+
+    std::printf("--- Running 5 frames ---\n\n");
+
+    // Run 5 frames manually (in a real game, app.run() would loop)
+    for (int i = 0; i < 5; i++) {
+        app.tick();
     }
 
-    // --- Simulate frames ---
-    std::printf("\n--- Simulating 3 frames ---\n");
-    for (int frame = 0; frame < 3; frame++) {
-        auto& time = world.resource<Time>();
-
-        // Run movement system
-        auto q = world.query<Transform, const Velocity>();
-        movement_system(q, time);
-
-        auto& ppos = world.get<Transform>(player).position;
-        std::printf("  Frame %d: player at (%.2f, %.2f, %.2f)\n",
-            frame, ppos.x, ppos.y, ppos.z);
-
-        // Time resource is updated by App::tick(); manual sim just advances.
-    }
-
-    // --- Commands test ---
-    std::printf("\n--- Commands test ---\n");
-    {
-        Commands cmd(world.entities());
-
-        // Spawn via commands
-        Entity bullet = cmd.spawn()
-            .insert(Transform{ .position = glm::vec3{0, 2, 0} })
-            .insert(Velocity{ .value = glm::vec3{0, 0, 50} })
-            .insert(Tag{ .name = "bullet" })
-            .id();
-        std::printf("  Queued spawn of bullet (id=%u)\n", bullet.index);
-
-        // Despawn an enemy
-        cmd.despawn(light);
-        std::printf("  Queued despawn of light\n");
-
-        // Apply
-        world.apply_commands(cmd);
-        std::printf("  Commands applied\n");
-
-        std::printf("  Bullet alive: %s\n", world.is_alive(bullet) ? "yes" : "no");
-        std::printf("  Light alive: %s\n", world.is_alive(light) ? "yes" : "no");
-    }
-
-    // --- Add/Remove component test ---
-    std::printf("\n--- Add/Remove component test ---\n");
-    {
-        std::printf("  Player has Enemy: %s\n", world.has<Enemy>(player) ? "yes" : "no");
-        world.add(player, Enemy{ .speed = 999.0f });
-        std::printf("  Added Enemy to player. Has Enemy: %s, speed=%.0f\n",
-            world.has<Enemy>(player) ? "yes" : "no",
-            world.get<Enemy>(player).speed);
-
-        world.remove<Enemy>(player);
-        std::printf("  Removed Enemy from player. Has Enemy: %s\n",
-            world.has<Enemy>(player) ? "yes" : "no");
-        std::printf("  Player still has Tag: %s\n",
-            world.has<Tag>(player) ? "yes" : "no");
-    }
-
-    // --- Events test ---
-    std::printf("\n--- Events test ---\n");
-    {
-        struct DamageEvent { float amount; std::string target_name; };
-        world.register_event<DamageEvent>();
-
-        auto writer = world.event_writer<DamageEvent>();
-        writer.send(DamageEvent{ .amount = 25.0f, .target_name = "enemy_0" });
-        writer.send(DamageEvent{ .amount = 50.0f, .target_name = "enemy_1" });
-        std::printf("  Sent 2 damage events\n");
-
-        world.swap_event_buffers();
-
-        auto reader = world.event_reader<DamageEvent>();
-        for (const auto& e : reader) {
-            std::printf("  Received: %.0f damage to %s\n", e.amount, e.target_name.c_str());
-        }
-    }
-
-    // --- Final state ---
+    // Final query
     std::printf("\n--- Final state ---\n");
-    {
-        auto q = world.query<const Tag, Without<Disabled>>();
-        std::printf("  Living tagged entities: %zu\n", q.count());
-        for (auto [tag] : q) {
-            std::printf("    - %s\n", tag.name.c_str());
-        }
+    auto& world = app.world();
+    auto enemies = world.query<const Health, const Tag, With<Enemy>>();
+    std::printf("Enemies alive: %zu\n", enemies.count());
+    for (auto [health, tag] : enemies) {
+        std::printf("  %s: %.0f/%.0f hp\n", tag.name.c_str(), health.current, health.max);
     }
 
     std::printf("\n=== Sandbox complete ===\n");
