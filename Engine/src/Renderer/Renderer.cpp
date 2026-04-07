@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "Renderer.h"
 #include "Core/Application.h"
+#include "Renderer/Vulkan/VulkanSwapchain.h"
+#include "Renderer/Vulkan/VulkanDevice.h"
+#include "Renderer/Vulkan/VulkanCommandBuffer.h"
+#include "Renderer/Vulkan/VulkanTexture.h"
 
 namespace Engine
 {
@@ -210,8 +214,47 @@ namespace Engine
 
     void Renderer::BeginDrawing()
     {
-        if (!m_CurrentCamera)
+        // Acquire next swapchain image
+        if (!m_Swapchain->AcquireNextImage())
+        {
+            // Swapchain out of date — needs resize
             return;
+        }
+
+        if (!m_CurrentCamera)
+        {
+            // No camera — just present a blank frame
+            auto* cmd = m_CommandBuffer.get();
+            auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
+            auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+
+            cmd->Begin();
+            VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+                vkSwapchain->GetCurrentVkImage(),
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+            cmd->End();
+
+            // Submit with swapchain sync
+            VkCommandBuffer vkCmdBuf = vkCmd->GetVkCommandBuffer();
+            VkSemaphore waitSem = vkSwapchain->GetImageAvailableSemaphore();
+            VkSemaphore signalSem = vkSwapchain->GetRenderFinishedSemaphore();
+            VkFence fence = vkSwapchain->GetInFlightFence();
+            VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = &waitSem;
+            submitInfo.pWaitDstStageMask = &waitStage;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &vkCmdBuf;
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = &signalSem;
+            vkQueueSubmit(static_cast<VulkanDevice*>(m_Device)->GetGraphicsQueue(), 1, &submitInfo, fence);
+
+            m_Swapchain->Present();
+            return;
+        }
 
         auto* cmd = m_CommandBuffer.get();
         cmd->Begin();
@@ -316,10 +359,32 @@ namespace Engine
         // TODO: need swapchain framebuffer integration
         // m_TonemapPass.Execute(cmd, swapchainFramebuffer, m_ForwardPass.ColorTexture.get(), m_Exposure);
 
+        // Transition swapchain image to present
+        auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
+        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkSwapchain->GetCurrentVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
         cmd->End();
 
-        // Submit
-        m_Device->SubmitCommandBuffer(cmd);
+        // Submit with swapchain synchronization
+        VkCommandBuffer vkCmdBuf = vkCmd->GetVkCommandBuffer();
+        VkSemaphore waitSem = vkSwapchain->GetImageAvailableSemaphore();
+        VkSemaphore signalSem = vkSwapchain->GetRenderFinishedSemaphore();
+        VkFence fence = vkSwapchain->GetInFlightFence();
+        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &waitSem;
+        submitInfo.pWaitDstStageMask = &waitStage;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &vkCmdBuf;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &signalSem;
+        vkQueueSubmit(static_cast<VulkanDevice*>(m_Device)->GetGraphicsQueue(), 1, &submitInfo, fence);
 
         // Present
         m_Swapchain->Present();
