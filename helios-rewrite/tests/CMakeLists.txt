@@ -6,6 +6,8 @@ add_executable(helios-tests
     ecs/test_resources.cpp
     ecs/test_events.cpp
     ecs/test_query.cpp
+    ecs/test_world.cpp
+    ecs/test_commands.cpp
 )
 
 target_link_libraries(helios-tests

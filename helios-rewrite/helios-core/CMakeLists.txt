@@ -9,6 +9,8 @@ target_sources(helios-core
         src/ecs/archetype_storage.cpp
         src/ecs/resource_storage.cpp
         src/ecs/event_storage.cpp
+        src/ecs/world.cpp
+        src/ecs/commands.cpp
 )
 
 target_include_directories(helios-core
