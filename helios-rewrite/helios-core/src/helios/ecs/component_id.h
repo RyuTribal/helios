@@ -5,8 +5,18 @@
 #include <algorithm>
 #include <cstddef>
 #include <functional>
+#include <type_traits>
+#include <concepts>
 
 namespace helios {
+
+// Components must be aggregates: no user-declared constructors, no virtual
+// functions, no private/protected data members. This is required for:
+//   1. Automatic reflection via qlibs/reflect
+//   2. Cache-friendly archetype storage
+//   3. Safe type-erased column operations
+template <typename T>
+concept Component = std::is_aggregate_v<T> && std::is_move_constructible_v<T> && std::is_destructible_v<T>;
 
 using ComponentId = std::type_index;
 using ArchetypeId = std::vector<ComponentId>;

@@ -2,6 +2,7 @@
 
 #include "helios/ecs/entity.h"
 #include "helios/ecs/entity_allocator.h"
+#include "helios/ecs/component_id.h"
 
 #include <functional>
 #include <vector>
@@ -25,8 +26,8 @@ public:
     EntityBuilder(Entity entity, Commands& commands)
         : m_entity(entity), m_commands(&commands) {}
 
-    /// Queue a deferred insert of the given component.
-    template <typename T>
+    /// Queue a deferred insert of the given component (must be aggregate).
+    template <Component T>
     EntityBuilder& insert(T component);
 
     /// Return the pre-allocated entity id.
@@ -49,8 +50,8 @@ public:
     /// Queue a deferred despawn.
     void despawn(Entity entity);
 
-    /// Queue a deferred component addition.
-    template <typename T>
+    /// Queue a deferred component addition (must be aggregate).
+    template <Component T>
     void insert(Entity entity, T component);
 
     /// Queue a deferred component removal.
@@ -88,7 +89,7 @@ private:
 
 namespace helios {
 
-template <typename T>
+template <Component T>
 void Commands::insert(Entity entity, T component) {
     push_command(Command{
         [entity, comp = std::move(component)](World& world) mutable {
@@ -115,7 +116,7 @@ void Commands::insert_resource(T resource) {
     });
 }
 
-template <typename T>
+template <Component T>
 EntityBuilder& EntityBuilder::insert(T component) {
     m_commands->insert<T>(m_entity, std::move(component));
     return *this;

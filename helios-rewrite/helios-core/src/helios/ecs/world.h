@@ -29,7 +29,9 @@ public:
     Entity spawn();
 
     /// Spawn an entity with an initial set of components.
+    /// All component types must be aggregates (no constructors, no virtual methods).
     template <typename... Ts>
+        requires (Component<std::remove_cvref_t<Ts>> && ...)
     Entity spawn(Ts&&... components) {
         Entity e = m_allocator.allocate();
 
@@ -107,7 +109,7 @@ public:
     // -----------------------------------------------------------------
 
     /// Add a component to an existing entity, moving it to a new archetype.
-    template <typename T>
+    template <Component T>
     void add(Entity entity, T component) {
         ensure_registered<T>();
 

@@ -255,3 +255,30 @@ TEST(ResResMut, ResMutAllowsMutation) {
     (*res_mut).max_entities = 200;
     EXPECT_EQ(cfg.max_entities, 200);
 }
+
+// Compile-time concept checks
+namespace {
+
+struct GoodComponent { float x; int y; std::string name; };
+struct MarkerComponent {};
+
+struct BadVirtual { virtual void update() {} float x; };
+struct BadConstructor { BadConstructor(int v) : val(v) {} int val; };
+struct BadPrivate { float x; private: int secret; };
+
+// These should satisfy the Component concept
+static_assert(helios::Component<GoodComponent>);
+static_assert(helios::Component<MarkerComponent>);
+static_assert(helios::Component<helios::Transform>);
+static_assert(helios::Component<helios::Tag>);
+static_assert(helios::Component<helios::Children>);
+static_assert(helios::Component<helios::Disabled>);
+static_assert(helios::Component<helios::MeshRenderer>);
+static_assert(helios::Component<helios::Camera>);
+
+// These should NOT satisfy the Component concept
+static_assert(!helios::Component<BadVirtual>, "Virtual methods disallowed");
+static_assert(!helios::Component<BadConstructor>, "User constructors disallowed");
+static_assert(!helios::Component<BadPrivate>, "Private members disallowed");
+
+} // namespace
