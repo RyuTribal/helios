@@ -24,7 +24,9 @@ namespace Engine {
 			}
 			else
 			{
-				data.Data = stbi_load(full_path.string().c_str(), &width, &height, &channels, 0);
+				// Force 4 channels — Vulkan doesn't support 3-channel formats
+				data.Data = stbi_load(full_path.string().c_str(), &width, &height, &channels, 4);
+				channels = 4;
 			}
 		}
 
@@ -47,7 +49,7 @@ namespace Engine {
 				spec.Format = ImageFormat::R8;
 				break;
 			case 3:
-				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGB32F : ImageFormat::RGB8;
+				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGB32F : ImageFormat::RGBA8;
 				break;
 			case 4:
 				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGBA32F : ImageFormat::RGBA8;
@@ -79,7 +81,9 @@ namespace Engine {
 			}
 			else
 			{
-				data.Data = stbi_load(full_path.string().c_str(), &width, &height, &channels, 0);
+				// Force 4 channels — Vulkan doesn't support 3-channel (RGB) formats on most GPUs
+			data.Data = stbi_load(full_path.string().c_str(), &width, &height, &channels, 4);
+			channels = 4;
 			}
 		}
 
