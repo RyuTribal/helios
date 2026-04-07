@@ -1,22 +1,20 @@
 add_library(helios-core STATIC)
 
-# Sources will be added as tasks progress - start with a placeholder
 target_sources(helios-core
     PRIVATE
-        src/ecs/entity.cpp
-        src/ecs/entity_allocator.cpp
-        src/ecs/archetype.cpp
-        src/ecs/archetype_storage.cpp
-        src/ecs/resource_storage.cpp
-        src/ecs/event_storage.cpp
-        src/ecs/world.cpp
-        src/ecs/commands.cpp
+        src/helios/ecs/entity.cpp
+        src/helios/ecs/entity_allocator.cpp
+        src/helios/ecs/archetype.cpp
+        src/helios/ecs/archetype_storage.cpp
+        src/helios/ecs/resource_storage.cpp
+        src/helios/ecs/event_storage.cpp
+        src/helios/ecs/world.cpp
+        src/helios/ecs/commands.cpp
 )
 
+# Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
 target_include_directories(helios-core
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
