@@ -10,6 +10,7 @@ add_executable(helios-tests
     ecs/test_commands.cpp
     ecs/test_components.cpp
     core/test_uuid.cpp
+    core/test_logging.cpp
 )
 
 target_link_libraries(helios-tests

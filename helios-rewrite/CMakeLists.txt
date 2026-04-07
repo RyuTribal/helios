@@ -25,6 +25,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG        v1.15.0
+)
+set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)   # use spdlog's bundled fmt
+set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(spdlog)
+
 if(HELIOS_BUILD_TESTS)
     FetchContent_Declare(
         googletest
