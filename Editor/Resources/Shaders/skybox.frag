@@ -4,14 +4,16 @@ layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec3 local_pos;
 
-layout(set = 1, binding = 1) uniform samplerCube u_EnvironmentMap;
-
-layout(push_constant) uniform PushConstants {
+layout(set = 0, binding = 0) uniform SkyboxUBO {
+    mat4 u_CameraView;
+    mat4 u_CameraProjection;
     float u_Brightness;
-} pc;
+} ubo;
+
+layout(set = 0, binding = 1) uniform samplerCube u_EnvironmentMap;
 
 void main(){
-    vec3 envColor = texture(u_EnvironmentMap, local_pos).rgb * pc.u_Brightness;
+    vec3 envColor = texture(u_EnvironmentMap, local_pos).rgb * ubo.u_Brightness;
 
     // tone mapping is handled in hdr shader
 
