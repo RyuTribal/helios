@@ -5,6 +5,7 @@ target_sources(helios-core
     PRIVATE
         src/ecs/entity.cpp
         src/ecs/entity_allocator.cpp
+        src/ecs/archetype.cpp
 )
 
 target_include_directories(helios-core

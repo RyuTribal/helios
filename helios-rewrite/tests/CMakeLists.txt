@@ -1,6 +1,7 @@
 add_executable(helios-tests
     ecs/test_entity.cpp
     ecs/test_entity_allocator.cpp
+    ecs/test_archetype.cpp
 )
 
 target_link_libraries(helios-tests
