@@ -3,7 +3,8 @@ add_library(helios-core STATIC)
 # Sources will be added as tasks progress - start with a placeholder
 target_sources(helios-core
     PRIVATE
-        src/ecs/placeholder.cpp
+        src/ecs/entity.cpp
+        src/ecs/entity_allocator.cpp
 )
 
 target_include_directories(helios-core
