@@ -1,0 +1,17 @@
+{
+  "tests": 1,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "Placeholder",
+      "tests": 1,
+      "testsuite": [
+        {
+          "name": "CompilationWorks",
+          "file": "\/home\/ryutribal\/programming\/helios\/helios-rewrite\/tests\/ecs\/test_placeholder.cpp",
+          "line": 3
+        }
+      ]
+    }
+  ]
+}

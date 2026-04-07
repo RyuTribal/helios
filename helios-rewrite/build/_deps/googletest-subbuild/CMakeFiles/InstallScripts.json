@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/ryutribal/programming/helios/helios-rewrite/build/_deps/googletest-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

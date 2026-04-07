@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libhelios-core.a "CMakeFiles/helios-core.dir/src/ecs/placeholder.cpp.o"
+/usr/bin/ranlib ../lib/libhelios-core.a
