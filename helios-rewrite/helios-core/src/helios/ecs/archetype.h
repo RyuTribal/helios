@@ -4,7 +4,7 @@
 #include "helios/ecs/entity.h"
 #include <vector>
 #include <unordered_map>
-#include <cassert>
+#include "helios/core/assert.h"
 
 namespace helios {
 
@@ -31,14 +31,14 @@ struct Archetype {
     template <typename T>
     Column& get_column() {
         auto it = column_index.find(component_id<T>());
-        assert(it != column_index.end());
+        HELIOS_ASSERT(it != column_index.end());
         return columns[it->second];
     }
 
     template <typename T>
     const Column& get_column() const {
         auto it = column_index.find(component_id<T>());
-        assert(it != column_index.end());
+        HELIOS_ASSERT(it != column_index.end());
         return columns[it->second];
     }
 
@@ -53,7 +53,7 @@ struct Archetype {
     }
 
     void swap_remove(size_t row) {
-        assert(row < entities.size());
+        HELIOS_ASSERT(row < entities.size());
         size_t last = entities.size() - 1;
         if (row != last) {
             entities[row] = entities[last];

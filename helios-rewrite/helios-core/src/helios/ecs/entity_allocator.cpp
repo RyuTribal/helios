@@ -1,5 +1,5 @@
 #include "helios/ecs/entity_allocator.h"
-#include <cassert>
+#include "helios/core/assert.h"
 
 namespace helios {
 
@@ -18,10 +18,10 @@ Entity EntityAllocator::allocate() {
 }
 
 void EntityAllocator::deallocate(Entity entity) {
-    assert(entity.index < m_entries.size());
+    HELIOS_ASSERT(entity.index < m_entries.size());
     auto& entry = m_entries[entity.index];
-    assert(entry.alive);
-    assert(entry.generation == entity.generation);
+    HELIOS_ASSERT(entry.alive);
+    HELIOS_ASSERT(entry.generation == entity.generation);
     entry.alive = false;
     entry.generation++;
     m_free_list.push_back(entity.index);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cassert>
+#include "helios/core/assert.h"
 
 namespace helios {
 
@@ -10,7 +10,7 @@ template <typename T>
 class Res {
 public:
     explicit Res(const T* ptr) : m_ptr(ptr) {
-        assert(ptr && "Res: null resource pointer");
+        HELIOS_ASSERT(ptr, "Res: null resource pointer");
     }
 
     const T& operator*()  const { return *m_ptr; }
@@ -27,7 +27,7 @@ template <typename T>
 class ResMut {
 public:
     explicit ResMut(T* ptr) : m_ptr(ptr) {
-        assert(ptr && "ResMut: null resource pointer");
+        HELIOS_ASSERT(ptr, "ResMut: null resource pointer");
     }
 
     T& operator*()  const { return *m_ptr; }

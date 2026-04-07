@@ -15,3 +15,5 @@
 #include "helios/core/log_entry.h"
 #include "helios/core/log_system.h"
 #include "helios/core/log_macros.h"
+#include "helios/core/assert.h"
+#include "helios/core/crash_handler.h"

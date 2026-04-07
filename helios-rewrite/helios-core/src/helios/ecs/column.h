@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstddef>
 #include <cstring>
-#include <cassert>
+#include "helios/core/assert.h"
 #include <functional>
 
 namespace helios {
@@ -59,7 +59,7 @@ public:
     }
 
     void swap_remove(size_t index) {
-        assert(index < m_count);
+        HELIOS_ASSERT(index < m_count);
         void* target = m_data.data() + index * m_element_size;
         m_destructor(target);
 
@@ -75,7 +75,7 @@ public:
     }
 
     void move_out_and_swap_remove(size_t index, void* dst) {
-        assert(index < m_count);
+        HELIOS_ASSERT(index < m_count);
         void* src = m_data.data() + index * m_element_size;
         m_move_construct(dst, src);
         m_destructor(src);
@@ -92,12 +92,12 @@ public:
     }
 
     void* get_raw(size_t index) {
-        assert(index < m_count);
+        HELIOS_ASSERT(index < m_count);
         return m_data.data() + index * m_element_size;
     }
 
     const void* get_raw(size_t index) const {
-        assert(index < m_count);
+        HELIOS_ASSERT(index < m_count);
         return m_data.data() + index * m_element_size;
     }
 

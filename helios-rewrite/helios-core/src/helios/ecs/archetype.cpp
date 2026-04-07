@@ -1,4 +1,5 @@
 #include "helios/ecs/archetype.h"
+#include "helios/core/assert.h"
 
 namespace helios {
 
@@ -9,7 +10,7 @@ Archetype create_archetype(const ArchetypeId& id,
     arch.columns.reserve(id.size());
     for (size_t i = 0; i < id.size(); ++i) {
         auto it = column_factories.find(id[i]);
-        assert(it != column_factories.end());
+        HELIOS_ASSERT(it != column_factories.end());
         arch.columns.push_back(it->second());
         arch.column_index[id[i]] = i;
     }

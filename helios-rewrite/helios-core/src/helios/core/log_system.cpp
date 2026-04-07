@@ -1,5 +1,6 @@
 // helios-rewrite/helios-core/src/helios/core/log_system.cpp
 #include "helios/core/log_system.h"
+#include "helios/core/crash_handler.h"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -9,7 +10,7 @@
 #include <spdlog/async_logger.h>
 #include <spdlog/pattern_formatter.h>
 
-#include <cassert>
+#include "helios/core/assert.h"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -47,9 +48,15 @@ LogSystem::LogSystem(const LogConfig& config)
     // Set global instance
     s_instance = this;
     m_is_global_owner = true;
+
+    // Install signal-based crash handlers
+    install_crash_handlers();
 }
 
 LogSystem::~LogSystem() {
+    // Remove signal-based crash handlers
+    remove_crash_handlers();
+
     // Flush all loggers
     flush();
 

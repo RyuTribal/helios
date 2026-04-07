@@ -1,5 +1,6 @@
 #include "helios/ecs/archetype_storage.h"
 #include "helios/core/engine_log_channels.h"
+#include "helios/core/assert.h"
 
 namespace helios {
 
@@ -47,7 +48,7 @@ void ArchetypeStorage::remove_entity(Entity entity) {
 
 void ArchetypeStorage::move_entity(Entity entity, Archetype& from, Archetype& to) {
     auto loc_it = m_entity_locations.find(entity);
-    assert(loc_it != m_entity_locations.end());
+    HELIOS_ASSERT(loc_it != m_entity_locations.end());
     HELIOS_LOG(ECS, Trace, "Moving entity {{index={}, gen={}}} between archetypes ({} -> {} components)",
         entity.index, entity.generation, from.id.size(), to.id.size());
     size_t src_row = loc_it->second.row;
