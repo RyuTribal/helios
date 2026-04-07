@@ -77,8 +77,9 @@ namespace Engine
 
 		ImGui_ImplVulkan_Init(&initInfo);
 
-		// Upload fonts
+		// Upload fonts and wait for GPU to finish the upload
 		ImGui_ImplVulkan_CreateFontsTexture();
+		device->WaitIdle();
 
 		HVE_CORE_TRACE_TAG("ImGui", "ImGui Vulkan backend initialized");
 	}

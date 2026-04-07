@@ -165,7 +165,15 @@ namespace Engine
 			return false;
 		}
 		m_Minimized = false;
-		Renderer::Get()->SetViewport(e.GetHeight(), e.GetWidth());
+
+		// Resize the Vulkan swapchain to match new window size
+		if (m_VulkanSwapchain && e.GetWidth() > 0 && e.GetHeight() > 0)
+		{
+			m_VulkanDevice->WaitIdle();
+			m_VulkanSwapchain->Resize(e.GetWidth(), e.GetHeight());
+		}
+
+		Renderer::Get()->SetViewport(e.GetWidth(), e.GetHeight());
 
 		return false;
 	}
