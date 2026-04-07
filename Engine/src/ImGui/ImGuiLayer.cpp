@@ -16,6 +16,9 @@
 #include "imgui_impl_vulkan.h"
 #include "ImGui/ImGuizmo.h"
 
+static VkRenderPass s_GlobalImGuiRenderPass = VK_NULL_HANDLE;
+VkRenderPass GetImGuiRenderPass() { return s_GlobalImGuiRenderPass; }
+
 namespace Engine
 {
 
@@ -68,12 +71,49 @@ namespace Engine
 		initInfo.ImageCount = swapchain->GetImageCount();
 		initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
-		// Use dynamic rendering (Vulkan 1.3) — no render pass needed
-		initInfo.UseDynamicRendering = true;
-		VkFormat swapchainFormat = swapchain->GetVkFormat();
-		initInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-		initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-		initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &swapchainFormat;
+		// Use a compatible render pass for ImGui's pipeline creation
+		// Dynamic rendering caused GPU hangs — use legacy render pass for ImGui
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = swapchain->GetVkFormat();
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference colorRef{};
+		colorRef.attachment = 0;
+		colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorRef;
+
+		VkSubpassDependency dep{};
+		dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dep.dstSubpass = 0;
+		dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dep.srcAccessMask = 0;
+		dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		VkRenderPassCreateInfo rpInfo{};
+		rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		rpInfo.attachmentCount = 1;
+		rpInfo.pAttachments = &colorAttachment;
+		rpInfo.subpassCount = 1;
+		rpInfo.pSubpasses = &subpass;
+		rpInfo.dependencyCount = 1;
+		rpInfo.pDependencies = &dep;
+
+		vkCreateRenderPass(device->GetDevice(), &rpInfo, nullptr, &s_GlobalImGuiRenderPass);
+
+		initInfo.RenderPass = s_GlobalImGuiRenderPass;
+
+		HVE_CORE_TRACE_TAG("ImGui", "Created ImGui render pass: format={}", (int)swapchain->GetVkFormat());
 
 		ImGui_ImplVulkan_Init(&initInfo);
 
