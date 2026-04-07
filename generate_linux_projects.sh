@@ -25,21 +25,26 @@ check_command() {
 log_info "Checking prerequisites..."
 
 MISSING=0
-for cmd in cmake make gcc g++ pkg-config git curl dotnet; do
+for cmd in cmake make gcc g++ pkg-config git curl dotnet glslc; do
     if ! check_command "$cmd"; then
         MISSING=1
     fi
 done
 
 if ! pkg-config --exists gtk+-3.0 2>/dev/null; then
-    log_error "GTK3 development files not found. Install gtk3 (e.g. 'sudo pacman -S gtk3' on Arch, 'sudo apt install libgtk-3-dev' on Debian/Ubuntu)"
+    log_error "GTK3 development files not found."
+    MISSING=1
+fi
+
+if ! pkg-config --exists vulkan 2>/dev/null; then
+    log_error "Vulkan SDK not found."
     MISSING=1
 fi
 
 if [ "$MISSING" -eq 1 ]; then
     log_error "Missing prerequisites. Please install them and re-run."
-    log_info "On Arch: sudo pacman -S cmake make gcc pkg-config git curl gtk3 dotnet-sdk-10.0"
-    log_info "On Ubuntu: sudo apt install cmake make gcc g++ pkg-config git curl libgtk-3-dev dotnet-sdk-10.0"
+    log_info "On Arch: sudo pacman -S cmake make gcc pkg-config git curl gtk3 dotnet-sdk-10.0 vulkan-headers vulkan-tools vulkan-validation-layers shaderc"
+    log_info "On Ubuntu: sudo apt install cmake make gcc g++ pkg-config git curl libgtk-3-dev dotnet-sdk-10.0 libvulkan-dev vulkan-validationlayers glslc"
     exit 1
 fi
 
@@ -111,6 +116,14 @@ fi
 
 # ─── Make premake5 executable ─────────────────────────────────────────────────
 chmod +x "$SCRIPT_DIR/vendor/premake/premake5"
+
+# ─── Compile shaders to SPIR-V ────────────────────────────────────────────────
+if [ -f "$SCRIPT_DIR/compile_shaders.sh" ]; then
+    log_info "Compiling shaders to SPIR-V..."
+    bash "$SCRIPT_DIR/compile_shaders.sh"
+else
+    log_warn "compile_shaders.sh not found, skipping shader compilation."
+fi
 
 # ─── Generate Makefiles ──────────────────────────────────────────────────────
 log_info "Generating Makefiles..."

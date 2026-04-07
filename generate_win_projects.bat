@@ -18,6 +18,7 @@ where cmake >nul 2>&1 || (echo [ERROR] cmake not found. Install from https://cma
 where git >nul 2>&1 || (echo [ERROR] git not found. Install from https://git-scm.com & goto :error)
 where dotnet >nul 2>&1 || (echo [ERROR] dotnet not found. Install .NET 10 SDK from https://dot.net/download & goto :error)
 where curl >nul 2>&1 || (echo [ERROR] curl not found. & goto :error)
+where glslc >nul 2>&1 || (echo [ERROR] glslc not found. Install Vulkan SDK from https://vulkan.lunarg.com/sdk/home & goto :error)
 
 echo [INFO] All prerequisites found.
 echo.
@@ -82,6 +83,23 @@ curl -sSL "%HEADERS_BASE%/nethost/nethost.h" -o "%DOTNET_INCLUDE%\nethost.h"
 echo [INFO] hostfxr headers downloaded.
 
 :skip_headers
+echo.
+
+:: ─── Compile shaders to SPIR-V ───────────────────────────────────────────────
+echo [INFO] Compiling shaders to SPIR-V...
+for %%f in ("%SCRIPT_DIR%\Editor\Resources\Shaders\*.vert" "%SCRIPT_DIR%\Editor\Resources\Shaders\*.frag" "%SCRIPT_DIR%\Editor\Resources\Shaders\*.comp") do (
+    if exist "%%f" (
+        echo   Compiling: %%~nxf
+        glslc "%%f" -o "%%f.spv" || goto :error
+    )
+)
+for %%f in ("%SCRIPT_DIR%\Editor\Resources\Shaders\*.geo") do (
+    if exist "%%f" (
+        echo   Compiling: %%~nxf
+        glslc -fshader-stage=geometry "%%f" -o "%%f.spv" || goto :error
+    )
+)
+echo [INFO] All shaders compiled.
 echo.
 
 :: ─── Generate VS2022 projects ────────────────────────────────────────────────
