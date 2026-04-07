@@ -289,11 +289,6 @@ namespace Engine
 
     ImTextureID Renderer::GetSceneTextureID()
     {
-        // Don't return a descriptor for the forward pass texture until
-        // the 3D render passes are enabled (the texture is in UNDEFINED layout
-        // and sampling it hangs the GPU on Intel Mesa)
-        return nullptr;
-
         if (!m_ForwardPass.ColorTexture)
             return nullptr;
 
