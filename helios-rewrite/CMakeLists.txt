@@ -39,6 +39,9 @@ endif()
 # Engine core library
 add_subdirectory(helios-core)
 
+# Sandbox (user-facing example application)
+add_subdirectory(sandbox)
+
 # Tests
 if(HELIOS_BUILD_TESTS)
     add_subdirectory(tests)

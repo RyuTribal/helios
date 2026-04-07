@@ -72,6 +72,9 @@ void ArchetypeStorage::move_entity(Entity entity, Archetype& from, Archetype& to
 
         src_col.move_out_and_swap_remove(src_row, buf);
         dst_col.push(buf);
+        // push() move-constructs from buf, leaving a moved-from object that
+        // still needs its destructor called.
+        dst_col.destroy_element(buf);
 
         if (elem_size > STACK_BUF_SIZE) {
             delete[] static_cast<std::byte*>(buf);
