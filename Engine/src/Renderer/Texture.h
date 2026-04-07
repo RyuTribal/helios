@@ -3,6 +3,9 @@
 #include "Core/Buffer.h"
 #include "RHI/RHI.h"
 
+#include <imgui/imgui.h>
+#include <vulkan/vulkan.h>
+
 namespace Engine {
 
     // Keep TextureSpecification for compatibility with existing code (ModelImporter, etc.)
@@ -27,6 +30,9 @@ namespace Engine {
 
         // Returns 0 for Vulkan. Kept for ImGui compatibility (ImGui Vulkan uses VkDescriptorSet, not texture IDs).
         virtual uint32_t GetRendererID() const { return 0; }
+
+        // Returns an ImGui-compatible texture handle (VkDescriptorSet for Vulkan backend).
+        virtual ImTextureID GetImGuiTextureID() { return nullptr; }
 
         virtual void SetData(Buffer data) = 0;
 
@@ -53,6 +59,8 @@ namespace Engine {
         uint32_t GetHeight() const override { return m_Specification.Height; }
         uint32_t GetRendererID() const override { return 0; }
 
+        ImTextureID GetImGuiTextureID() override;
+
         void SetData(Buffer data) override;
 
         void Bind(uint32_t slot = 0) const override {} // No-op for Vulkan
@@ -72,6 +80,7 @@ namespace Engine {
     private:
         TextureSpecification m_Specification;
         Ref<RHITexture> m_RHITexture;
+        VkDescriptorSet m_ImGuiDescriptor = VK_NULL_HANDLE;
     };
 
 

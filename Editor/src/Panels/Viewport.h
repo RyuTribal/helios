@@ -84,13 +84,13 @@ namespace EditorPanels {
 
 			m_Focused = ImGui::IsWindowFocused();
 			m_IsHovered = ImGui::IsWindowHovered();
-			uint32_t id = Engine::Renderer::Get()->GetSceneTextureID();
+			ImTextureID id = Engine::Renderer::Get()->GetSceneTextureID();
 			auto viewportOffset = ImGui::GetCursorPos();
 			auto viewportSize = ImGui::GetContentRegionAvail();
 			Engine::Renderer::Get()->ResizeViewport((uint32_t)viewportSize.x, (uint32_t)viewportSize.y);
 
 			// Render viewport image
-			ImGui::Image((void*)(intptr_t)(id), ImVec2{ viewportSize.x, viewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
+			ImGui::Image(id, ImVec2{ viewportSize.x, viewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
 
 			auto windowSize = ImGui::GetWindowSize();
 			ImVec2 minBound = ImGui::GetWindowPos();

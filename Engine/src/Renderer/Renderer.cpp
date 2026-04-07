@@ -494,6 +494,9 @@ namespace Engine
 
         m_DepthPrePass.Resize(m_Device, w, h);
         m_ForwardPass.Resize(m_Device, w, h);
+
+        // Invalidate cached ImGui descriptor since the color texture was recreated
+        m_SceneImGuiDescriptor = VK_NULL_HANDLE;
     }
 
     void Renderer::SetViewport(int width, int height)
@@ -507,5 +510,21 @@ namespace Engine
         m_Stats.vertices_count = 0;
         m_Stats.draw_calls = 0;
         m_Stats.index_count = 0;
+    }
+
+    ImTextureID Renderer::GetSceneTextureID()
+    {
+        if (!m_ForwardPass.ColorTexture)
+            return nullptr;
+
+        if (!m_SceneImGuiDescriptor)
+        {
+            auto* vkTex = static_cast<VulkanTexture*>(m_ForwardPass.ColorTexture.get());
+            m_SceneImGuiDescriptor = ImGui_ImplVulkan_AddTexture(
+                vkTex->GetVkSampler(),
+                vkTex->GetVkImageView(),
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
+        return m_SceneImGuiDescriptor;
     }
 }

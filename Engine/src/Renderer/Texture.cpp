@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Texture.h"
+#include "Renderer/Vulkan/VulkanTexture.h"
+#include "ImGui/imgui_impl_vulkan.h"
 
 // Forward declare to avoid circular include - Renderer::GetDevice() is used to get the RHI device
 namespace Engine { class Renderer; }
@@ -112,6 +114,22 @@ namespace Engine {
         desc.DebugName = "Texture2D";
 
         m_RHITexture = device->CreateTexture(desc, data.Data);
+
+        // Invalidate cached ImGui descriptor since the underlying texture changed
+        m_ImGuiDescriptor = VK_NULL_HANDLE;
+    }
+
+    ImTextureID Texture2D::GetImGuiTextureID()
+    {
+        if (!m_ImGuiDescriptor && m_RHITexture)
+        {
+            auto* vkTex = static_cast<VulkanTexture*>(m_RHITexture.get());
+            m_ImGuiDescriptor = ImGui_ImplVulkan_AddTexture(
+                vkTex->GetVkSampler(),
+                vkTex->GetVkImageView(),
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
+        return m_ImGuiDescriptor;
     }
 
 

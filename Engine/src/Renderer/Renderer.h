@@ -11,6 +11,7 @@
 #include "DefaultTextures.h"
 #include "PipelineCache.h"
 #include "RHI/RHI.h"
+#include <imgui/imgui.h>
 
 struct GLFWwindow;
 
@@ -172,7 +173,7 @@ namespace Engine {
         void SetCamera(Camera* camera) { m_CurrentCamera = camera; }
 
         void SetBackgroundColor(int red, int green, int blue) { m_BackgroundColor[0] = red; m_BackgroundColor[1] = green; m_BackgroundColor[2] = blue; }
-        uint32_t GetSceneTextureID() { return 0; } // TODO: ImGui Vulkan descriptor set handle
+        ImTextureID GetSceneTextureID();
 
         Statistics* GetStats() { return &m_Stats; }
         void ResizeViewport(int width, int height);
@@ -233,6 +234,9 @@ namespace Engine {
         bool m_DrawBoundingBox = false;
 
         const float m_Exposure = 1.0f;
+
+        // Cached ImGui descriptor for the scene viewport (forward pass color texture)
+        VkDescriptorSet m_SceneImGuiDescriptor = VK_NULL_HANDLE;
 
         // Default texture wrappers for backward compatibility
         static Ref<Texture2D> s_WhiteTexWrap;

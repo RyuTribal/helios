@@ -174,11 +174,11 @@ namespace EditorPanels {
 		new_element.IsDirectory = std::filesystem::is_directory(path);
 		if (new_element.IsDirectory || new_element.IsRegistered || path.extension() == ".cs")
 		{
-			new_element.TextureID = (ImTextureID)EditorResources::FileIcons[path.extension().string()]->GetRendererID();
+			new_element.TextureID = EditorResources::FileIcons[path.extension().string()]->GetImGuiTextureID();
 		}
 		else
 		{
-			new_element.TextureID = (ImTextureID)EditorResources::FileIcons["unregistered"]->GetRendererID();
+			new_element.TextureID = EditorResources::FileIcons["unregistered"]->GetImGuiTextureID();
 		}
 		m_DirectoryElements[path.string()] = new_element;
 	}
@@ -391,9 +391,9 @@ namespace EditorPanels {
 		ImGui::BeginDisabled(m_CurrentDirectory == m_RootDirectory);
 		ImVec2 uv0 = ImVec2(0.0f, 1.0f);
 		ImVec2 uv1 = ImVec2(1.0f, 0.0f);
-		auto back_button_texture_id = EditorResources::FileIcons["back"]->GetRendererID();
+		auto back_button_texture_id = EditorResources::FileIcons["back"]->GetImGuiTextureID();
 
-		if (ImGui::ImageButton((ImTextureID)back_button_texture_id, ImVec2(24.0f, 24.0f), uv0, uv1))
+		if (ImGui::ImageButton(back_button_texture_id, ImVec2(24.0f, 24.0f), uv0, uv1))
 		{
 			m_CurrentDirectory = m_CurrentDirectory.parent_path();
 		}
@@ -401,10 +401,10 @@ namespace EditorPanels {
 
 		ImVec2 pos = ImGui::GetCursorScreenPos();
 
-		auto refresh_texture_id = EditorResources::FileIcons["refresh"]->GetRendererID();
+		auto refresh_texture_id = EditorResources::FileIcons["refresh"]->GetImGuiTextureID();
 		float full_width = ImGui::GetContentRegionAvail().x;
 		ImGui::SetCursorScreenPos(ImVec2(pos.x + full_width, pos.y));
-		if (ImGui::ImageButton((ImTextureID)refresh_texture_id, ImVec2(24.0f, 24.0f), uv0, uv1))
+		if (ImGui::ImageButton(refresh_texture_id, ImVec2(24.0f, 24.0f), uv0, uv1))
 		{
 			RefreshBrowser();
 		}
