@@ -617,3 +617,264 @@ TEST_F(LoggingTest, NullLogEntryFieldsCompile) {
 
     // If we got here, NullLogEntry API is correct
 }
+
+// ============================================================================
+// Standalone primitive tests (power layer)
+// ============================================================================
+
+TEST_F(LoggingTest, ConsoleSinkStandalone) {
+    // ConsoleSink can be created and used without LogSystem
+    ASSERT_EQ(helios::LogSystem::instance(), nullptr);
+
+    auto console_sink = std::make_shared<helios::ConsoleSink>();
+    // Writing should not crash even with no LogSystem active
+    console_sink->write(helios::LogLevel::Info, "StandaloneTest", "console sink standalone write");
+    console_sink->flush();
+    // If we got here without crashing, standalone ConsoleSink works
+}
+
+TEST_F(LoggingTest, RingBufferSinkStandalone) {
+    // RingBufferSink can be created and queried without LogSystem
+    ASSERT_EQ(helios::LogSystem::instance(), nullptr);
+
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(32);
+
+    ring_sink->write(helios::LogLevel::Info, "RingTest", "message one");
+    ring_sink->write(helios::LogLevel::Warn, "RingTest", "message two");
+    ring_sink->write(helios::LogLevel::Error, "RingTest", "message three");
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 3u);
+
+    // Verify content is present
+    bool found_one = false, found_two = false, found_three = false;
+    for (const auto& msg : messages) {
+        if (msg.find("message one") != std::string::npos) found_one = true;
+        if (msg.find("message two") != std::string::npos) found_two = true;
+        if (msg.find("message three") != std::string::npos) found_three = true;
+    }
+    EXPECT_TRUE(found_one);
+    EXPECT_TRUE(found_two);
+    EXPECT_TRUE(found_three);
+}
+
+TEST_F(LoggingTest, RingBufferSinkStandalonePartialRetrieval) {
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(32);
+
+    for (int i = 0; i < 10; ++i) {
+        ring_sink->write(helios::LogLevel::Info, "Ring", "msg " + std::to_string(i));
+    }
+
+    auto messages = ring_sink->get_messages(3);
+    EXPECT_EQ(messages.size(), 3u);
+}
+
+TEST_F(LoggingTest, FileSinkStandalone) {
+    // FileSink can be created and used without LogSystem
+    ASSERT_EQ(helios::LogSystem::instance(), nullptr);
+
+    std::string file_path = std::string(kTestLogDir) + "/standalone_file.log";
+    auto file_sink = std::make_shared<helios::FileSink>(file_path);
+
+    file_sink->write(helios::LogLevel::Info, "FileTest", "standalone file write");
+    file_sink->flush();
+
+    std::string contents = read_file(file_path);
+    EXPECT_NE(contents.find("standalone file write"), std::string::npos);
+    EXPECT_NE(contents.find("FileTest"), std::string::npos);
+}
+
+TEST_F(LoggingTest, LogChannelStandaloneWithSinks) {
+    // A LogChannel with custom sinks can log without LogSystem
+    ASSERT_EQ(helios::LogSystem::instance(), nullptr);
+
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    helios::LogChannel my_channel("MyModule", helios::LogLevel::Debug, {
+        std::static_pointer_cast<helios::LogSink>(ring_sink)
+    });
+
+    my_channel.log(helios::LogLevel::Info, "Hello from {}", "standalone channel");
+    my_channel.log(helios::LogLevel::Warn, "Warning: {}", 42);
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 2u);
+
+    bool found_hello = false, found_warning = false;
+    for (const auto& msg : messages) {
+        if (msg.find("Hello from standalone channel") != std::string::npos) found_hello = true;
+        if (msg.find("Warning: 42") != std::string::npos) found_warning = true;
+    }
+    EXPECT_TRUE(found_hello);
+    EXPECT_TRUE(found_warning);
+}
+
+TEST_F(LoggingTest, LogChannelStandaloneLevelFiltering) {
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    helios::LogChannel ch("Filtered", helios::LogLevel::Warn, {
+        std::static_pointer_cast<helios::LogSink>(ring_sink)
+    });
+
+    ch.log(helios::LogLevel::Debug, "should be filtered");
+    ch.log(helios::LogLevel::Info,  "should be filtered too");
+    ch.log(helios::LogLevel::Warn,  "should pass");
+    ch.log(helios::LogLevel::Error, "should also pass");
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 2u);
+
+    bool found_warn = false, found_error = false;
+    for (const auto& msg : messages) {
+        if (msg.find("should pass") != std::string::npos) found_warn = true;
+        if (msg.find("should also pass") != std::string::npos) found_error = true;
+    }
+    EXPECT_TRUE(found_warn);
+    EXPECT_TRUE(found_error);
+}
+
+TEST_F(LoggingTest, LogChannelStandaloneMultipleSinks) {
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    std::string file_path = std::string(kTestLogDir) + "/multi_sink.log";
+    auto file_sink = std::make_shared<helios::FileSink>(file_path);
+
+    helios::LogChannel ch("Multi", helios::LogLevel::Trace, {
+        std::static_pointer_cast<helios::LogSink>(ring_sink),
+        std::static_pointer_cast<helios::LogSink>(file_sink)
+    });
+
+    ch.log(helios::LogLevel::Info, "multi-sink message");
+    ch.flush();
+
+    // Check ring buffer
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_GE(messages.size(), 1u);
+    bool found_ring = false;
+    for (const auto& msg : messages) {
+        if (msg.find("multi-sink message") != std::string::npos) found_ring = true;
+    }
+    EXPECT_TRUE(found_ring);
+
+    // Check file
+    std::string contents = read_file(file_path);
+    EXPECT_NE(contents.find("multi-sink message"), std::string::npos);
+}
+
+TEST_F(LoggingTest, LogChannelStandaloneDisable) {
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    helios::LogChannel ch("Disable", helios::LogLevel::Trace, {
+        std::static_pointer_cast<helios::LogSink>(ring_sink)
+    });
+
+    ch.log(helios::LogLevel::Info, "before disable");
+    ch.set_enabled(false);
+    ch.log(helios::LogLevel::Info, "while disabled");
+    ch.set_enabled(true);
+    ch.log(helios::LogLevel::Info, "after re-enable");
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 2u);
+
+    bool found_before = false, found_after = false, found_disabled = false;
+    for (const auto& msg : messages) {
+        if (msg.find("before disable") != std::string::npos) found_before = true;
+        if (msg.find("while disabled") != std::string::npos) found_disabled = true;
+        if (msg.find("after re-enable") != std::string::npos) found_after = true;
+    }
+    EXPECT_TRUE(found_before);
+    EXPECT_FALSE(found_disabled);
+    EXPECT_TRUE(found_after);
+}
+
+TEST_F(LoggingTest, LogEntryWithStandaloneChannel) {
+    // LogEntry can target a standalone channel directly
+    ASSERT_EQ(helios::LogSystem::instance(), nullptr);
+
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    helios::LogChannel ch("EntryTest", helios::LogLevel::Trace, {
+        std::static_pointer_cast<helios::LogSink>(ring_sink)
+    });
+
+    // Create a LogEntry targeting the standalone channel
+    {
+        helios::LogEntry entry(&ch, helios::LogLevel::Info, "entry with fields");
+        entry.field("key1", "value1");
+        entry.field("count", int64_t{99});
+    } // entry emits on destruction
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 1u);
+    ASSERT_FALSE(messages.empty());
+    EXPECT_NE(messages[0].find("entry with fields"), std::string::npos);
+    EXPECT_NE(messages[0].find("key1=value1"), std::string::npos);
+    EXPECT_NE(messages[0].find("count=99"), std::string::npos);
+}
+
+TEST_F(LoggingTest, LogChannelAddSinkAtRuntime) {
+    helios::LogChannel ch("Dynamic", helios::LogLevel::Trace, {});
+    EXPECT_FALSE(ch.has_sinks());
+
+    auto ring_sink = std::make_shared<helios::RingBufferSink>(64);
+    ch.add_sink(ring_sink);
+    EXPECT_TRUE(ch.has_sinks());
+
+    ch.log(helios::LogLevel::Info, "after add_sink");
+
+    auto messages = ring_sink->get_messages(0);
+    EXPECT_EQ(messages.size(), 1u);
+}
+
+TEST_F(LoggingTest, CustomSinkImplementation) {
+    // Users can implement their own LogSink
+    struct CountingSink : helios::LogSink {
+        int count = 0;
+        std::string last_message;
+
+        void write(helios::LogLevel /*level*/, const std::string& /*channel_name*/,
+                   const std::string& message) override {
+            ++count;
+            last_message = message;
+        }
+        void flush() override {}
+    };
+
+    auto custom_sink = std::make_shared<CountingSink>();
+    helios::LogChannel ch("Custom", helios::LogLevel::Trace, {custom_sink});
+
+    ch.log(helios::LogLevel::Info, "first");
+    ch.log(helios::LogLevel::Info, "second");
+    ch.log(helios::LogLevel::Info, "third");
+
+    EXPECT_EQ(custom_sink->count, 3);
+    EXPECT_EQ(custom_sink->last_message, "third");
+}
+
+TEST_F(LoggingTest, StandaloneDoesNotInterfereWithMacros) {
+    // Standalone channels and LogSystem can coexist
+    auto ring_standalone = std::make_shared<helios::RingBufferSink>(64);
+    helios::LogChannel standalone_ch("Standalone", helios::LogLevel::Trace, {
+        std::static_pointer_cast<helios::LogSink>(ring_standalone)
+    });
+
+    // Create LogSystem for macro usage
+    helios::LogSystem log_system(make_test_config());
+
+    // Log through both paths
+    standalone_ch.log(helios::LogLevel::Info, "standalone msg");
+    HELIOS_LOG(TestChannel, Info, "macro msg");
+    log_system.flush();
+
+    // Standalone ring buffer should only have the standalone message
+    auto standalone_msgs = ring_standalone->get_messages(0);
+    EXPECT_EQ(standalone_msgs.size(), 1u);
+    ASSERT_FALSE(standalone_msgs.empty());
+    EXPECT_NE(standalone_msgs[0].find("standalone msg"), std::string::npos);
+
+    // LogSystem ring buffer should only have the macro message
+    auto system_msgs = log_system.get_recent_messages(0);
+    bool found_macro = false, found_standalone = false;
+    for (const auto& msg : system_msgs) {
+        if (msg.find("macro msg") != std::string::npos) found_macro = true;
+        if (msg.find("standalone msg") != std::string::npos) found_standalone = true;
+    }
+    EXPECT_TRUE(found_macro);
+    EXPECT_FALSE(found_standalone);
+}

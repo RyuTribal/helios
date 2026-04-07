@@ -36,7 +36,7 @@
         }                                                                       \
         /* Channel disabled or no LogSystem -- return a real LogEntry that */   \
         /* won't emit (null logger). This keeps the return type consistent. */  \
-        return ::helios::LogEntry(nullptr, _hll, "");                           \
+        return ::helios::LogEntry(static_cast<spdlog::logger*>(nullptr), _hll, ""); \
     }()
 
 // ---- Per-level macros with compile-time stripping ----

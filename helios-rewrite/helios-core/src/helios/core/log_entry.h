@@ -6,6 +6,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/logger.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -13,7 +14,10 @@
 
 namespace helios {
 
-/// RAII log entry builder. Returned by HELIOS_LOG macros.
+// Forward-declare LogChannel to avoid circular includes.
+struct LogChannel;
+
+/// RAII log entry builder. Returned by HELIOS_LOG macros and LogChannel::log().
 ///
 /// Allows fluent field attachment:
 ///   HELIOS_LOG(Renderer, Info, "Loaded texture: {}", name)
@@ -24,11 +28,25 @@ namespace helios {
 /// .field() calls are accumulated before the message is sent to spdlog.
 ///
 /// If moved from (e.g., stored in a variable), only the final owner emits.
+///
+/// **Two emission paths:**
+/// - spdlog path: constructed with a spdlog::logger* (used by LogSystem macros)
+/// - standalone path: constructed with a LogChannel* (used for standalone channels)
 class LogEntry {
 public:
-    /// Construct a log entry. Typically called by HELIOS_LOG internals.
+    /// Construct a log entry targeting a spdlog logger (convenience/macro path).
     LogEntry(spdlog::logger* logger, LogLevel level, std::string message)
         : m_logger(logger)
+        , m_channel(nullptr)
+        , m_level(level)
+        , m_message(std::move(message))
+        , m_owns(true)
+    {}
+
+    /// Construct a log entry targeting a standalone LogChannel (power layer path).
+    LogEntry(LogChannel* channel, LogLevel level, std::string message)
+        : m_logger(nullptr)
+        , m_channel(channel)
         , m_level(level)
         , m_message(std::move(message))
         , m_owns(true)
@@ -37,6 +55,7 @@ public:
     /// Move constructor -- transfers ownership of emission.
     LogEntry(LogEntry&& other) noexcept
         : m_logger(other.m_logger)
+        , m_channel(other.m_channel)
         , m_level(other.m_level)
         , m_message(std::move(other.m_message))
         , m_fields(std::move(other.m_fields))
@@ -53,6 +72,7 @@ public:
                 emit();
             }
             m_logger = other.m_logger;
+            m_channel = other.m_channel;
             m_level = other.m_level;
             m_message = std::move(other.m_message);
             m_fields = std::move(other.m_fields);
@@ -146,11 +166,8 @@ public:
     }
 
 private:
-    /// Actually send the message to spdlog.
-    void emit() {
-        if (!m_logger) return;
-
-        // Build final message: "User message | key1=val1 key2=val2"
+    /// Build the final message string with fields appended.
+    [[nodiscard]] std::string build_final_message() const {
         std::string final_msg = m_message;
         if (!m_fields.empty()) {
             final_msg += " |";
@@ -161,24 +178,18 @@ private:
                 final_msg += value;
             }
         }
-
-        // Map helios::LogLevel to spdlog::level
-        switch (m_level) {
-            case LogLevel::Trace: m_logger->trace("{}", final_msg);    break;
-            case LogLevel::Debug: m_logger->debug("{}", final_msg);    break;
-            case LogLevel::Info:  m_logger->info("{}", final_msg);     break;
-            case LogLevel::Warn:  m_logger->warn("{}", final_msg);     break;
-            case LogLevel::Error: m_logger->error("{}", final_msg);    break;
-            case LogLevel::Fatal: m_logger->critical("{}", final_msg); break;
-            default: break;
-        }
+        return final_msg;
     }
 
-    spdlog::logger* m_logger = nullptr;
-    LogLevel        m_level  = LogLevel::Info;
+    /// Actually send the message via the appropriate path.
+    void emit();
+
+    spdlog::logger* m_logger  = nullptr;
+    LogChannel*     m_channel = nullptr;
+    LogLevel        m_level   = LogLevel::Info;
     std::string     m_message;
     std::vector<std::pair<std::string, std::string>> m_fields;
-    bool            m_owns   = false;
+    bool            m_owns    = false;
 };
 
 /// A no-op log entry that discards everything. Used when a channel is

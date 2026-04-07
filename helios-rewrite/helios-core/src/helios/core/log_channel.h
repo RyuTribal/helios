@@ -2,9 +2,16 @@
 #pragma once
 
 #include "helios/core/log_level.h"
+#include "helios/core/log_sink.h"
+
+#include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <initializer_list>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace helios {
 
@@ -14,18 +21,47 @@ namespace helios {
 ///   - A runtime-adjustable minimum verbosity level
 ///   - A runtime-adjustable enabled flag
 ///
-/// Channels are defined at file scope via HELIOS_DEFINE_LOG_CHANNEL.
-/// They are lightweight -- just a name + two atomics.
+/// **Convenience layer (macros):** Channels defined at file scope via
+/// HELIOS_DEFINE_LOG_CHANNEL are lightweight -- just a name + two atomics.
+/// They rely on LogSystem to route messages to sinks.
+///
+/// **Power layer (standalone):** Create a channel with your own sinks and
+/// call channel.log() directly. No LogSystem required.
+///
+///   auto sink = std::make_shared<ConsoleSink>();
+///   LogChannel ch("MyModule", LogLevel::Debug, {sink});
+///   ch.log(LogLevel::Info, "Hello from {}", "my module");
+///
 struct LogChannel {
     const char* name;
     std::atomic<LogLevel> min_level{LogLevel::Trace};
     std::atomic<bool>     enabled{true};
 
     /// Construct with a name and optional default minimum level.
+    /// Used by HELIOS_DEFINE_LOG_CHANNEL macros (constexpr, no sinks).
     constexpr LogChannel(const char* channel_name, LogLevel default_level = LogLevel::Trace)
         : name(channel_name)
         , min_level(default_level)
         , enabled(true)
+    {}
+
+    /// Construct a standalone channel with user-provided sinks.
+    /// This channel can be used independently of LogSystem.
+    LogChannel(const char* channel_name, LogLevel default_level,
+               std::initializer_list<std::shared_ptr<LogSink>> sinks)
+        : name(channel_name)
+        , min_level(default_level)
+        , enabled(true)
+        , m_sinks(sinks)
+    {}
+
+    /// Construct a standalone channel with a vector of sinks.
+    LogChannel(const char* channel_name, LogLevel default_level,
+               std::vector<std::shared_ptr<LogSink>> sinks)
+        : name(channel_name)
+        , min_level(default_level)
+        , enabled(true)
+        , m_sinks(std::move(sinks))
     {}
 
     // Non-copyable, non-movable (lives at file scope as a global)
@@ -49,6 +85,43 @@ struct LogChannel {
     void set_enabled(bool value) {
         enabled.store(value, std::memory_order_relaxed);
     }
+
+    // ---- Standalone logging API (power layer) ----
+
+    /// Log a message through this channel's sinks directly.
+    /// Bypasses LogSystem entirely. Only works if the channel was constructed
+    /// with sinks; otherwise this is a no-op.
+    template<typename... Args>
+    void log(LogLevel level, fmt::format_string<Args...> fmt_str, Args&&... args) {
+        if (!should_log(level) || m_sinks.empty()) return;
+        std::string formatted = fmt::format(fmt_str, std::forward<Args>(args)...);
+        for (auto& sink : m_sinks) {
+            sink->write(level, name, formatted);
+        }
+    }
+
+    /// Flush all sinks attached to this channel.
+    void flush() {
+        for (auto& sink : m_sinks) {
+            sink->flush();
+        }
+    }
+
+    /// Add a sink to this channel at runtime.
+    void add_sink(std::shared_ptr<LogSink> sink) {
+        m_sinks.push_back(std::move(sink));
+    }
+
+    /// Check if this channel has standalone sinks attached.
+    [[nodiscard]] bool has_sinks() const { return !m_sinks.empty(); }
+
+    /// Get the sinks (read-only).
+    [[nodiscard]] const std::vector<std::shared_ptr<LogSink>>& sinks() const { return m_sinks; }
+
+private:
+    /// Sinks for standalone use. Empty for macro-defined channels
+    /// (those route through LogSystem instead).
+    std::vector<std::shared_ptr<LogSink>> m_sinks;
 };
 
 } // namespace helios
