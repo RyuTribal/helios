@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pkg-config --modversion vulkan)",
+      "Read(//usr/include/vulkan/**)",
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/master/include/vk_mem_alloc.h\" -o /home/ryutribal/programming/helios/Engine/vendor/vma/vk_mem_alloc.h)",
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrap.h\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrap.h)",
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrap.cpp\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrap.cpp)",
+      "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrapDispatch.h\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrapDispatch.h)",
+      "Bash(vendor/premake/premake5 gmake2:*)"
+    ]
+  }
+}

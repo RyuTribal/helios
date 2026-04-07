@@ -2,11 +2,11 @@
 
 layout(location = 0) in vec2 TextureCoordinates;
 
-layout(set = 1, binding = 1) uniform sampler2D hdrBuffer;
-
-layout(push_constant) uniform PushConstants {
+layout(set = 0, binding = 0) uniform TonemapParams {
     float exposure;
-} pc;
+} params;
+
+layout(set = 0, binding = 1) uniform sampler2D hdrBuffer;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -20,7 +20,7 @@ vec3 FilmicToneMapping(vec3 color) {
 
 void main() {
     vec3 color = texture(hdrBuffer, TextureCoordinates).rgb;
-    vec3 result = vec3(1.0) - exp(-color * pc.exposure);
+    vec3 result = vec3(1.0) - exp(-color * params.exposure);
 
     // Minor gamma correction. Need to expand on it
     FilmicToneMapping(result);

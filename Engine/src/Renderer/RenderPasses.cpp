@@ -212,7 +212,7 @@ namespace Engine {
         // Load shaders
         auto vertShader = cache->LoadShader("Resources/Shaders/dir_light_shadows.vert.spv", ShaderStage::Vertex);
         auto fragShader = cache->LoadShader("Resources/Shaders/dir_light_shadows.frag.spv", ShaderStage::Fragment);
-        auto geomShader = cache->LoadShader("Resources/Shaders/dir_light_shadows.geom.spv", ShaderStage::Geometry);
+        auto geomShader = cache->LoadShader("Resources/Shaders/dir_light_shadows.geo.spv", ShaderStage::Geometry);
 
         if (vertShader && fragShader)
         {
@@ -552,6 +552,8 @@ namespace Engine {
             { 9,  DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }, // reserved
             { 10, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }, // Irradiance
             { 11, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }, // Prefilter
+            { 12, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }, // BrdfLUT
+            { 13, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }, // ShadowMap
         };
         matLayoutDesc.DebugName = "ForwardMaterialDescLayout";
         MaterialDescLayout = device->CreateDescriptorSetLayout(matLayoutDesc);

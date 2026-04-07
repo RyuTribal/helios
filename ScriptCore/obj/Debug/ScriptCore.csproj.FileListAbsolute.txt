@@ -1,0 +1,5 @@
+/home/ryutribal/programming/helios/ScriptCore/obj/Debug/ScriptCore.GeneratedMSBuildEditorConfig.editorconfig
+/home/ryutribal/programming/helios/ScriptCore/obj/Debug/ScriptCore.AssemblyInfoInputs.cache
+/home/ryutribal/programming/helios/ScriptCore/obj/Debug/ScriptCore.AssemblyInfo.cs
+/home/ryutribal/programming/helios/ScriptCore/obj/Debug/ScriptCore.csproj.CoreCompileInputs.cache
+/home/ryutribal/programming/helios/ScriptCore/obj/Debug/ScriptCore.sourcelink.json

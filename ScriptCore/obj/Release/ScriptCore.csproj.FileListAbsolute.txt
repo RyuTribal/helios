@@ -1,0 +1,12 @@
+/home/ryutribal/programming/helios/Editor/Resources/Scripts/ScriptCore.deps.json
+/home/ryutribal/programming/helios/Editor/Resources/Scripts/ScriptCore.dll
+/home/ryutribal/programming/helios/Editor/Resources/Scripts/ScriptCore.pdb
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.GeneratedMSBuildEditorConfig.editorconfig
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.AssemblyInfoInputs.cache
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.AssemblyInfo.cs
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.csproj.CoreCompileInputs.cache
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.sourcelink.json
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.dll
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/refint/ScriptCore.dll
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ScriptCore.pdb
+/home/ryutribal/programming/helios/ScriptCore/obj/Release/ref/ScriptCore.dll

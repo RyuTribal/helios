@@ -27,20 +27,20 @@ struct VisibleIndex {
     int index;
 };
 
-// Texture samplers (set = 1)
-layout(set = 1, binding = 1) uniform sampler2D u_AlbedoTexture;
-layout(set = 1, binding = 2) uniform sampler2D u_NormalTexture;
-layout(set = 1, binding = 3) uniform sampler2D u_RoughnessTexture;
-layout(set = 1, binding = 4) uniform sampler2D u_MetalnessTexture;
-layout(set = 1, binding = 5) uniform sampler2D u_AOTexture;
-layout(set = 1, binding = 6) uniform sampler2D u_EmissionTexture;
-layout(set = 1, binding = 7) uniform sampler2D u_SpecularTexture;
-
-layout(set = 1, binding = 8) uniform samplerCube u_IrradianceMap;
-layout(set = 1, binding = 9) uniform samplerCube u_PrefilterMap;
-layout(set = 1, binding = 10) uniform sampler2D u_BrdfLUT;
-
-layout(set = 1, binding = 11) uniform sampler2DArray u_ShadowMap;
+// Texture samplers (set = 1) — must match C++ MaterialDescLayout
+layout(set = 1, binding = 1)  uniform sampler2D u_NormalTexture;
+layout(set = 1, binding = 2)  uniform sampler2D u_RoughnessTexture;
+layout(set = 1, binding = 3)  uniform sampler2D u_MetalnessTexture;
+// binding 4 reserved
+layout(set = 1, binding = 5)  uniform sampler2D u_AlbedoTexture;
+layout(set = 1, binding = 6)  uniform sampler2D u_AOTexture;
+layout(set = 1, binding = 7)  uniform sampler2D u_EmissionTexture;
+layout(set = 1, binding = 8)  uniform sampler2D u_SpecularTexture;
+// binding 9 reserved
+layout(set = 1, binding = 10) uniform samplerCube u_IrradianceMap;
+layout(set = 1, binding = 11) uniform samplerCube u_PrefilterMap;
+layout(set = 1, binding = 12) uniform sampler2D u_BrdfLUT;
+layout(set = 1, binding = 13) uniform sampler2DArray u_ShadowMap;
 
 layout(std140, set = 0, binding = 4) uniform LightSpaceMatrices {
     mat4 lightSpaceMatrices[16];
