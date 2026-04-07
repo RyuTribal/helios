@@ -3,6 +3,7 @@
 
 #include "helios/core/log_level.h"
 #include "helios/core/log_sink.h"
+#include "helios/core/log_channel_registry.h"
 
 #include <spdlog/spdlog.h>
 
@@ -38,37 +39,53 @@ struct LogChannel {
     std::atomic<bool>     enabled{true};
 
     /// Construct with a name and optional default minimum level.
-    /// Used by HELIOS_DEFINE_LOG_CHANNEL macros (constexpr, no sinks).
-    constexpr LogChannel(const char* channel_name, LogLevel default_level = LogLevel::Trace)
+    /// Used by HELIOS_DEFINE_LOG_CHANNEL macros.
+    /// Registers itself with LogChannelRegistry; aborts on duplicate names.
+    LogChannel(const char* channel_name, LogLevel default_level = LogLevel::Trace)
         : name(channel_name)
         , min_level(default_level)
         , enabled(true)
-    {}
+    {
+        LogChannelRegistry::register_channel(*this);
+    }
 
     /// Construct a standalone channel with user-provided sinks.
     /// This channel can be used independently of LogSystem.
+    /// Registers itself with LogChannelRegistry; aborts on duplicate names.
     LogChannel(const char* channel_name, LogLevel default_level,
                std::initializer_list<std::shared_ptr<LogSink>> sinks)
         : name(channel_name)
         , min_level(default_level)
         , enabled(true)
         , m_sinks(sinks)
-    {}
+    {
+        LogChannelRegistry::register_channel(*this);
+    }
 
     /// Construct a standalone channel with a vector of sinks.
+    /// Registers itself with LogChannelRegistry; aborts on duplicate names.
     LogChannel(const char* channel_name, LogLevel default_level,
                std::vector<std::shared_ptr<LogSink>> sinks)
         : name(channel_name)
         , min_level(default_level)
         , enabled(true)
         , m_sinks(std::move(sinks))
-    {}
+    {
+        LogChannelRegistry::register_channel(*this);
+    }
 
     // Non-copyable, non-movable (lives at file scope as a global)
     LogChannel(const LogChannel&) = delete;
     LogChannel& operator=(const LogChannel&) = delete;
     LogChannel(LogChannel&&) = delete;
     LogChannel& operator=(LogChannel&&) = delete;
+
+    /// Destructor -- deregisters from the channel registry.
+    /// Inline globals (program lifetime) are never destroyed in practice;
+    /// standalone channels deregister when they go out of scope.
+    ~LogChannel() {
+        LogChannelRegistry::deregister_channel(*this);
+    }
 
     /// Check if a message at the given level should be emitted.
     [[nodiscard]] bool should_log(LogLevel level) const {

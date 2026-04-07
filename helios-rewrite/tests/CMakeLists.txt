@@ -20,6 +20,7 @@ add_executable(helios-tests
     ecs/test_integration.cpp
     core/test_uuid.cpp
     core/test_logging.cpp
+    core/test_log_channel_registry.cpp
 )
 
 target_link_libraries(helios-tests

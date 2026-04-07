@@ -16,6 +16,7 @@ target_sources(helios-core
         src/helios/ecs/app.cpp
         src/helios/core/uuid.cpp
         src/helios/core/log_entry.cpp
+        src/helios/core/log_channel_registry.cpp
         src/helios/core/log_system.cpp
         src/helios/core/engine_log_channels.cpp
 )
