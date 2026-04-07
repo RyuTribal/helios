@@ -271,9 +271,10 @@ namespace Engine
         auto* vkCmd2 = static_cast<VulkanCommandBuffer*>(cmd);
         cmd->Begin();
 
-        // Full render pass pipeline — enabled now that layout transitions are
-        // properly implemented in each pass.
-        {
+        // TODO: Render passes disabled — layout transitions cause GPU hang on Intel Mesa.
+        // Need to debug with validation layers enabled (VK_LAYER_KHRONOS_validation).
+        // The ImGui-only path below works correctly.
+        if (false) {
         // 1. Depth pre-pass
         m_DepthPrePass.Execute(cmd, m_Meshes,
                                 m_CurrentCamera->GetView(),
