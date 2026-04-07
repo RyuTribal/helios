@@ -23,58 +23,191 @@ App
  │    ├── ScriptingPlugin (C# CoreCLR)
  │    └── EditorPlugin (ImGui, panels, gizmos - EDITOR ONLY)
  │
- └── Render Thread (consumes RenderQueue, fully independent)
+ └── Render Thread (consumes FramePacket, fully independent)
 ```
+
+---
 
 ## Design Principles
 
 1. **No global state.** No singletons, no static mutable variables. Everything accessed through system parameters (queries, resources, events, commands).
 2. **RAII everywhere.** Construct in constructor, destroy in destructor. No `Init()`/`Shutdown()`. Resize = destroy + reconstruct unless performance demands otherwise.
-3. **Power bottom, convenience top.** Every subsystem exposes low-level primitives AND a convenient high-level API. Both are public. Users can hijack any layer.
-4. **Components are plain data.** No inheritance, no virtual methods, no smart pointers. Use `AssetHandle` for references. Aggregates only (enables automatic reflection).
-5. **Systems are free functions (or state class methods).** They declare data access through parameters. The scheduler uses this for automatic parallelism.
-6. **Engine knows nothing about the editor.** ImGui, inspector panels, gizmos, undo/redo are all editor-only plugins. The engine is a pure runtime.
+3. **Prefer std library.** Use `std::unique_ptr`, `std::shared_ptr`, `std::vector`, `std::unordered_map`, `std::optional`, `std::variant`, `std::any`, `std::function`, `std::thread`, `std::mutex`, `std::atomic` directly. No custom aliases (`Ref<T>`, `Scope<T>`). Only create custom types when std doesn't cover the need.
+4. **Minimize smart pointer usage.** Components: owned by archetypes (plain data in arrays). Resources: owned by World (stored as `std::any`). Assets: owned by AssetServer, referenced by `AssetHandle` (just an ID). RHI objects: RAII value types with move semantics. `std::unique_ptr`: only for polymorphism (backend interfaces). `std::shared_ptr`: rare, only genuine shared ownership.
+5. **Components are plain data.** No inheritance, no virtual methods, no smart pointers. Use `AssetHandle` for asset references. Aggregates only (enables automatic reflection via qlibs/reflect).
+6. **Systems are free functions (or state class methods).** They declare data access through parameters. The scheduler uses this for automatic parallelism.
+7. **Power bottom, convenience top.** Every subsystem exposes low-level primitives AND a convenient high-level API. Both are public. Users can hijack any layer.
+8. **Engine knows nothing about the editor.** ImGui, inspector panels, gizmos, undo/redo are all editor-only plugins. The engine is a pure runtime.
 
 ---
 
 ## 1. ECS Core
 
-### 1.1 Archetype Storage
+### 1.1 World
 
-Entities with the same component set share an archetype. Each archetype stores components in contiguous arrays (Structure of Arrays within each archetype).
+The `World` is the central data store. It owns all entities, component data, resources, and event channels. There is no global access - systems receive the World's data through typed parameters.
 
+```cpp
+class World {
+public:
+    World() = default;
+    ~World() = default;
+    World(World&&) noexcept = default;
+    World& operator=(World&&) noexcept = default;
+    World(const World&) = delete;            // no copy - one World per App
+    World& operator=(const World&) = delete;
+
+    // Entity operations (immediate - use Commands in systems for deferred)
+    Entity spawn();
+    void despawn(Entity entity);
+    bool is_alive(Entity entity) const;
+
+    // Component access (immediate)
+    template<typename T> T& get(Entity entity);
+    template<typename T> const T& get(Entity entity) const;
+    template<typename T> T* try_get(Entity entity);
+    template<typename T> bool has(Entity entity) const;
+    template<typename T> T& add(Entity entity, T component);
+    template<typename T> void remove(Entity entity);
+
+    // Resources
+    template<typename T> void insert_resource(T resource);
+    template<typename T> T& resource();
+    template<typename T> const T& resource() const;
+    template<typename T> T* try_resource();
+    template<typename T> bool has_resource() const;
+
+    // Events
+    template<typename T> void register_event();
+    template<typename T> EventWriter<T> event_writer();
+    template<typename T> EventReader<T> event_reader();
+
+    // Queries (typically used via system parameters, but available directly)
+    template<typename... T> QueryState<T...> query();
+
+    // Direct system execution (for testing)
+    template<typename F> void run_system(F&& system);
+
+private:
+    ArchetypeStorage m_archetypes;
+    ResourceStorage m_resources;    // internally uses std::unordered_map<std::type_index, std::any>
+    EventStorage m_events;          // internally uses std::unordered_map<std::type_index, std::any>
+    EntityAllocator m_entities;     // generational index allocator
+};
 ```
-Archetype<Transform, MeshRenderer>:
-  Entity IDs:  [E1, E2, E3, ...]     (dense array)
-  Transforms:  [T1, T2, T3, ...]     (dense array, same indices)
-  MeshRenderers: [M1, M2, M3, ...]   (dense array, same indices)
 
-Archetype<Transform, PointLight>:
-  Entity IDs:  [E4, E5, ...]
-  Transforms:  [T4, T5, ...]
-  PointLights: [L4, L5, ...]
-```
+### 1.2 Entity
 
-**Entity:** A lightweight ID (generational index internally, UUID for serialization).
+Lightweight generational index. 32-bit index + 32-bit generation packed into 64 bits. The generation prevents use-after-free (if entity 5 is despawned and slot 5 is reused, the old Entity{5, gen=1} won't match the new Entity{5, gen=2}).
+
+For serialization and editor references, entities also have an optional UUID mapping maintained by a `UuidMap` resource.
 
 ```cpp
 struct Entity {
-    uint32_t index;
-    uint32_t generation;
+    uint32_t index = 0;
+    uint32_t generation = 0;
+
+    bool operator==(const Entity&) const = default;
+    explicit operator bool() const { return generation != 0; }
+
+    static constexpr Entity INVALID = { 0, 0 };
+};
+
+// Specialization for hashing
+template<> struct std::hash<Entity> {
+    size_t operator()(Entity e) const noexcept {
+        return std::hash<uint64_t>{}(
+            (static_cast<uint64_t>(e.generation) << 32) | e.index
+        );
+    }
+};
+```
+
+**EntityAllocator** maintains a free list of reusable indices and increments generation on reuse:
+
+```cpp
+class EntityAllocator {
+public:
+    Entity allocate();          // returns next free index with incremented generation
+    void deallocate(Entity e);  // pushes index to free list, bumps generation
+    bool is_alive(Entity e) const;
+
+private:
+    struct Entry { uint32_t generation; bool alive; };
+    std::vector<Entry> m_entries;
+    std::vector<uint32_t> m_free_list;
+};
+```
+
+### 1.3 Archetype Storage
+
+Entities with the same component set share an archetype. Each archetype stores components in contiguous `std::vector<std::byte>` arrays (type-erased for storage, typed access via `reinterpret_cast` in query iterators).
+
+```
+Archetype { components: [Transform, MeshRenderer] }
+  entities:       std::vector<Entity>      = [E1, E2, E3]
+  column[0]:      std::vector<std::byte>   = [T1|T2|T3]  (sizeof(Transform) * count)
+  column[1]:      std::vector<std::byte>   = [M1|M2|M3]  (sizeof(MeshRenderer) * count)
+```
+
+**ArchetypeId:** A sorted set of `std::type_index` values that uniquely identifies an archetype.
+
+```cpp
+using ComponentId = std::type_index;
+using ArchetypeId = std::vector<ComponentId>; // sorted
+
+struct Archetype {
+    ArchetypeId id;
+    std::vector<Entity> entities;
+    std::vector<std::vector<std::byte>> columns; // one column per component type
+    std::unordered_map<ComponentId, size_t> column_index; // type → column position
+
+    size_t count() const { return entities.size(); }
+
+    template<typename T> T* get_column() {
+        auto it = column_index.find(typeid(T));
+        if (it == column_index.end()) return nullptr;
+        return reinterpret_cast<T*>(columns[it->second].data());
+    }
+};
+```
+
+**ArchetypeStorage** is the top-level container:
+
+```cpp
+class ArchetypeStorage {
+public:
+    // Find or create archetype for the given component set
+    Archetype& get_or_create(const ArchetypeId& id);
+
+    // Move entity from one archetype to another (add/remove component)
+    void move_entity(Entity entity, Archetype& from, Archetype& to);
+
+    // Iterate all archetypes that contain a given set of components
+    template<typename... T>
+    void for_each_matching(auto&& callback);
+
+    // Entity → archetype location lookup
+    struct EntityLocation { Archetype* archetype; size_t row; };
+    EntityLocation locate(Entity entity) const;
+
+private:
+    std::unordered_map<ArchetypeId, std::unique_ptr<Archetype>> m_archetypes;
+    std::unordered_map<uint32_t, EntityLocation> m_entity_map; // entity index → location
 };
 ```
 
 **Archetype operations:**
-- Spawn: append to matching archetype's arrays (or create new archetype)
-- Despawn: swap-remove from archetype arrays
-- Add component: move entity from old archetype to new archetype (old + new component)
-- Remove component: move entity from old archetype to new archetype (old - removed component)
+- **Spawn:** Find archetype matching the component set (or create it). Append entity + component data to the archetype's arrays. O(1) amortized.
+- **Despawn:** Swap-remove entity from archetype arrays (swap with last element, pop). O(1).
+- **Add component:** Move entity from old archetype to new archetype (old components + new one). Involves one swap-remove from old + one append to new. O(component count).
+- **Remove component:** Move entity from old archetype to new archetype (old components - removed one). Same cost.
 
-**Structural changes** (spawn, despawn, add/remove component) are deferred via `Commands` and applied between system executions. This ensures iteration is never invalidated mid-system.
+**Structural changes** (spawn, despawn, add/remove component) are deferred via `Commands` when called from systems, and applied between system executions. This ensures no iterator invalidation during system execution.
 
-### 1.2 Components
+### 1.4 Components
 
-Components are plain aggregate structs. No inheritance, no constructors, no smart pointers.
+Components are plain aggregate structs. No inheritance, no constructors, no virtual methods, no smart pointers. This enables automatic reflection via qlibs/reflect and cache-friendly archetype storage.
 
 ```cpp
 struct Transform {
@@ -82,12 +215,16 @@ struct Transform {
     glm::quat rotation{1, 0, 0, 0};
     glm::vec3 scale{1};
 
-    glm::mat4 to_mat4() const; // utility method is fine, no state
+    glm::mat4 to_mat4() const; // utility methods are fine, they're const
+};
+
+struct GlobalTransform {
+    glm::mat4 matrix{1};       // computed from hierarchy each frame
 };
 
 struct MeshRenderer {
-    AssetHandle mesh;
-    AssetHandle material;
+    AssetHandle mesh{};
+    AssetHandle material{};
 };
 
 struct PointLight {
@@ -96,741 +233,1756 @@ struct PointLight {
     float radius = 10.0f;
 };
 
+struct DirectionalLight {
+    glm::vec3 color{1};
+    float intensity = 1.0f;
+    glm::vec3 direction{0, -1, 0};
+    bool cast_shadows = true;
+};
+
+struct Camera {
+    float fov_y = 45.0f;            // degrees
+    float near_plane = 0.1f;
+    float far_plane = 500.0f;
+    ProjectionType projection = ProjectionType::Perspective;
+    float ortho_size = 10.0f;
+};
+
+struct ActiveCamera {};              // marker component - tag the active camera
+
 struct RigidBody {
     BodyType type = BodyType::Dynamic;
     float mass = 1.0f;
     float friction = 0.5f;
     float restitution = 0.3f;
+    BodyHandle body_handle{};        // opaque handle into physics backend
+};
+
+struct BoxCollider {
+    glm::vec3 half_extents{0.5f};
+    glm::vec3 offset{0};
+};
+
+struct SphereCollider {
+    float radius = 0.5f;
+    glm::vec3 offset{0};
+};
+
+struct AudioSource {
+    AssetHandle clip{};
+    float volume = 1.0f;
+    bool loop = false;
+    bool spatial = false;            // 3D positional audio
+    SoundHandle playing_handle{};    // opaque handle into audio backend
+};
+
+struct ScriptInstance {
+    uint32_t script_type_id = 0;     // identifies the C# class type
+    uint64_t managed_handle = 0;     // handle to managed object
 };
 
 struct Parent { Entity entity; };
-struct Children { std::vector<Entity> entities; };
+struct Children { std::vector<Entity> entities; };  // auto-maintained by hierarchy system
 struct Tag { std::string name; };
+struct Disabled {};                  // marker - excluded from most queries via Without<Disabled>
 ```
 
-### 1.3 Reflection
+**AssetHandle** is a simple typed ID, not a smart pointer:
+
+```cpp
+struct AssetHandle {
+    uint64_t id = 0;
+    explicit operator bool() const { return id != 0; }
+    bool operator==(const AssetHandle&) const = default;
+};
+```
+
+Assets are owned by `AssetServer` (a World resource). Components hold `AssetHandle` values (plain integers). The AssetServer resolves handles to actual data. No reference counting in components.
+
+### 1.5 Reflection
 
 Primary: **qlibs/reflect** for automatic zero-boilerplate reflection on aggregate components. Fallback: **entt::meta** for complex types that cannot be aggregates.
 
 ```cpp
-// Automatic - works on any aggregate
-reflect::for_each([](auto I) {
-    auto name = reflect::member_name<I>(component);
-    auto& value = reflect::get<I>(component);
-}, component);
+// Works automatically on any aggregate type - no registration
+template<typename T>
+void serialize_component(const T& component, YamlEmitter& out) {
+    reflect::for_each([&](auto I) {
+        constexpr auto name = reflect::member_name<I>(T{});
+        const auto& value = reflect::get<I>(component);
+        out.write(name, value);
+    }, component);
+}
 
-// Editor inspector, serializer, scripting bridge all use this
-// No registration code needed
+template<typename T>
+T deserialize_component(const YamlNode& node) {
+    T component{};
+    reflect::for_each([&](auto I) {
+        constexpr auto name = reflect::member_name<I>(T{});
+        auto& value = reflect::get<I>(component);
+        node.read(name, value);
+    }, component);
+    return component;
+}
+
+// Editor inspector generation - also automatic
+template<typename T>
+void draw_inspector(T& component) {
+    reflect::for_each([&](auto I) {
+        constexpr auto name = reflect::member_name<I>(T{});
+        auto& value = reflect::get<I>(component);
+        draw_field(name, value);  // overloaded for float, vec3, string, etc.
+    }, component);
+}
 ```
 
-### 1.4 Systems
+This means: add a field to a component struct, and serialization + editor inspector + scripting bridge automatically pick it up. Zero registration code.
 
-Systems are free functions. Parameters declare data access. The scheduler analyzes parameters for automatic parallelism.
+### 1.6 Queries
+
+Queries iterate entities matching a component set. They return typed tuples of references.
 
 ```cpp
-// Read Transform and Enemy, write nothing else
-void move_enemies(Query<Transform, const Enemy> query, Res<Time> time) {
-    for (auto [transform, enemy] : query) {
-        transform.position += enemy.direction * enemy.speed * time->delta();
+// Query type - constructed from World, caches matching archetypes
+template<typename... Components>
+class Query {
+public:
+    // Iterate all matching entities
+    // Each element is a tuple of references to the requested components
+    class Iterator;
+    Iterator begin();
+    Iterator end();
+
+    // Range-based for loop support
+    // for (auto [transform, mesh] : query) { ... }
+
+    // Single entity access
+    std::tuple<Components&...> get(Entity e);
+
+    // Count
+    size_t count() const;
+
+    // Check if empty
+    bool is_empty() const;
+};
+```
+
+**Filters:**
+```cpp
+// With<T> - entity must have T, but T is not returned
+Query<Transform, const MeshRenderer, With<Visible>>
+
+// Without<T> - entity must NOT have T
+Query<Transform, Without<Disabled>>
+
+// Optional<T> - T may or may not exist, returned as pointer (nullptr if absent)
+Query<Transform, Optional<RigidBody>>
+```
+
+**Const correctness:** `const T` in query means read-only access. The scheduler uses this to determine parallelism. `Query<const Transform>` can run parallel with `Query<const Transform>`, but not with `Query<Transform>` (mutable).
+
+**Implementation:** Query iterates matching archetypes. For `Query<Transform, const MeshRenderer>`, it finds all archetypes that contain both Transform and MeshRenderer, then iterates their arrays sequentially. Cache-friendly linear scan within each archetype.
+
+### 1.7 Systems
+
+Systems are free functions. Their parameters declare what data they access. The scheduler inspects parameter types at registration time to build a dependency graph.
+
+```cpp
+// Simple system - iterate entities
+void move_enemies(Query<Transform, const Velocity> query, Res<Time> time) {
+    for (auto [transform, velocity] : query) {
+        transform.position += velocity.direction * velocity.speed * time->delta();
     }
 }
 
-// Query filters
-void render_active_meshes(
-    Query<const Transform, const MeshRenderer, Without<Disabled>> query
-) { ... }
+// System with commands (deferred entity operations)
+void spawn_bullets(
+    Query<const Transform, const Shooter, With<Firing>> query,
+    Commands& cmd,
+    Res<Time> time
+) {
+    for (auto [transform, shooter] : query) {
+        cmd.spawn()
+            .insert(Transform{ .position = transform.position })
+            .insert(Velocity{ .direction = transform.forward(), .speed = 50.0f })
+            .insert(Bullet{ .damage = shooter.damage });
+    }
+}
+
+// System that sends events
+void detect_collisions(
+    Res<PhysicsWorld> physics,
+    EventWriter<CollisionEvent> writer
+) {
+    for (auto& contact : physics->get_contacts()) {
+        writer.send(CollisionEvent{
+            .a = contact.entity_a,
+            .b = contact.entity_b,
+            .point = contact.world_point,
+            .normal = contact.normal,
+        });
+    }
+}
+
+// System that receives events
+void on_collision(
+    EventReader<CollisionEvent> events,
+    Query<AudioSource, const Transform> audio_entities,
+    ResMut<AudioDevice> audio
+) {
+    for (auto& event : events) {
+        audio->play_at(event.point, "sounds/impact.wav");
+    }
+}
 ```
 
-**Parameter types:**
-- `Query<T...>` - iterate entities with these components. Mutable unless `const`.
-- `Res<T>` - read-only resource access.
-- `ResMut<T>` - mutable resource access.
-- `Commands&` - deferred entity/component operations.
-- `EventReader<T>` - receive events.
-- `EventWriter<T>` - send events.
+**System parameter types:**
 
-### 1.5 Resources
+| Parameter | Access | Scheduler effect |
+|-----------|--------|-----------------|
+| `Query<T, U>` | Read/write T and U | Exclusive access to T, U |
+| `Query<const T, const U>` | Read-only T and U | Shared read access |
+| `Query<T, const U>` | Write T, read U | Exclusive T, shared U |
+| `Res<T>` | Read resource T | Shared read |
+| `ResMut<T>` | Write resource T | Exclusive access |
+| `Commands&` | Deferred operations | No conflict (applied later) |
+| `EventReader<T>` | Read events | Shared read |
+| `EventWriter<T>` | Write events | Exclusive write on channel T |
 
-World-owned singletons. Replace all current global singletons.
+### 1.8 Commands
+
+Deferred operations applied between system runs. Commands buffer structural changes so systems never see partially-modified state.
 
 ```cpp
-struct Time {
-    float m_delta = 0;
-    float m_elapsed = 0;
-    float delta() const { return m_delta; }
-    float elapsed() const { return m_elapsed; }
+class Commands {
+public:
+    // Spawn entity with components
+    EntityBuilder spawn();
+
+    // Despawn entity (deferred)
+    void despawn(Entity entity);
+
+    // Add/remove components (deferred)
+    template<typename T> void insert(Entity entity, T component);
+    template<typename T> void remove(Entity entity);
+
+    // Insert/modify resources
+    template<typename T> void insert_resource(T resource);
 };
 
-struct InputState { ... };
-struct RenderSettings { ... };
-struct PhysicsConfig { ... };
-struct AssetServer { ... };
+class EntityBuilder {
+public:
+    template<typename T> EntityBuilder& insert(T component);
+    Entity id() const; // get the (reserved) entity ID before commands are applied
+};
 ```
 
-Inserted via plugins: `app.insert_resource<Time>(Time{});`
-Accessed via system parameters: `Res<Time>`, `ResMut<Time>`
+Commands are collected during system execution and applied in order after the system completes. This means:
+- A spawned entity is not visible to the current system, only to subsequent systems.
+- A despawned entity remains visible to the current system.
+- No iterator invalidation during iteration.
 
-### 1.6 Events
+### 1.9 Resources
 
-Typed channels. Events live for one frame (read during the frame they're sent, cleared at frame end).
+Resources are typed singletons owned by the World. They replace all current global singletons (`Renderer::Get()`, `Input::s_Instance`, `PhysicsEngine::Get()`, etc.).
+
+Internally stored as `std::unordered_map<std::type_index, std::any>`.
 
 ```cpp
-struct CollisionEvent { Entity a, b; glm::vec3 point; glm::vec3 normal; };
-struct WindowResized { uint32_t width, height; };
-struct AssetLoaded { AssetHandle handle; AssetType type; };
+// Insertion
+world.insert_resource<Time>(Time{});
+world.insert_resource<RenderSettings>(RenderSettings{ .exposure = 1.0f });
 
-// Send
-void detect_hits(EventWriter<CollisionEvent> writer) {
-    writer.send(CollisionEvent{ ... });
-}
+// Polymorphic resources (backend interfaces)
+world.insert_resource<std::unique_ptr<PhysicsWorld>>(
+    std::make_unique<JoltPhysicsWorld>(config)
+);
 
-// Receive
-void play_impact(EventReader<CollisionEvent> reader, Res<AudioDevice> audio) {
-    for (auto& e : reader) {
-        audio->play_at(e.point, "impact.wav");
-    }
+// Access in systems
+void physics_step(ResMut<std::unique_ptr<PhysicsWorld>> world, Res<Time> time) {
+    (*world)->step(time->delta());
 }
 ```
 
-### 1.7 Scheduler
+For polymorphic backends (physics, audio), the resource is a `std::unique_ptr<Interface>`. The World owns it. Systems receive `Res<std::unique_ptr<PhysicsWorld>>` or we provide a convenience wrapper:
 
-Systems are grouped into schedules that run in a fixed order. Within a schedule, systems run in parallel when their data access doesn't conflict.
+```cpp
+// Convenience: PhysicsRes wraps the unique_ptr access
+using PhysicsRes = Res<std::unique_ptr<PhysicsWorld>>;
+```
+
+### 1.10 Events
+
+Typed channels with frame-scoped lifetime. Events sent during frame N are readable during frame N, cleared at the start of frame N+1.
+
+```cpp
+template<typename T>
+class EventWriter {
+public:
+    void send(T event);
+};
+
+template<typename T>
+class EventReader {
+public:
+    // Iterate unread events
+    class Iterator;
+    Iterator begin() const;
+    Iterator end() const;
+
+    // Check if empty
+    bool is_empty() const;
+};
+```
+
+Internally, each event channel is a `std::vector<T>` double-buffered: writers push to the current buffer, readers iterate the previous buffer. Buffer swap happens at frame boundary.
+
+### 1.11 Scheduler
+
+The scheduler owns a `std::vector<SystemDescriptor>` per schedule. Each descriptor stores the system function, its parameter access metadata (which components/resources it reads/writes), and ordering constraints.
 
 ```cpp
 enum class Schedule {
-    Startup,       // once at app launch
-    PreUpdate,     // input polling, event dispatch
-    Update,        // game logic
-    FixedUpdate,   // physics (fixed timestep, N ticks per frame)
-    PostUpdate,    // transform propagation, cleanup
-    PreRender,     // render extraction, editor UI
+    Startup,        // runs once at app launch
+    PreUpdate,      // input polling, event processing
+    Update,         // game logic
+    FixedUpdate,    // physics (fixed timestep, ticks N times per frame)
+    PostUpdate,     // transform propagation, hierarchy, cleanup
+    PreRender,      // render extraction, editor UI
+};
+
+struct SystemDescriptor {
+    std::function<void(World&)> run;            // type-erased system call
+    std::vector<AccessDescriptor> reads;         // component/resource types read
+    std::vector<AccessDescriptor> writes;        // component/resource types written
+    std::optional<SystemId> after;               // explicit ordering
+    std::optional<SystemId> before;              // explicit ordering
 };
 ```
 
-**Parallelism rules:**
-- Two systems that both READ the same component: parallel.
-- Two systems where one WRITES a component the other reads: sequential.
-- Two systems that write different components: parallel.
-- `Commands&` is always exclusive (applied between systems).
+**Parallel execution:** At schedule run time, the scheduler builds a DAG from access metadata:
+1. Systems with conflicting access (one writes what another reads/writes) get an edge.
+2. Systems with explicit `.after()`/`.before()` get an edge.
+3. Independent systems (no conflicting access, no explicit ordering) are dispatched to a `std::thread` pool.
 
-**Explicit ordering when needed:**
+The thread pool is a simple work-stealing pool using `std::thread` + `std::mutex` + `std::condition_variable`. No custom threading primitives.
+
+**FixedUpdate accumulator:**
+
 ```cpp
-app.add_system(Schedule::Update, spawn_bullets.after(player_input));
+void run_fixed_update(World& world, float frame_delta) {
+    auto& accumulator = world.resource<FixedTimeAccumulator>();
+    accumulator.remaining += frame_delta;
+
+    while (accumulator.remaining >= accumulator.timestep) {
+        run_schedule(world, Schedule::FixedUpdate);
+        accumulator.remaining -= accumulator.timestep;
+    }
+
+    // Store interpolation alpha for render systems
+    accumulator.alpha = accumulator.remaining / accumulator.timestep;
+}
 ```
 
-**FixedUpdate:** Runs N times per frame to maintain a fixed timestep (e.g., 60Hz). Accumulates frame delta, ticks physics in fixed increments. Interpolation between physics states for smooth rendering.
+Physics systems use `Res<FixedTimeAccumulator>` to access the fixed delta. The render extraction system uses `accumulator.alpha` to interpolate between previous and current physics transforms for smooth rendering.
 
 ---
 
-## 2. State Management
+## 2. App & Plugin System
 
-### 2.1 State Stack
+### 2.1 App
 
-States are classes with RAII lifecycle. A stack determines what's active.
-
-```cpp
-class Playing : public State<GameState> {
-public:
-    Playing(World& world) { /* spawn gameplay entities */ }
-    ~Playing() { /* auto-despawn tracked entities */ }
-
-    void player_movement(Query<Transform, const Player> q, Res<InputState> input) { ... }
-    void enemy_ai(Query<Transform, const Enemy> q, Res<Time> time) { ... }
-
-    static void describe(StateBuilder<Playing>& s) {
-        s.opaque();  // states below don't update
-        s.system(&Playing::player_movement);
-        s.system(&Playing::enemy_ai);
-    }
-};
-```
-
-**Stack modifiers:**
-- `opaque()` - states below stop updating and their entities are hidden
-- `transparent()` - states below keep running (HUD overlay)
-- `pause_below()` - states below stop updating but entities remain visible (pause menu)
-
-**Stack operations:**
-- `flow->go_to<Playing, HUD>()` - clear stack, push these
-- `flow->push<PauseMenu>()` - push on top
-- `flow->pop()` - remove top
-- `flow->switch_to<GameOver>()` - replace top
-
-### 2.2 Transitions
+The `App` owns the `World`, the `Scheduler`, and the plugin registry. It drives the main loop.
 
 ```cpp
-app.transition(GameState::MainMenu, GameState::Playing)
-    .via<LoadingScreen>();
-
-class LoadingScreen : public State<GameState> {
+class App {
 public:
-    LoadingScreen(World& world) {
-        m_batch = world.resource<AssetServer>().load_batch()
-            .add<Mesh>("level.gltf")
-            .add<Texture>("terrain.png")
-            .submit();
-    }
+    App() = default;
 
-    void check_progress(Res<LoadBatch> batch, ResMut<GameFlow<GameState>> flow) {
-        draw_progress(batch->progress());
-        if (batch->is_complete()) flow->pop(); // proceeds to Playing
-    }
+    // Plugin registration
+    template<typename P> App& add_plugin(P plugin = {});
 
-    static void describe(StateBuilder<LoadingScreen>& s) {
-        s.opaque();
-        s.system(&LoadingScreen::check_progress);
-    }
+    // Convenience methods that delegate to World/Scheduler
+    template<typename T> App& insert_resource(T resource);
+    template<typename T> App& add_event();
+    App& add_system(Schedule schedule, auto&& system);
+
+    // State management
+    template<typename S> App& state(auto state_id);
+
+    // Run the main loop (blocks until exit)
+    void run();
+
+    // Access (for plugin setup)
+    World& world() { return m_world; }
 
 private:
-    LoadBatchHandle m_batch;
+    World m_world;
+    Scheduler m_scheduler;
+    bool m_running = true;
 };
 ```
 
----
-
-## 3. Rendering
-
-### 3.1 RHI (Rendering Hardware Interface)
-
-Thin Forge-style abstraction. GPU concepts are explicit (command buffers, descriptor sets, pipelines) but unified across backends. Compile-time backend selection.
+**Main loop (`App::run()`):**
 
 ```cpp
-// Core RHI types (backend-agnostic)
-class Device;
-class CommandBuffer;
-class Texture;
-class Buffer;
-class Pipeline;
-class DescriptorSet;
-class RenderPass;
-class Swapchain;  // RAII: construct = create, destruct = destroy, resize = reconstruct
+void App::run() {
+    m_scheduler.run(m_world, Schedule::Startup);
 
-// Device is the factory
-class Device {
-public:
-    Texture create_texture(const TextureDesc& desc, const void* initial_data = nullptr);
-    Buffer create_buffer(const BufferDesc& desc, const void* initial_data = nullptr);
-    Pipeline create_graphics_pipeline(const GraphicsPipelineDesc& desc);
-    Pipeline create_compute_pipeline(const ComputePipelineDesc& desc);
-    DescriptorSet create_descriptor_set(const DescriptorSetLayout& layout);
-    CommandBuffer create_command_buffer();
-    Swapchain create_swapchain(const SwapchainDesc& desc);
+    while (m_running) {
+        auto frame_start = std::chrono::high_resolution_clock::now();
 
-    void submit(CommandBuffer& cmd, const SubmitInfo& info);
-    void wait_idle();
+        m_scheduler.run(m_world, Schedule::PreUpdate);
+        m_scheduler.run(m_world, Schedule::Update);
+        run_fixed_update(m_world, m_world.resource<Time>().delta());
+        m_scheduler.run(m_world, Schedule::PostUpdate);
+        m_scheduler.run(m_world, Schedule::PreRender);
 
-    // Escape hatch
-    template<typename T> T* native_handle();
-    // e.g., native_handle<VkDevice>() returns raw Vulkan device
-};
-```
-
-**RAII resources:** All RHI types own their GPU resources. Destructor frees them. No `Destroy()` methods. Move-only (no copy).
-
-```cpp
-{
-    auto texture = device.create_texture(desc);
-    // use texture...
-} // texture destroyed here, GPU resource freed
-
-// Resize = reconstruct
-swapchain = device.create_swapchain(new_desc); // old swapchain destroyed by move-assignment
-```
-
-**Compile-time backend:**
-```cpp
-// CMake selects the backend at build time
-// Only one backend compiled in (no virtual dispatch overhead)
-#if defined(HELIOS_BACKEND_VULKAN)
-using Device = VulkanDevice;
-using Texture = VulkanTexture;
-// ...
-#elif defined(HELIOS_BACKEND_D3D12)
-using Device = D3D12Device;
-// ...
-#endif
-```
-
-### 3.2 Render Graph
-
-Frostbite-style frame graph. Passes are nodes, resources are edges. Auto-manages barriers, lifetimes, and memory aliasing.
-
-```cpp
-struct RenderGraph {
-    // Declare a transient texture (lifetime managed by graph)
-    TextureHandle create_texture(const TextureDesc& desc);
-
-    // Import an external texture (swapchain, persistent texture)
-    TextureHandle import_texture(Texture& external);
-
-    // Add a render pass
-    template<typename Data, typename Setup, typename Execute>
-    void add_pass(const char* name, Setup&& setup, Execute&& execute);
-};
-```
-
-**Pass declaration:**
-```cpp
-struct ForwardPassData {
-    TextureHandle color;
-    TextureHandle depth;
-    BufferHandle global_ubo;
-};
-
-graph.add_pass<ForwardPassData>("ForwardPass",
-    // Setup: declare inputs/outputs
-    [&](ForwardPassData& data, RenderGraphBuilder& builder) {
-        data.depth = builder.read(depth_prepass_output);      // input
-        data.color = builder.create(color_desc);              // output
-        data.global_ubo = builder.read(global_ubo_handle);
-    },
-    // Execute: record GPU commands (only runs if pass isn't culled)
-    [&](const ForwardPassData& data, RenderContext& ctx) {
-        ctx.bind_pipeline(forward_pipeline);
-        ctx.bind_descriptor_set(0, global_descriptors);
-        for (auto& draw : ctx.draw_list()) {
-            ctx.bind_descriptor_set(1, draw.material_descriptors);
-            ctx.draw_indexed(draw.mesh);
+        // Submit FramePacket to render thread
+        if (auto* rq = m_world.try_resource<RenderQueue>()) {
+            m_render_thread.submit(std::move(*rq));
         }
-    }
-);
-```
 
-**Three-phase execution:**
-1. **Setup:** All passes declare their resource requirements.
-2. **Compile:** Graph computes execution order, inserts barriers, culls unused passes, identifies memory aliasing.
-3. **Execute:** Surviving passes record GPU commands.
+        // Swap event buffers
+        m_world.flush_events();
 
-The graph is rebuilt every frame (cheap - it's just metadata).
-
-### 3.3 ForwardPlus Plugin
-
-Default rendering pipeline as a plugin. Builds the standard render graph.
-
-```cpp
-struct ForwardPlusPlugin {
-    void build(App& app) {
-        app.insert_resource<ForwardPlusConfig>({
-            .hdr_format = TextureFormat::RGBA16F,
-            .shadow_resolution = 4096,
-            .shadow_cascades = 4,
-        });
-        app.add_system(Schedule::PreRender, build_forward_plus_graph);
-    }
-};
-
-void build_forward_plus_graph(
-    ResMut<RenderGraph> graph,
-    Res<RenderQueue> queue,
-    Res<ForwardPlusConfig> config
-) {
-    auto depth = add_depth_prepass(graph, queue);
-    auto shadows = add_shadow_pass(graph, queue, config);
-    auto culling = add_light_culling(graph, depth, queue);
-    auto hdr = add_forward_pass(graph, depth, shadows, culling, queue);
-    auto skybox = add_skybox_pass(graph, hdr, queue);
-    auto ldr = add_tonemap_pass(graph, hdr, config);
-    graph->set_output(ldr);
-}
-```
-
-### 3.4 Render Thread
-
-Separate thread that consumes frame packets. Never touches the World.
-
-**Frame flow:**
-1. Main thread: ECS systems run, including render extraction system.
-2. Render extraction system builds a `FramePacket` (transforms, meshes, materials, lights, camera).
-3. Main thread submits `FramePacket` to render thread via double-buffered swap.
-4. Render thread: builds render graph from `FramePacket`, compiles, executes on GPU.
-5. Render thread can lag 1-2 frames behind main thread.
-
-```cpp
-struct FramePacket {
-    CameraData camera;
-    std::vector<MeshDraw> mesh_draws;     // transform + mesh + material
-    std::vector<LightData> point_lights;
-    std::vector<LightData> dir_lights;
-    SkyboxData skybox;
-    // ... everything the GPU needs, no World references
-};
-```
-
-### 3.5 Shader System
-
-Cross-backend shader abstraction. Source shaders compile to SPIR-V (Vulkan), DXIL (D3D12), MSL (Metal) at build time.
-
-```
-Editor/Resources/Shaders/
-  forward.hlsl          (source, cross-backend HLSL)
-  forward.vert.spv      (compiled Vulkan)
-  forward.frag.spv      (compiled Vulkan)
-  forward.vert.dxil     (compiled D3D12, future)
-```
-
-Build-time compilation via CMake custom commands. Shader hot-reload in development (file watcher triggers recompile + pipeline recreation).
-
----
-
-## 4. Physics
-
-### 4.1 Physics Interface
-
-Backend-abstracted. Engine defines the interface, Jolt implements it.
-
-```cpp
-// Engine interface
-class PhysicsWorld {
-public:
-    virtual ~PhysicsWorld() = default;
-    virtual BodyHandle create_body(const BodyDesc& desc) = 0;
-    virtual void destroy_body(BodyHandle handle) = 0;
-    virtual void set_transform(BodyHandle handle, const glm::vec3& pos, const glm::quat& rot) = 0;
-    virtual Transform get_transform(BodyHandle handle) const = 0;
-    virtual void step(float dt) = 0;
-    virtual std::vector<ContactEvent> get_contacts() const = 0;
-};
-
-// Jolt backend
-class JoltPhysicsWorld : public PhysicsWorld { ... };
-```
-
-### 4.2 Physics Plugin
-
-```cpp
-template<typename Backend>
-struct PhysicsPlugin {
-    void build(App& app) {
-        app.insert_resource<PhysicsConfig>({ .gravity = {0, -9.81f, 0} });
-        app.insert_resource<PhysicsWorld>(Backend::create(config));
-        app.add_system(Schedule::FixedUpdate, physics_step);
-        app.add_system(Schedule::PostUpdate, sync_physics_transforms);
-        app.add_event<CollisionEvent>();
-    }
-};
-
-void physics_step(ResMut<PhysicsWorld> world, Res<PhysicsConfig> config) {
-    world->step(config.fixed_timestep);
-    // emit collision events from world->get_contacts()
-}
-
-void sync_physics_transforms(
-    Query<Transform, const RigidBody> bodies,
-    Res<PhysicsWorld> world
-) {
-    for (auto [transform, rb] : bodies) {
-        transform = world->get_transform(rb.body_handle);
+        // Frame timing
+        auto frame_end = std::chrono::high_resolution_clock::now();
+        float dt = std::chrono::duration<float>(frame_end - frame_start).count();
+        m_world.resource<Time>().m_delta = dt;
+        m_world.resource<Time>().m_elapsed += dt;
     }
 }
 ```
 
-**FixedUpdate interpolation:** The renderer reads interpolated transforms (blend between previous and current physics state based on accumulator remainder) for smooth visual output at variable framerates.
+### 2.2 Plugins
 
----
-
-## 5. Audio
-
-### 5.1 Audio Interface
-
-```cpp
-class AudioDevice {
-public:
-    virtual ~AudioDevice() = default;
-    virtual SoundHandle play(AssetHandle clip, const PlayParams& params = {}) = 0;
-    virtual SoundHandle play_at(AssetHandle clip, const glm::vec3& position, const PlayParams& params = {}) = 0;
-    virtual void stop(SoundHandle handle) = 0;
-    virtual void set_listener(const glm::vec3& pos, const glm::vec3& forward, const glm::vec3& up) = 0;
-};
-
-class SoLoudDevice : public AudioDevice { ... };
-```
-
-### 5.2 Audio Plugin
-
-```cpp
-template<typename Backend>
-struct AudioPlugin {
-    void build(App& app) {
-        app.insert_resource<AudioDevice>(Backend::create());
-        app.add_system(Schedule::PostUpdate, update_audio_listener);
-        app.add_system(Schedule::PostUpdate, update_spatial_audio);
-    }
-};
-```
-
----
-
-## 6. Scripting
-
-### 6.1 Per-Entity Scripts, Batched as Systems
-
-C# scripts are per-entity (familiar Unity/Godot model). The engine batches all instances of the same script type into one system for parallel execution.
-
-```csharp
-// C# user code
-[System(Schedule.Update)]
-public class EnemyAI : Script
-{
-    public float Speed = 5.0f;
-
-    public override void OnUpdate(float delta) {
-        var transform = Entity.Get<Transform>();
-        transform.Position += Entity.Forward * Speed * delta;
-    }
-}
-```
-
-**Engine-side execution:**
-1. Group all entities with `ScriptComponent<EnemyAI>` into one batch.
-2. Schedule as a system with declared access (Transform write, EnemyAI read).
-3. Different script types run in parallel when data access doesn't conflict.
-
-### 6.2 Script Hot Reload
-
-File watcher detects C# changes. Reload via collectible AssemblyLoadContext (already implemented). Script state is serialized before unload, deserialized after reload.
-
----
-
-## 7. Asset System
-
-### 7.1 Async Default
-
-```cpp
-// Async (default) - returns handle immediately
-AssetHandle mesh = assets.load<Mesh>("helmet.gltf");
-
-// Sync (opt-in) - blocks until loaded
-AssetHandle splash = assets.load_sync<Texture>("splash.png");
-```
-
-### 7.2 Batch Loading with Progress
-
-```cpp
-auto batch = assets.load_batch()
-    .add<Mesh>("helmet.gltf")
-    .add<Texture>("terrain.png")
-    .add<AudioClip>("music.ogg")
-    .submit();
-
-// In loading screen system
-float progress = batch.progress();     // 0.0 - 1.0
-int remaining = batch.remaining();     // count
-bool done = batch.is_complete();
-auto errors = batch.failed();          // list of failed assets
-```
-
-### 7.3 Asset Events
-
-```cpp
-app.add_event<AssetLoaded>();
-
-void on_mesh_ready(EventReader<AssetLoaded> events, Res<AssetServer> assets) {
-    for (auto& e : events) {
-        if (e.type == AssetType::Mesh) {
-            auto& mesh = assets.get<Mesh>(e.handle);
-            // mesh is ready to use
-        }
-    }
-}
-```
-
-### 7.4 Serialization
-
-- **YAML** for development (human-readable, git-diffable).
-- **Binary** for runtime (fast load, compact).
-- Editor exports YAML to binary on build.
-- Component serialization auto-generated from reflection (qlibs/reflect).
-
----
-
-## 8. Input System
-
-### 8.1 Raw Input (Power Layer)
-
-```cpp
-struct RawInput {
-    bool key_pressed(KeyCode key) const;
-    bool key_just_pressed(KeyCode key) const;
-    bool key_just_released(KeyCode key) const;
-    glm::vec2 mouse_position() const;
-    glm::vec2 mouse_delta() const;
-    float scroll_delta() const;
-    bool mouse_button(MouseButton btn) const;
-};
-```
-
-### 8.2 Action Mapping (Convenience Layer)
-
-```cpp
-// Define actions
-app.insert_resource<InputMap>(InputMap{}
-    .action("jump", Key::Space, GamepadButton::A)
-    .action("fire", MouseButton::Left, GamepadButton::RightTrigger)
-    .axis("move_x", Key::D, Key::A, GamepadAxis::LeftX)
-    .axis("move_y", Key::W, Key::S, GamepadAxis::LeftY)
-);
-
-// Use in systems
-void player_input(Res<InputMap> input) {
-    if (input->just_pressed("jump")) { ... }
-    float move_x = input->axis("move_x"); // -1.0 to 1.0
-}
-```
-
----
-
-## 9. Window System
-
-### 9.1 Multi-Window Support
+A plugin is any type with a `void build(App& app)` method. Plugins register systems, resources, events, and other plugins.
 
 ```cpp
 struct WindowPlugin {
-    WindowDesc primary_window;
+    WindowDesc primary_window = { .title = "Helios", .width = 1280, .height = 720 };
 
     void build(App& app) {
-        app.insert_resource<Windows>(Windows{});
-        auto& windows = app.resource_mut<Windows>();
-        windows.create(primary_window);
+        auto window = std::make_unique<Window>(primary_window);
+        app.insert_resource<Windows>(Windows{ std::move(window) });
         app.add_system(Schedule::PreUpdate, poll_window_events);
         app.add_event<WindowResized>();
         app.add_event<WindowClosed>();
     }
 };
 
-// Create additional windows (e.g., detachable editor viewports)
-void open_viewport(ResMut<Windows> windows) {
-    windows->create(WindowDesc{ .title = "Viewport 2", .width = 800, .height = 600 });
+struct InputPlugin {
+    void build(App& app) {
+        app.insert_resource<RawInput>(RawInput{});
+        app.insert_resource<InputMap>(InputMap{});
+        app.add_system(Schedule::PreUpdate, update_raw_input);
+        app.add_system(Schedule::PreUpdate, update_action_map.after(update_raw_input));
+    }
+};
+```
+
+Plugins can depend on other plugins:
+
+```cpp
+struct ForwardPlusPlugin {
+    void build(App& app) {
+        app.add_plugin<VulkanRenderPlugin>();  // ensure RHI exists
+        app.insert_resource<ForwardPlusConfig>({ ... });
+        app.add_system(Schedule::PreRender, build_forward_plus_graph);
+    }
+};
+```
+
+---
+
+## 3. State Management
+
+### 3.1 State Classes
+
+States are RAII classes. Constructor = enter, destructor = exit. Methods = systems for that state.
+
+```cpp
+template<typename StateEnum>
+class State {
+public:
+    virtual ~State() = default;
+
+protected:
+    // Spawn an entity tracked by this state (auto-despawned when state exits)
+    Entity spawn_tracked(World& world);
+
+    // Access to the world for setup
+    World& world();
+};
+```
+
+```cpp
+class Playing : public State<GameState> {
+public:
+    Playing(World& world) {
+        // Constructor IS on_enter
+        m_player = spawn_tracked(world);
+        world.add(m_player, Transform{ .position = {0, 1, 0} });
+        world.add(m_player, MeshRenderer{ .mesh = player_mesh });
+        world.add(m_player, RigidBody{ .type = BodyType::Dynamic });
+    }
+
+    // Destructor IS on_exit
+    // Tracked entities are auto-despawned by State<> base class
+
+    void player_movement(Query<Transform, const Player> q, Res<InputMap> input, Res<Time> time) {
+        for (auto [transform, player] : q) {
+            float x = input->axis("move_x");
+            float z = input->axis("move_z");
+            transform.position += glm::vec3{x, 0, z} * player.speed * time->delta();
+        }
+    }
+
+    void check_pause(Res<InputMap> input, ResMut<GameFlow<GameState>> flow) {
+        if (input->just_pressed("pause")) {
+            flow->push<PauseMenu>();
+        }
+    }
+
+    static void describe(StateBuilder<Playing>& s) {
+        s.opaque();
+        s.system(&Playing::player_movement);
+        s.system(&Playing::check_pause);
+    }
+
+private:
+    Entity m_player;
+};
+```
+
+### 3.2 State Stack
+
+```cpp
+template<typename StateEnum>
+class GameFlow {
+public:
+    // Clear stack, push new states
+    template<typename... States> void go_to();
+
+    // Push on top (existing states stay)
+    template<typename S> void push();
+
+    // Remove top state
+    void pop();
+
+    // Replace top state
+    template<typename S> void switch_to();
+
+    // Query
+    bool is_in(StateEnum state) const;
+    StateEnum current() const;
+};
+```
+
+**Stack modifiers (set in `describe()`):**
+
+| Modifier | Systems below | Entities below | Use case |
+|----------|--------------|----------------|----------|
+| `opaque()` | stopped | despawned on next transition | Full screen change |
+| `transparent()` | keep running | visible | HUD overlay, debug tools |
+| `pause_below()` | stopped | visible but frozen | Pause menu |
+
+Combine: `transparent()` + `pause_below()` = you see the game world but it's frozen (pause screen with visible background).
+
+### 3.3 Transitions
+
+```cpp
+// In plugin setup:
+app.transition(GameState::MainMenu, GameState::Playing)
+    .via<LoadingScreen>();  // LoadingScreen is another State class
+
+class LoadingScreen : public State<GameState> {
+public:
+    LoadingScreen(World& world) {
+        auto& assets = world.resource<AssetServer>();
+        m_batch = assets.load_batch()
+            .add<Mesh>("level_geometry.gltf")
+            .add<Texture>("terrain_albedo.png")
+            .add<AudioClip>("background_music.ogg")
+            .submit();
+    }
+
+    void render_progress(ResMut<GameFlow<GameState>> flow) {
+        float progress = m_batch.progress();  // 0.0 - 1.0
+        // ... draw loading bar ...
+        if (m_batch.is_complete()) {
+            flow->pop();  // proceeds to next state in transition chain
+        }
+    }
+
+    static void describe(StateBuilder<LoadingScreen>& s) {
+        s.opaque();
+        s.system(&LoadingScreen::render_progress);
+    }
+
+private:
+    LoadBatch m_batch;
+};
+```
+
+---
+
+## 4. Rendering
+
+### 4.1 RHI (Rendering Hardware Interface)
+
+Thin, Forge-style abstraction. GPU concepts are explicit but unified across backends. Compile-time backend selection (no virtual dispatch overhead for RHI calls).
+
+**Compile-time backend selection:**
+```cpp
+// In helios-renderer CMakeLists.txt:
+// option(HELIOS_BACKEND_VULKAN "Use Vulkan backend" ON)
+// Compiles only the selected backend
+
+// In rhi/rhi_types.h:
+namespace helios::rhi {
+#if defined(HELIOS_BACKEND_VULKAN)
+    using Device = vulkan::VulkanDevice;
+    using CommandBuffer = vulkan::VulkanCommandBuffer;
+    using Texture = vulkan::VulkanTexture;
+    using Buffer = vulkan::VulkanBuffer;
+    using Pipeline = vulkan::VulkanPipeline;
+    using DescriptorSet = vulkan::VulkanDescriptorSet;
+    using Swapchain = vulkan::VulkanSwapchain;
+#endif
+}
+```
+
+**Core types are RAII, move-only:**
+
+```cpp
+namespace helios::rhi {
+
+class Texture {
+public:
+    Texture() = default;                          // null/empty state
+    Texture(Device& device, const TextureDesc& desc, const void* data = nullptr);
+    ~Texture();                                   // frees GPU resource
+    Texture(Texture&& other) noexcept;            // move
+    Texture& operator=(Texture&& other) noexcept; // move-assign (old resource freed)
+    Texture(const Texture&) = delete;             // no copy
+    Texture& operator=(const Texture&) = delete;
+
+    uint32_t width() const;
+    uint32_t height() const;
+    TextureFormat format() const;
+    explicit operator bool() const; // check if valid
+
+    // Escape hatch
+    template<typename T> T native_handle() const;
+    // e.g., texture.native_handle<VkImage>()
+};
+
+// Same pattern for Buffer, Pipeline, DescriptorSet, Swapchain, CommandBuffer...
+
+class Device {
+public:
+    Device(const DeviceDesc& desc);
+    ~Device();
+    Device(Device&&) noexcept;
+    Device(const Device&) = delete;
+
+    Texture create_texture(const TextureDesc& desc, const void* data = nullptr);
+    Buffer create_buffer(const BufferDesc& desc, const void* data = nullptr);
+    Pipeline create_graphics_pipeline(const GraphicsPipelineDesc& desc);
+    Pipeline create_compute_pipeline(const ComputePipelineDesc& desc);
+    DescriptorSet create_descriptor_set(const DescriptorSetLayoutDesc& desc);
+    CommandBuffer create_command_buffer();
+    Swapchain create_swapchain(const SwapchainDesc& desc);
+
+    void submit(const CommandBuffer& cmd, const SubmitInfo& info);
+    void wait_idle();
+
+    template<typename T> T* native_handle();
+};
+
+} // namespace helios::rhi
+```
+
+**Swapchain RAII reconstruct-on-resize:**
+```cpp
+void handle_resize(ResMut<RenderContext> ctx, EventReader<WindowResized> events) {
+    for (auto& e : events) {
+        ctx->device.wait_idle();
+        // Old swapchain destroyed by move-assignment, new one created
+        ctx->swapchain = ctx->device.create_swapchain(SwapchainDesc{
+            .width = e.width, .height = e.height,
+            .surface = ctx->surface,
+            .present_mode = PresentMode::Fifo,
+        });
+    }
+}
+```
+
+**Descriptor types and enums** use the same backend-agnostic style as current RHITypes.h but with `enum class` consistently:
+
+```cpp
+enum class TextureFormat : uint8_t {
+    R8, RG8, RGBA8,
+    RG16F, RGBA16F,
+    R32F, RG32F, RGB32F, RGBA32F,
+    Depth32F, Depth24Stencil8,
+};
+
+enum class BufferUsage : uint32_t {
+    Vertex   = 1 << 0,
+    Index    = 1 << 1,
+    Uniform  = 1 << 2,
+    Storage  = 1 << 3,
+    Transfer = 1 << 4,
+};
+// operator| and operator& for bitfield
+
+enum class TextureUsage : uint32_t {
+    Sampled         = 1 << 0,
+    Storage         = 1 << 1,
+    ColorAttachment = 1 << 2,
+    DepthAttachment = 1 << 3,
+    Transfer        = 1 << 4,
+};
+
+enum class ShaderStage : uint32_t {
+    Vertex   = 1 << 0,
+    Fragment = 1 << 1,
+    Compute  = 1 << 2,
+    Geometry = 1 << 3,
+};
+
+struct TextureDesc {
+    uint32_t width = 1;
+    uint32_t height = 1;
+    TextureFormat format = TextureFormat::RGBA8;
+    TextureType type = TextureType::Texture2D;
+    uint32_t mip_levels = 1;
+    uint32_t array_layers = 1;
+    TextureUsage usage = TextureUsage::Sampled;
+    SamplerMode sampler = SamplerMode::Repeat;  // or ClampToEdge
+    std::string debug_name;
+};
+```
+
+### 4.2 Render Graph
+
+Frostbite-style frame graph. Rebuilt every frame (cheap - just metadata). Auto-manages barriers, resource lifetimes, and memory aliasing.
+
+**Resource handles** are lightweight indices into the graph's resource table. Not GPU resources - those are allocated during compile phase.
+
+```cpp
+struct TextureHandle { uint32_t index; };
+struct BufferHandle { uint32_t index; };
+
+class RenderGraphBuilder {
+public:
+    // Declare reads/writes
+    TextureHandle read(TextureHandle input);
+    TextureHandle write(TextureHandle output);
+    TextureHandle create(const TextureDesc& desc);  // transient resource
+
+    BufferHandle read(BufferHandle input);
+    BufferHandle write(BufferHandle output);
+    BufferHandle create(const BufferDesc& desc);
+};
+
+class RenderContext {
+public:
+    // Resolve handles to actual GPU resources during execute phase
+    rhi::Texture& resolve(TextureHandle handle);
+    rhi::Buffer& resolve(BufferHandle handle);
+
+    // GPU command recording
+    rhi::CommandBuffer& cmd();
+};
+
+class RenderGraph {
+public:
+    // Import persistent resources
+    TextureHandle import_texture(rhi::Texture& external);
+    BufferHandle import_buffer(rhi::Buffer& external);
+
+    // Add a render pass
+    template<typename Data>
+    void add_pass(
+        const char* name,
+        std::function<void(Data&, RenderGraphBuilder&)> setup,
+        std::function<void(const Data&, RenderContext&)> execute
+    );
+
+    // Set final output (determines which passes are needed)
+    void set_output(TextureHandle final_color);
+
+    // Execute the graph (called by render thread)
+    void compile_and_execute(rhi::Device& device);
+};
+```
+
+**Three-phase execution:**
+1. **Setup:** All passes run their setup lambdas, declaring reads/writes/creates through `RenderGraphBuilder`.
+2. **Compile:** Graph walks backwards from `set_output()`, marks needed passes, culls unreferenced passes and resources. Computes execution order (topological sort). Inserts barriers between passes based on resource transitions. Identifies memory aliasing opportunities for transient resources.
+3. **Execute:** Surviving passes run their execute lambdas with `RenderContext`. Transient resources are allocated just-in-time from a pool. Barriers are inserted automatically.
+
+### 4.3 ForwardPlus Plugin
+
+Default rendering pipeline. Builds the standard render graph from a `FramePacket`.
+
+```cpp
+struct ForwardPlusPlugin {
+    ForwardPlusConfig config = {
+        .hdr_format = TextureFormat::RGBA16F,
+        .shadow_resolution = 4096,
+        .shadow_cascades = 4,
+        .depth_format = TextureFormat::Depth32F,
+    };
+
+    void build(App& app) {
+        app.add_plugin<VulkanRenderPlugin>();
+        app.insert_resource(config);
+        app.add_system(Schedule::PreRender, extract_render_data);
+        app.add_system(Schedule::PreRender, build_forward_plus_graph.after(extract_render_data));
+    }
+};
+
+// Render extraction - runs on main thread, builds FramePacket from ECS data
+void extract_render_data(
+    Query<const Transform, const MeshRenderer, Without<Disabled>> meshes,
+    Query<const Transform, const PointLight> point_lights,
+    Query<const Transform, const DirectionalLight> dir_lights,
+    Query<const Transform, const Camera, With<ActiveCamera>> camera,
+    ResMut<FramePacket> packet
+) {
+    packet->clear();
+
+    for (auto [t, cam] : camera) {
+        packet->camera = CameraData{
+            .view = glm::inverse(t.to_mat4()),
+            .projection = cam.projection_matrix(),
+            .position = t.position,
+            .near_plane = cam.near_plane,
+            .far_plane = cam.far_plane,
+        };
+    }
+
+    for (auto [t, mr] : meshes) {
+        packet->mesh_draws.push_back(MeshDraw{
+            .transform = t.to_mat4(),
+            .mesh = mr.mesh,
+            .material = mr.material,
+        });
+    }
+
+    for (auto [t, pl] : point_lights) {
+        packet->point_lights.push_back(LightData{
+            .position = t.position,
+            .color = pl.color,
+            .intensity = pl.intensity,
+            .radius = pl.radius,
+        });
+    }
+
+    for (auto [t, dl] : dir_lights) {
+        packet->dir_lights.push_back(DirLightData{
+            .direction = dl.direction,
+            .color = dl.color,
+            .intensity = dl.intensity,
+            .cast_shadows = dl.cast_shadows,
+        });
+    }
+}
+
+// Graph builder - constructs the render graph from the packet
+void build_forward_plus_graph(
+    Res<FramePacket> packet,
+    Res<ForwardPlusConfig> config,
+    ResMut<RenderGraph> graph
+) {
+    auto depth = add_depth_prepass(graph, packet);
+    auto shadows = add_shadow_pass(graph, packet, config);
+    auto light_cull = add_light_culling_pass(graph, depth, packet);
+    auto hdr = add_forward_pass(graph, depth, shadows, light_cull, packet);
+    auto skybox = add_skybox_pass(graph, hdr, packet);
+    auto ldr = add_tonemap_pass(graph, skybox, config);
+    graph->set_output(ldr);
+}
+```
+
+### 4.4 Render Thread
+
+Separate `std::thread` that consumes `FramePacket`s. Owns the `RenderGraph` executor and GPU submission. Never touches the World.
+
+```cpp
+class RenderThread {
+public:
+    RenderThread(rhi::Device& device, rhi::Swapchain& swapchain);
+    ~RenderThread(); // signals shutdown, joins thread
+
+    RenderThread(const RenderThread&) = delete;
+    RenderThread& operator=(const RenderThread&) = delete;
+
+    // Called by main thread - swaps packet into render thread's queue
+    void submit(FramePacket packet);
+
+private:
+    void thread_main();
+
+    rhi::Device& m_device;
+    rhi::Swapchain& m_swapchain;
+
+    std::thread m_thread;
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::optional<FramePacket> m_pending_packet;
+    std::atomic<bool> m_running{true};
+};
+```
+
+**Frame flow:**
+1. Main thread runs ECS systems (Update, FixedUpdate, PostUpdate, PreRender).
+2. `extract_render_data` system builds `FramePacket` from ECS queries.
+3. `build_forward_plus_graph` builds the graph specification.
+4. Main thread calls `render_thread.submit(packet)` - moves packet to render thread.
+5. Main thread continues to frame N+1 immediately.
+6. Render thread wakes up, acquires swapchain image, compiles graph, executes passes, presents.
+7. Render thread can lag 1-2 frames behind main thread.
+
+### 4.5 Shader System
+
+Cross-backend shader sources compiled at build time via CMake custom commands.
+
+```cmake
+# In helios-renderer/CMakeLists.txt:
+compile_shaders(
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+    OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders
+    BACKEND vulkan   # compiles GLSL/HLSL → SPIR-V
+)
+```
+
+**Hot reload in development:** A file watcher system detects shader source changes, triggers recompile via `glslc`, and the render thread recreates affected pipelines. This is an editor-only feature (development builds).
+
+### 4.6 IBL Pipeline
+
+The IBL generation (equirect-to-cube, irradiance convolution, prefilter, BRDF LUT) is implemented as compute dispatches on the render thread. When a skybox texture is loaded, an `IBLGenerationRequest` event is sent. The render thread picks it up and generates the IBL textures.
+
+---
+
+## 5. Physics
+
+### 5.1 Physics Interface
+
+Backend-abstracted. The engine defines the interface. Jolt implements it behind `std::unique_ptr<PhysicsWorld>`.
+
+```cpp
+namespace helios::physics {
+
+using BodyHandle = uint64_t;
+
+struct BodyDesc {
+    BodyType type = BodyType::Static;
+    glm::vec3 position{0};
+    glm::quat rotation{1, 0, 0, 0};
+    float mass = 1.0f;
+    float friction = 0.5f;
+    float restitution = 0.3f;
+    ColliderShape shape;     // variant: Box, Sphere, Capsule, Mesh
+};
+
+struct ContactEvent {
+    Entity entity_a;
+    Entity entity_b;
+    glm::vec3 world_point;
+    glm::vec3 normal;
+    float impulse;
+};
+
+class PhysicsWorld {
+public:
+    virtual ~PhysicsWorld() = default;
+
+    virtual BodyHandle create_body(const BodyDesc& desc) = 0;
+    virtual void destroy_body(BodyHandle handle) = 0;
+    virtual void set_transform(BodyHandle handle, const glm::vec3& pos, const glm::quat& rot) = 0;
+    virtual glm::vec3 get_position(BodyHandle handle) const = 0;
+    virtual glm::quat get_rotation(BodyHandle handle) const = 0;
+    virtual void set_velocity(BodyHandle handle, const glm::vec3& linear) = 0;
+    virtual void apply_force(BodyHandle handle, const glm::vec3& force) = 0;
+    virtual void apply_impulse(BodyHandle handle, const glm::vec3& impulse) = 0;
+
+    virtual void step(float dt) = 0;
+    virtual std::vector<ContactEvent> drain_contacts() = 0;
+
+    // Raycasting
+    struct RayHit { Entity entity; glm::vec3 point; glm::vec3 normal; float distance; };
+    virtual std::optional<RayHit> raycast(const glm::vec3& origin, const glm::vec3& dir, float max_dist) const = 0;
+    virtual std::vector<RayHit> raycast_all(const glm::vec3& origin, const glm::vec3& dir, float max_dist) const = 0;
+};
+
+} // namespace helios::physics
+```
+
+### 5.2 Physics Systems
+
+```cpp
+// FixedUpdate: step simulation
+void physics_step(
+    ResMut<std::unique_ptr<PhysicsWorld>> world,
+    Res<PhysicsConfig> config,
+    EventWriter<CollisionEvent> collisions
+) {
+    world->get()->step(config->fixed_timestep);
+    for (auto& contact : world->get()->drain_contacts()) {
+        collisions.send(CollisionEvent{
+            .a = contact.entity_a,
+            .b = contact.entity_b,
+            .point = contact.world_point,
+            .normal = contact.normal,
+        });
+    }
+}
+
+// PostUpdate: sync transforms back from physics
+void sync_physics_transforms(
+    Query<Transform, const RigidBody> bodies,
+    Res<std::unique_ptr<PhysicsWorld>> world
+) {
+    for (auto [transform, rb] : bodies) {
+        transform.position = world->get()->get_position(rb.body_handle);
+        transform.rotation = world->get()->get_rotation(rb.body_handle);
+    }
+}
+
+// PostUpdate: push ECS transforms to physics (for kinematic bodies)
+void push_kinematic_transforms(
+    Query<const Transform, const RigidBody> bodies,
+    ResMut<std::unique_ptr<PhysicsWorld>> world
+) {
+    for (auto [transform, rb] : bodies) {
+        if (rb.type == BodyType::Kinematic) {
+            world->get()->set_transform(rb.body_handle, transform.position, transform.rotation);
+        }
+    }
 }
 ```
 
 ---
 
-## 10. Engine/Editor Separation
+## 6. Audio
 
-### 10.1 Engine
+### 6.1 Audio Interface
 
-The engine is a set of CMake library targets. It knows nothing about ImGui, editor panels, gizmos, or undo/redo.
+```cpp
+namespace helios::audio {
 
-**Engine public API:** World, App, Plugin system, ECS, RHI, Render Graph, Physics/Audio/Script interfaces, Asset system, Input, Window.
+using SoundHandle = uint64_t;
 
-### 10.2 Editor
+struct PlayParams {
+    float volume = 1.0f;
+    bool loop = false;
+    float pitch = 1.0f;
+};
 
-The editor is a separate CMake executable target that links against engine libraries. It adds editor-specific plugins.
+class AudioDevice {
+public:
+    virtual ~AudioDevice() = default;
+
+    virtual SoundHandle play(const void* pcm_data, size_t size, const PlayParams& params = {}) = 0;
+    virtual SoundHandle play_at(const void* pcm_data, size_t size, const glm::vec3& pos, const PlayParams& params = {}) = 0;
+    virtual void stop(SoundHandle handle) = 0;
+    virtual void pause(SoundHandle handle) = 0;
+    virtual void resume(SoundHandle handle) = 0;
+    virtual bool is_playing(SoundHandle handle) const = 0;
+    virtual void set_volume(SoundHandle handle, float volume) = 0;
+    virtual void set_position(SoundHandle handle, const glm::vec3& pos) = 0;
+    virtual void set_listener(const glm::vec3& pos, const glm::vec3& forward, const glm::vec3& up) = 0;
+    virtual void update() = 0;  // per-frame update (e.g., stream buffers)
+};
+
+} // namespace helios::audio
+```
+
+### 6.2 Audio Systems
+
+```cpp
+void update_audio_listener(
+    Query<const Transform, With<ActiveCamera>> camera,
+    ResMut<std::unique_ptr<AudioDevice>> audio
+) {
+    for (auto [transform] : camera) {
+        auto forward = transform.rotation * glm::vec3{0, 0, -1};
+        auto up = transform.rotation * glm::vec3{0, 1, 0};
+        audio->get()->set_listener(transform.position, forward, up);
+    }
+}
+
+void update_spatial_sources(
+    Query<const Transform, AudioSource> sources,
+    ResMut<std::unique_ptr<AudioDevice>> audio
+) {
+    for (auto [transform, source] : sources) {
+        if (source.spatial && source.playing_handle) {
+            audio->get()->set_position(source.playing_handle, transform.position);
+        }
+    }
+}
+```
+
+---
+
+## 7. Scripting
+
+### 7.1 Script Execution Model
+
+C# scripts are per-entity instances. The engine groups entities by script type and batches execution.
+
+```csharp
+// C# side
+[System(Schedule.Update)]
+public class EnemyAI : Script
+{
+    // Serialized per-instance fields
+    public float Speed = 5.0f;
+    public float DetectRange = 15.0f;
+
+    public override void OnUpdate(float delta)
+    {
+        var transform = Entity.Get<Transform>();
+        var player = World.QuerySingle<Transform, With<Player>>();
+
+        if (player != null)
+        {
+            float dist = Vector3.Distance(transform.Position, player.Position);
+            if (dist < DetectRange)
+            {
+                var dir = Vector3.Normalize(player.Position - transform.Position);
+                transform.Position += dir * Speed * delta;
+            }
+        }
+    }
+}
+```
+
+**C++ side execution flow:**
+1. `ScriptExecutionSystem` runs in `Schedule::Update`.
+2. Groups all entities by their `ScriptInstance.script_type_id`.
+3. For each group, calls across the C++/C# bridge: `bridge.invoke_update(script_type_id, entity_handles[], delta)`.
+4. The C# runtime iterates the handles, creates `Script` wrappers, calls `OnUpdate()`.
+5. Different script types are independent batches. The scheduler can run non-conflicting batches in parallel.
+
+### 7.2 Hot Reload
+
+Same mechanism as current: collectible `AssemblyLoadContext`, file watcher, serialize state → unload → reload → deserialize state. Integrated as a system:
+
+```cpp
+void check_script_reload(
+    ResMut<ScriptRuntime> runtime,
+    EventReader<FileChanged> file_events
+) {
+    for (auto& e : file_events) {
+        if (e.path.extension() == ".cs" || e.path.extension() == ".dll") {
+            runtime->request_reload();
+        }
+    }
+}
+```
+
+---
+
+## 8. Asset System
+
+### 8.1 AssetServer Resource
+
+Owned by the World. Manages async loading, caching, and handle resolution.
+
+```cpp
+class AssetServer {
+public:
+    AssetServer(const std::filesystem::path& asset_root);
+    ~AssetServer() = default;
+
+    // Async load (returns handle immediately)
+    template<typename T>
+    AssetHandle load(const std::string& path);
+
+    // Sync load (blocks)
+    template<typename T>
+    AssetHandle load_sync(const std::string& path);
+
+    // Batch loading with progress tracking
+    LoadBatchBuilder load_batch();
+
+    // Resolve handle to loaded asset (returns nullptr if not loaded yet)
+    template<typename T>
+    const T* get(AssetHandle handle) const;
+
+    // Check status
+    AssetStatus status(AssetHandle handle) const; // Loading, Loaded, Failed
+    bool is_loaded(AssetHandle handle) const;
+
+    // Hot reload support
+    void watch_for_changes(bool enable);
+
+private:
+    struct AssetEntry {
+        std::any data;                          // the actual asset
+        AssetStatus status;
+        std::filesystem::path path;
+    };
+
+    std::unordered_map<uint64_t, AssetEntry> m_assets;
+    std::mutex m_mutex;                          // protects m_assets
+    std::vector<std::jthread> m_loader_threads;  // background loading
+    std::filesystem::path m_root;
+};
+```
+
+### 8.2 LoadBatch
+
+```cpp
+class LoadBatchBuilder {
+public:
+    template<typename T> LoadBatchBuilder& add(const std::string& path);
+    LoadBatch submit();
+};
+
+class LoadBatch {
+public:
+    float progress() const;      // 0.0 to 1.0
+    int total() const;
+    int remaining() const;
+    bool is_complete() const;
+    std::vector<std::string> failed() const;  // paths that failed to load
+};
+```
+
+### 8.3 Serialization
+
+**YAML (development):**
+- Auto-generated from reflection (qlibs/reflect iterates fields, writes name:value pairs).
+- Human-readable, git-diffable.
+- Used by editor for scene files, project settings, asset metadata.
+
+**Binary (runtime):**
+- Auto-generated from reflection (qlibs/reflect iterates fields, writes raw bytes + size headers).
+- Fast load, compact.
+- Editor exports YAML to binary on build.
+
+Scene file format:
+```yaml
+scene:
+  name: "Main Level"
+  entities:
+    - id: "a1b2c3d4"
+      tag: "Player"
+      components:
+        Transform:
+          position: [0, 1, 0]
+          rotation: [1, 0, 0, 0]
+          scale: [1, 1, 1]
+        MeshRenderer:
+          mesh: "meshes/player.gltf"
+          material: "materials/player.mat"
+        RigidBody:
+          type: Dynamic
+          mass: 70.0
+```
+
+---
+
+## 9. Input System
+
+### 9.1 Raw Input (Power Layer)
+
+Direct keyboard/mouse/gamepad state. Updated by `WindowPlugin` each frame.
+
+```cpp
+struct RawInput {
+    // Keyboard
+    bool key_pressed(KeyCode key) const;
+    bool key_just_pressed(KeyCode key) const;
+    bool key_just_released(KeyCode key) const;
+
+    // Mouse
+    glm::vec2 mouse_position() const;
+    glm::vec2 mouse_delta() const;
+    float scroll_delta() const;
+    bool mouse_button_pressed(MouseButton btn) const;
+    bool mouse_button_just_pressed(MouseButton btn) const;
+
+    // Gamepad (future)
+    float gamepad_axis(int pad, GamepadAxis axis) const;
+    bool gamepad_button(int pad, GamepadButton btn) const;
+
+    // Internal state (updated by input system)
+    std::array<bool, 512> m_keys_current{};
+    std::array<bool, 512> m_keys_previous{};
+    glm::vec2 m_mouse_pos{};
+    glm::vec2 m_mouse_pos_prev{};
+    float m_scroll{};
+    std::array<bool, 8> m_mouse_buttons_current{};
+    std::array<bool, 8> m_mouse_buttons_previous{};
+};
+```
+
+### 9.2 Action Mapping (Convenience Layer)
+
+```cpp
+class InputMap {
+public:
+    // Define actions (can bind multiple inputs to one action)
+    InputMap& action(const std::string& name, KeyCode key);
+    InputMap& action(const std::string& name, MouseButton btn);
+    InputMap& action(const std::string& name, GamepadButton btn);
+
+    // Define axes (positive/negative keys, or analog stick)
+    InputMap& axis(const std::string& name, KeyCode positive, KeyCode negative);
+    InputMap& axis(const std::string& name, GamepadAxis stick);
+
+    // Query (used in systems)
+    bool pressed(const std::string& action) const;
+    bool just_pressed(const std::string& action) const;
+    bool just_released(const std::string& action) const;
+    float axis_value(const std::string& axis_name) const;  // -1.0 to 1.0
+
+private:
+    struct ActionBinding {
+        std::vector<KeyCode> keys;
+        std::vector<MouseButton> mouse_buttons;
+        std::vector<GamepadButton> gamepad_buttons;
+    };
+    struct AxisBinding {
+        KeyCode positive = KeyCode::Unknown;
+        KeyCode negative = KeyCode::Unknown;
+        GamepadAxis gamepad_axis = GamepadAxis::None;
+    };
+
+    std::unordered_map<std::string, ActionBinding> m_actions;
+    std::unordered_map<std::string, AxisBinding> m_axes;
+    const RawInput* m_raw = nullptr;  // set by input update system
+};
+```
+
+---
+
+## 10. Window System
+
+Multi-window support via GLFW.
+
+```cpp
+class Window {
+public:
+    Window(const WindowDesc& desc);
+    ~Window();                        // glfwDestroyWindow
+    Window(Window&& other) noexcept;
+    Window(const Window&) = delete;
+
+    uint32_t width() const;
+    uint32_t height() const;
+    bool should_close() const;
+    void poll_events();
+    void* native_handle() const;      // GLFWwindow*
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;     // pimpl to hide GLFW
+};
+
+class Windows {
+public:
+    WindowId create(const WindowDesc& desc);
+    void destroy(WindowId id);
+    Window& get(WindowId id);
+    Window& primary();
+    void poll_all();
+
+    // Iteration
+    auto begin() { return m_windows.begin(); }
+    auto end() { return m_windows.end(); }
+
+private:
+    std::unordered_map<WindowId, Window> m_windows;
+    WindowId m_primary;
+    WindowId m_next_id = 1;
+};
+```
+
+---
+
+## 11. Engine/Editor Separation
+
+### 11.1 Engine
+
+CMake library targets. Zero ImGui, zero editor knowledge.
+
+**Public API surface:**
+- `helios-core`: World, App, Plugin, Entity, Component, System, Query, Resource, Event, Commands, Scheduler, Time, Input, Window, AssetServer, Logging
+- `helios-renderer`: RHI types, Device, Texture, Buffer, Pipeline, RenderGraph, ForwardPlusPlugin
+- `helios-physics`: PhysicsWorld interface, BodyHandle, CollisionEvent
+- `helios-audio`: AudioDevice interface, SoundHandle
+- `helios-script`: ScriptRuntime interface, ScriptInstance component
+
+### 11.2 Editor
+
+Separate executable. Links all engine libraries + ImGui + ImGuizmo.
+
+```cpp
+// editor/main.cpp
+int main() {
+    helios::App app;
+
+    // Engine plugins
+    app.add_plugin<helios::WindowPlugin>({ .title = "Helios Editor", .width = 1920, .height = 1080 });
+    app.add_plugin<helios::InputPlugin>();
+    app.add_plugin<helios::ForwardPlusPlugin>();
+    app.add_plugin<helios::PhysicsPlugin<helios::JoltBackend>>();
+    app.add_plugin<helios::AudioPlugin<helios::SoLoudBackend>>();
+    app.add_plugin<helios::ScriptingPlugin>();
+
+    // Editor-only plugins
+    app.add_plugin<editor::EditorPlugin>();
+
+    app.run();
+}
+```
 
 ```cpp
 struct EditorPlugin {
     void build(App& app) {
-        app.add_plugin<ImGuiPlugin>();
+        app.add_plugin<ImGuiRenderPlugin>();  // ImGui backend (uses RHI escape hatch)
         app.insert_resource<EditorState>(EditorState{});
+        app.insert_resource<EditorCommands>(EditorCommands{});
+
         app.add_system(Schedule::PreRender, scene_hierarchy_panel);
         app.add_system(Schedule::PreRender, inspector_panel);
         app.add_system(Schedule::PreRender, content_browser_panel);
         app.add_system(Schedule::PreRender, viewport_panel);
         app.add_system(Schedule::PreRender, gizmo_system);
+        app.add_system(Schedule::PreRender, debug_visualization);
     }
 };
 ```
 
-### 10.3 Editor Undo/Redo
+### 11.3 Editor Undo/Redo
 
-`EditorCommands` wraps `Commands` with diff recording. Engine doesn't know undo exists.
+`EditorCommands` wraps `Commands` with diff tracking.
 
 ```cpp
-struct EditorCommands {
-    void set(Entity e, const Transform& new_val);
-    // internally: saves old value, applies new, pushes to undo stack
+class EditorCommands {
+public:
+    // Modify a component (records old value for undo)
+    template<typename T>
+    void set(Entity entity, World& world, const T& new_value) {
+        auto old_value = world.get<T>(entity);
+        m_undo_stack.push(UndoEntry{
+            .entity = entity,
+            .apply = [=](World& w) { w.get<T>(entity) = new_value; },
+            .revert = [=](World& w) { w.get<T>(entity) = old_value; },
+        });
+        world.get<T>(entity) = new_value;
+    }
 
-    void undo(); // replays in reverse
-    void redo(); // replays forward
+    void undo(World& world);
+    void redo(World& world);
+    bool can_undo() const;
+    bool can_redo() const;
+
+private:
+    struct UndoEntry {
+        Entity entity;
+        std::function<void(World&)> apply;
+        std::function<void(World&)> revert;
+    };
+    std::vector<UndoEntry> m_undo_stack;
+    size_t m_cursor = 0;
 };
+```
+
+### 11.4 ImGui Integration
+
+ImGui lives entirely in the editor. It uses the RHI escape hatch for backend initialization:
+
+```cpp
+struct ImGuiRenderPlugin {
+    void build(App& app) {
+        app.add_system(Schedule::Startup, init_imgui);
+        app.add_system(Schedule::PreRender, begin_imgui_frame);
+        // ImGui draw data is submitted to render thread as part of FramePacket
+    }
+};
+
+void init_imgui(Res<rhi::Device> device, Res<Windows> windows) {
+    ImGui::CreateContext();
+
+    // Escape hatch: access native handles for ImGui backend init
+    auto* vk_device = device->native_handle<VkDevice>();
+    auto* glfw_window = static_cast<GLFWwindow*>(windows->primary().native_handle());
+    ImGui_ImplGlfw_InitForVulkan(glfw_window, true);
+    // ... ImGui Vulkan backend init using native handles ...
+}
 ```
 
 ---
 
-## 11. CMake Module Structure
+## 12. CMake Module Structure
 
 ```
 helios/
-  CMakeLists.txt (root)
-  helios-core/          → libhelios-core.a
-    ecs/                (World, Archetype, Query, System, Scheduler)
-    math/               (glm wrappers, BoundingBox, Ray)
-    core/               (App, Plugin, Window, Input, Logging, Timer)
-    assets/             (AssetServer, async loading, serialization)
-    platform/           (GLFW window, platform input)
+  CMakeLists.txt                    (root: project options, find_package, add_subdirectory)
 
-  helios-renderer/      → libhelios-renderer.a
-    rhi/                (Device, Texture, Buffer, Pipeline - backend-agnostic types)
-    vulkan/             (VulkanDevice, VulkanTexture, etc.)
-    graph/              (RenderGraph, RenderPass, ResourceLifetime)
-    forward_plus/       (ForwardPlusPlugin, standard pass implementations)
-    shaders/            (cross-backend shader sources)
+  helios-core/
+    CMakeLists.txt                  → libhelios-core.a
+    src/
+      ecs/
+        world.h / world.cpp
+        archetype.h / archetype.cpp
+        entity.h
+        query.h
+        commands.h / commands.cpp
+        scheduler.h / scheduler.cpp
+        resource_storage.h
+        event_storage.h
+      app/
+        app.h / app.cpp
+        plugin.h
+        state.h / state.cpp
+        game_flow.h / game_flow.cpp
+      core/
+        logging.h / logging.cpp       (spdlog wrapper, RAII)
+        timer.h
+        uuid.h / uuid.cpp             (thread-safe RNG via thread_local)
+        profiler.h                     (Tracy macros)
+      math/
+        math.h                         (glm utilities, BoundingBox, Ray)
+      input/
+        raw_input.h
+        input_map.h / input_map.cpp
+        key_codes.h
+      window/
+        window.h / window.cpp          (GLFW pimpl)
+        windows.h / windows.cpp
+      assets/
+        asset_server.h / asset_server.cpp
+        asset_handle.h
+        load_batch.h / load_batch.cpp
+        importers/
+          texture_importer.h / .cpp
+          mesh_importer.h / .cpp
+          audio_importer.h / .cpp
+      serialization/
+        yaml_serializer.h / .cpp
+        binary_serializer.h / .cpp
+        reflect_helpers.h              (serialize/deserialize via qlibs/reflect)
 
-  helios-physics/       → libhelios-physics.a
-    interface/          (PhysicsWorld, BodyHandle, ContactEvent)
-    jolt/               (JoltPhysicsWorld backend)
+  helios-renderer/
+    CMakeLists.txt                  → libhelios-renderer.a
+    src/
+      rhi/
+        rhi_types.h                    (enums, descriptors - backend-agnostic)
+        rhi.h                          (type aliases: Device, Texture, etc.)
+      vulkan/
+        vulkan_device.h / .cpp
+        vulkan_texture.h / .cpp
+        vulkan_buffer.h / .cpp
+        vulkan_pipeline.h / .cpp
+        vulkan_command_buffer.h / .cpp
+        vulkan_swapchain.h / .cpp
+        vulkan_descriptor.h / .cpp
+        vulkan_context.h / .cpp        (instance, validation)
+        vulkan_utils.h                 (format conversion helpers)
+      graph/
+        render_graph.h / render_graph.cpp
+        render_graph_builder.h
+        render_context.h
+        resource_pool.h / .cpp         (transient resource allocation)
+      forward_plus/
+        forward_plus_plugin.h / .cpp
+        depth_prepass.h / .cpp
+        shadow_pass.h / .cpp
+        light_culling.h / .cpp
+        forward_pass.h / .cpp
+        skybox_pass.h / .cpp
+        tonemap_pass.h / .cpp
+        ibl_generation.h / .cpp
+      render_thread.h / render_thread.cpp
+      frame_packet.h
+      pipeline_cache.h / .cpp
+      default_textures.h / .cpp
 
-  helios-audio/         → libhelios-audio.a
-    interface/          (AudioDevice, SoundHandle)
-    soloud/             (SoLoudDevice backend)
+  helios-physics/
+    CMakeLists.txt                  → libhelios-physics.a
+    src/
+      interface/
+        physics_world.h
+        body_types.h
+        contact_event.h
+        physics_plugin.h
+      jolt/
+        jolt_physics_world.h / .cpp
+        jolt_utils.h
 
-  helios-script/        → libhelios-script.a
-    interface/          (ScriptRuntime, ScriptComponent)
-    coreclr/            (CoreCLR backend, HostFXR bridge)
+  helios-audio/
+    CMakeLists.txt                  → libhelios-audio.a
+    src/
+      interface/
+        audio_device.h
+        audio_types.h
+        audio_plugin.h
+      soloud/
+        soloud_device.h / .cpp
 
-  helios-editor/        → helios-editor executable
-    imgui/              (ImGui integration, ImGui render backend)
-    panels/             (Hierarchy, Inspector, ContentBrowser, Viewport)
-    gizmo/              (ImGuizmo integration)
-    commands/           (EditorCommands, undo/redo)
+  helios-script/
+    CMakeLists.txt                  → libhelios-script.a
+    src/
+      interface/
+        script_runtime.h
+        script_component.h
+        scripting_plugin.h
+      coreclr/
+        coreclr_runtime.h / .cpp
+        hostfxr_bridge.h / .cpp
+        script_glue.h / .cpp
 
-  vendor/               (third-party: GLFW, imgui, Jolt, SoLoud, glm, yaml-cpp, Tracy, etc.)
-  scripts/              (CMake helpers, shader compilation)
+  helios-editor/
+    CMakeLists.txt                  → helios-editor (executable)
+    src/
+      main.cpp
+      editor_plugin.h / .cpp
+      editor_state.h
+      editor_commands.h / .cpp       (undo/redo)
+      imgui/
+        imgui_render_plugin.h / .cpp  (ImGui init via RHI escape hatch)
+      panels/
+        scene_hierarchy.h / .cpp
+        inspector.h / .cpp
+        content_browser.h / .cpp
+        viewport.h / .cpp
+        project_settings.h / .cpp
+        scene_settings.h / .cpp
+      gizmo/
+        gizmo_system.h / .cpp        (ImGuizmo integration)
+
+  vendor/                            (third-party dependencies)
+    glfw/
+    imgui/
+    jolt/
+    soloud/
+    glm/
+    yaml-cpp/
+    tracy/
+    vma/
+    vk-bootstrap/
+    stb/
+    assimp/
+    qlibs-reflect/
+    entt-meta/                       (just the meta module, not full entt)
+
+  scripts/
+    compile_shaders.cmake
+    generate_reflection.cmake         (future: if we add codegen)
+
+  shaders/                           (cross-backend shader sources)
+    forward.vert / forward.frag
+    depth_prepass.vert / depth_prepass.frag
+    shadow.vert / shadow.frag
+    light_culling.comp
+    tonemap.comp
+    skybox.vert / skybox.frag
+    equirect_to_cube.comp
+    irradiance_convolution.comp
+    prefilter_envmap.comp
+    brdf_lut.comp
 ```
 
 **Dependency graph:**
 ```
-helios-core         (no engine deps, only vendor: glm, yaml-cpp, GLFW)
-helios-renderer     → helios-core
-helios-physics      → helios-core
-helios-audio        → helios-core
-helios-script       → helios-core
-helios-editor       → all of the above + imgui + ImGuizmo
+helios-core         depends on: glm, yaml-cpp, glfw, spdlog, tracy, qlibs-reflect
+helios-renderer     depends on: helios-core, vulkan, vma, vk-bootstrap
+helios-physics      depends on: helios-core, jolt
+helios-audio        depends on: helios-core, soloud
+helios-script       depends on: helios-core, hostfxr/.NET
+helios-editor       depends on: all above + imgui + imgui_impl_vulkan + imguizmo + nfd
 ```
 
 ---
 
-## 12. Testing
+## 13. Testing
 
-### 12.1 Headless Mode
-
-The engine can run without a window or GPU. Systems that don't touch rendering work normally. The render extraction system produces a FramePacket but nothing consumes it.
+### 13.1 Headless Mode
 
 ```cpp
+struct HeadlessPlugin {
+    void build(App& app) {
+        // No window, no GPU. Inserts stub resources.
+        app.insert_resource<Windows>(Windows{});  // empty, no real window
+        // RenderThread not started - FramePackets are dropped
+    }
+};
+
+// Test:
 App app;
-app.add_plugin<HeadlessPlugin>(); // no window, no GPU
+app.add_plugin<HeadlessPlugin>();
 app.add_plugin<PhysicsPlugin<JoltBackend>>();
-// physics systems run, renderer doesn't
+// Physics works, rendering skipped
 ```
 
-### 12.2 Mock Backends
-
-Physics, Audio, and RHI interfaces can be mocked for unit testing.
+### 13.2 ECS Unit Testing
 
 ```cpp
+// Direct World manipulation for testing
+TEST(ECS, MoveSystem) {
+    World world;
+    world.insert_resource<Time>(Time{ .m_delta = 1.0f / 60.0f });
+
+    auto e = world.spawn();
+    world.add(e, Transform{ .position = {0, 0, 0} });
+    world.add(e, Velocity{ .direction = {1, 0, 0}, .speed = 60.0f });
+
+    world.run_system(move_entities);
+
+    auto& t = world.get<Transform>(e);
+    EXPECT_NEAR(t.position.x, 1.0f, 0.001f);  // 60 * (1/60) = 1.0
+}
+```
+
+### 13.3 Mock Backends
+
+```cpp
+class MockPhysicsWorld : public PhysicsWorld {
+    // Implement interface with in-memory state for testing
+    // No Jolt dependency
+};
+
 app.add_plugin<PhysicsPlugin<MockPhysicsBackend>>();
-// test game logic without Jolt
 ```
 
-### 12.3 ECS Testing
+---
 
-```cpp
-// Create a test world, add systems, step manually
-World world;
-world.spawn().insert(Transform{}).insert(Enemy{ .speed = 5.0f });
-world.insert_resource<Time>(Time{ .m_delta = 0.016f });
-world.run_system(move_enemies);
+## 14. Migration Path (from current codebase)
 
-auto& t = world.query_single<Transform, const Enemy>();
-EXPECT_NEAR(t.position.x, 0.08f, 0.001f);
-```
+This is a big-bang rewrite. The new codebase starts from scratch with the new directory structure and CMake build. The old premake + source structure is preserved in git history.
+
+**What carries over (adapted, not copy-pasted):**
+- Shader GLSL source (adapted for new pipeline)
+- Vulkan backend implementation (refactored into new RHI)
+- Jolt physics integration (refactored behind PhysicsWorld interface)
+- SoLoud audio integration (refactored behind AudioDevice interface)
+- CoreCLR/HostFXR bridge (refactored behind ScriptRuntime interface)
+- Asset importers (assimp mesh loader, stbi texture loader)
+- Editor panel logic (refactored into ECS systems)
+- ImGuizmo integration (moved to editor)
+
+**What is rewritten from scratch:**
+- ECS (World, Archetype, Query, Scheduler, Commands)
+- App + Plugin system
+- State management (GameFlow, State stack)
+- Render graph
+- RHI layer (compile-time backend selection, RAII types)
+- Render thread
+- Input system (raw + action mapping)
+- Window system (multi-window)
+- Asset system (async, batch, progress)
+- Serialization (reflection-based)
+- CMake build system
