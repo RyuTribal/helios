@@ -209,8 +209,9 @@ namespace Engine {
         DebugRenderer m_DebugRenderer;
         PipelineCache m_PipelineCache;
 
-        // Per-frame command buffer
-        Ref<RHICommandBuffer> m_CommandBuffer;
+        // Per-frame command buffers (one per frame in flight)
+        static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+        Ref<RHICommandBuffer> m_CommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
         // Submission queues (cleared each frame)
         std::vector<Ref<Mesh>> m_Meshes;

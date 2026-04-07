@@ -133,7 +133,8 @@ namespace Engine
         uint32_t h = static_cast<uint32_t>(m_Height);
 
         // Command buffer
-        m_CommandBuffer = device->CreateCommandBuffer();
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+            m_CommandBuffers[i] = device->CreateCommandBuffer();
 
         // Initialize all render passes
         m_DepthPrePass.Init(device, &m_PipelineCache, w, h);
@@ -226,7 +227,7 @@ namespace Engine
         if (!m_CurrentCamera)
         {
             // No camera — just present a blank frame
-            auto* cmd = m_CommandBuffer.get();
+            auto* cmd = m_CommandBuffers[static_cast<VulkanSwapchain*>(m_Swapchain)->GetCurrentFrame()].get();
             auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
             auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
 
@@ -258,7 +259,7 @@ namespace Engine
             return;
         }
 
-        auto* cmd = m_CommandBuffer.get();
+        auto* cmd = m_CommandBuffers[static_cast<VulkanSwapchain*>(m_Swapchain)->GetCurrentFrame()].get();
         auto* vkSwapchain2 = static_cast<VulkanSwapchain*>(m_Swapchain);
         auto* vkCmd2 = static_cast<VulkanCommandBuffer*>(cmd);
         cmd->Begin();
