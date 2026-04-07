@@ -26,7 +26,7 @@ namespace Engine {
     void VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height)
     {
         vkb::SwapchainBuilder builder(m_Device->GetPhysicalDevice(), m_Device->GetDevice(), m_Surface);
-        builder.set_desired_format({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+        builder.set_desired_format({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
                .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
                .set_desired_extent(width, height)
                .set_old_swapchain(m_Swapchain);
