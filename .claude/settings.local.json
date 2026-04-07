@@ -9,7 +9,10 @@
       "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrap.h\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrap.h)",
       "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrap.cpp\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrap.cpp)",
       "Bash(curl -sSL \"https://raw.githubusercontent.com/charles-lunarg/vk-bootstrap/main/src/VkBootstrapDispatch.h\" -o /home/ryutribal/programming/helios/Engine/vendor/vk-bootstrap/VkBootstrapDispatch.h)",
-      "Bash(vendor/premake/premake5 gmake2:*)"
+      "Bash(vendor/premake/premake5 gmake2:*)",
+      "Bash(timeout 12 ../bin/Debug-linux-x86_64/Editor/Editor)",
+      "Bash(echo \"Exit: $?\")",
+      "Read(//tmp/**)"
     ]
   }
 }

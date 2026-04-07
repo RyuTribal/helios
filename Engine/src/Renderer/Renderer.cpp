@@ -289,18 +289,10 @@ namespace Engine
 
     ImTextureID Renderer::GetSceneTextureID()
     {
-        if (!m_ForwardPass.ColorTexture)
-            return nullptr;
-
-        if (!m_SceneImGuiDescriptor)
-        {
-            auto* vkTex = static_cast<VulkanTexture*>(m_ForwardPass.ColorTexture.get());
-            m_SceneImGuiDescriptor = ImGui_ImplVulkan_AddTexture(
-                vkTex->GetVkSampler(),
-                vkTex->GetVkImageView(),
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        }
-        return m_SceneImGuiDescriptor;
+        // Scene viewport disabled until 3D render passes write to the color texture.
+        // The texture IS transitioned to SHADER_READ_ONLY on creation, but the
+        // descriptor still causes issues when the texture content is uninitialized.
+        return nullptr;
     }
 
     std::vector<glm::mat4> Renderer::ComputeCascadeLightMatrices(const glm::vec3& lightDir)

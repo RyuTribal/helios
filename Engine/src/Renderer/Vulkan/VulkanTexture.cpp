@@ -216,20 +216,9 @@ namespace Engine {
 
             vmaDestroyBuffer(device->GetAllocator(), stagingBuffer, stagingAllocation);
         }
-        else
-        {
-            // No initial data — still transition to a usable layout so the image
-            // can be safely sampled (prevents GPU hang on Intel when ImGui reads it)
-            VkImageLayout targetLayout = isDepth
-                ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            device->ImmediateSubmit([&](VkCommandBuffer cmd) {
-                TransitionLayout(cmd, m_Image,
-                    VK_IMAGE_LAYOUT_UNDEFINED, targetLayout, aspectMask);
-            });
-            m_CurrentLayout = targetLayout;
-        }
+        // Note: images without initial data stay in UNDEFINED layout.
+        // They MUST be transitioned before first use (in render passes or
+        // before creating ImGui descriptors).
 
         // -- 5. Debug names --
         if (!desc.DebugName.empty()) {

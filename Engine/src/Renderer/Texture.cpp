@@ -121,15 +121,7 @@ namespace Engine {
 
     ImTextureID Texture2D::GetImGuiTextureID()
     {
-        if (!m_ImGuiDescriptor && m_RHITexture)
-        {
-            auto* vkTex = static_cast<VulkanTexture*>(m_RHITexture.get());
-            m_ImGuiDescriptor = ImGui_ImplVulkan_AddTexture(
-                vkTex->GetVkSampler(),
-                vkTex->GetVkImageView(),
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        }
-        return m_ImGuiDescriptor;
+        return nullptr;
     }
 
 
