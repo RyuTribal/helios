@@ -183,7 +183,12 @@ namespace Engine
         uint32_t imageIndex = vkSwapchain->GetCurrentImageIndex();
         VkFramebuffer imguiFB = m_ImGuiFramebuffers[imageIndex];
 
-        // Begin legacy render pass (handles UNDEFINED → COLOR_ATTACHMENT transition internally)
+        // Manual transition — matches what VulkanTest does (which works)
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkSwapchain->GetCurrentVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        // Begin legacy render pass
         VkRenderPassBeginInfo rpBeginInfo{};
         rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpBeginInfo.renderPass = imguiRP;
