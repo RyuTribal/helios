@@ -159,8 +159,8 @@ namespace Engine {
         if (result == VK_ERROR_OUT_OF_DATE_KHR || m_NeedsResize)
         {
             m_NeedsResize = false;
-            Resize(m_Extent.width, m_Extent.height);
-            return false; // Skip this frame
+            // Don't resize here — caller will resize with correct window dimensions
+            return false;
         }
 
         vkResetFences(device, 1, &m_InFlightFences[m_CurrentFrame]);

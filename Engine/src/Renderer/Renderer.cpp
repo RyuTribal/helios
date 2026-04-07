@@ -217,11 +217,18 @@ namespace Engine
 
     void Renderer::BeginDrawing()
     {
-        // Acquire next swapchain image
+        // Acquire next swapchain image — resize swapchain if needed
         if (!m_Swapchain->AcquireNextImage())
         {
-            // Swapchain out of date — needs resize
-            return;
+            // Get actual window size for resize
+            auto& window = Application::Get().GetWindow();
+            uint32_t w = window.GetWidth();
+            uint32_t h = window.GetHeight();
+            if (w > 0 && h > 0)
+            {
+                m_Swapchain->Resize(w, h);
+            }
+            return; // Skip this frame, next frame will acquire successfully
         }
 
         if (!m_CurrentCamera)
