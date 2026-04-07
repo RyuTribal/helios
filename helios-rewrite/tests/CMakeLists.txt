@@ -5,6 +5,7 @@ add_executable(helios-tests
     ecs/test_archetype_storage.cpp
     ecs/test_resources.cpp
     ecs/test_events.cpp
+    ecs/test_query.cpp
 )
 
 target_link_libraries(helios-tests
