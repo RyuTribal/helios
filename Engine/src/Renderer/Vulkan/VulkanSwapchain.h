@@ -59,5 +59,6 @@ namespace Engine {
         VkSemaphore m_ImageAvailable[MAX_FRAMES_IN_FLIGHT]{};
         VkSemaphore m_RenderFinished[MAX_FRAMES_IN_FLIGHT]{};
         VkFence m_InFlightFences[MAX_FRAMES_IN_FLIGHT]{};
+        bool m_NeedsResize = false;
     };
 }

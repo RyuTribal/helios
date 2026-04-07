@@ -156,8 +156,12 @@ namespace Engine {
         VkResult result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX,
             m_ImageAvailable[m_CurrentFrame], VK_NULL_HANDLE, &m_CurrentImageIndex);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-            return false; // Caller must resize
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || m_NeedsResize)
+        {
+            m_NeedsResize = false;
+            Resize(m_Extent.width, m_Extent.height);
+            return false; // Skip this frame
+        }
 
         vkResetFences(device, 1, &m_InFlightFences[m_CurrentFrame]);
         return true;
@@ -174,9 +178,11 @@ namespace Engine {
         presentInfo.pImageIndices = &m_CurrentImageIndex;
 
         VkResult result = vkQueuePresentKHR(m_Device->GetGraphicsQueue(), &presentInfo);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-            HVE_CORE_WARN_TAG("Vulkan", "Swapchain out of date or suboptimal on present, caller should resize");
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            HVE_CORE_WARN_TAG("Vulkan", "Swapchain out of date on present, will recreate");
+            m_NeedsResize = true;
         }
+        // VK_SUBOPTIMAL_KHR is normal on Wayland/some compositors — don't log every frame
 
         m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
