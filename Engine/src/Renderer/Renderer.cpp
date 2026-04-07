@@ -160,7 +160,11 @@ namespace Engine
             uint32_t w = window.GetWidth();
             uint32_t h = window.GetHeight();
             if (w > 0 && h > 0)
+            {
+                m_Device->WaitIdle();
                 m_Swapchain->Resize(w, h);
+                RecreateImGuiFramebuffers(); // Must match new swapchain image views
+            }
             return;
         }
 
@@ -179,12 +183,7 @@ namespace Engine
         uint32_t imageIndex = vkSwapchain->GetCurrentImageIndex();
         VkFramebuffer imguiFB = m_ImGuiFramebuffers[imageIndex];
 
-        // Transition swapchain image
-        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
-            vkSwapchain->GetCurrentVkImage(),
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        // Begin legacy render pass
+        // Begin legacy render pass (handles UNDEFINED → COLOR_ATTACHMENT transition internally)
         VkRenderPassBeginInfo rpBeginInfo{};
         rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpBeginInfo.renderPass = imguiRP;
