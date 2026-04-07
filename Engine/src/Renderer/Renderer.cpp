@@ -128,12 +128,6 @@ namespace Engine
         auto* cmd = m_CommandBuffers[vkSwapchain->GetCurrentFrame()].get();
         auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
 
-        static uint64_t frameCount = 0;
-        if (frameCount < 5 || frameCount % 1000 == 0)
-            HVE_CORE_TRACE_TAG("Renderer", "Frame {}: acquired image {}, frame-in-flight {}",
-                frameCount, vkSwapchain->GetCurrentImageIndex(), vkSwapchain->GetCurrentFrame());
-        frameCount++;
-
         cmd->Begin();
 
         // TODO: 3D render passes disabled until GPU hang on Intel Mesa is debugged.
