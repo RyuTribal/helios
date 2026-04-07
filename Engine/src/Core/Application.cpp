@@ -129,18 +129,23 @@ namespace Engine
 
 			if (!m_Minimized) {
 
+				// 1. Update game logic & submit render objects
 				for (Layer* layer : m_LayerStack)
 				{
 					layer->OnUpdate(frameTime);
 				}
 
-
+				// 2. ImGui frame
 				m_ImGuiLayer->Begin();
 				for (Layer* layer : m_LayerStack)
 				{
 					layer->OnImGuiRender();
 				}
 				m_ImGuiLayer->End();
+
+				// 3. Record & submit Vulkan frame (after ImGui is ready)
+				Renderer::Get()->BeginDrawing();
+				Renderer::Get()->EndFrame();
 			}
 
 			m_Window->OnUpdate();

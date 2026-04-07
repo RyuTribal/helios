@@ -476,7 +476,7 @@ namespace Engine {
 				Renderer::Get()->SubmitDirectionalLight(&value.light);
 			}
 		}
-		Renderer::Get()->BeginDrawing();
+		// BeginDrawing is now called by Application after ImGui renders
 	}
 
 	void Scene::SyncPhysicsTransforms()
