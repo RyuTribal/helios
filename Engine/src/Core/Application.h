@@ -53,6 +53,11 @@ namespace Engine
 		Ref<RHISwapchain> m_VulkanSwapchain;
 		VkSurfaceKHR m_VulkanSurface = VK_NULL_HANDLE;
 
+		// Deferred resize (set by callback, handled in render loop)
+		bool m_PendingResize = false;
+		uint32_t m_PendingResizeWidth = 0;
+		uint32_t m_PendingResizeHeight = 0;
+
 	private:
 		static Application* s_Instance;
 		ApplicationProps m_AppProps;

@@ -127,6 +127,15 @@ namespace Engine
 			m_FrameData.DeltaTime = frameTime;
 			Renderer::Get()->GetStats()->UpdateFPS(currentTime, frameTime);
 
+			// Handle deferred swapchain resize (safe here — no in-flight frames)
+			if (m_PendingResize && m_VulkanSwapchain && m_PendingResizeWidth > 0 && m_PendingResizeHeight > 0)
+			{
+				m_VulkanDevice->WaitIdle();
+				m_VulkanSwapchain->Resize(m_PendingResizeWidth, m_PendingResizeHeight);
+				Renderer::Get()->ResizeViewport(m_PendingResizeWidth, m_PendingResizeHeight);
+				m_PendingResize = false;
+			}
+
 			if (!m_Minimized) {
 
 				// 1. Update game logic & submit render objects
@@ -166,14 +175,11 @@ namespace Engine
 		}
 		m_Minimized = false;
 
-		// Resize the Vulkan swapchain to match new window size
-		if (m_VulkanSwapchain && e.GetWidth() > 0 && e.GetHeight() > 0)
-		{
-			m_VulkanDevice->WaitIdle();
-			m_VulkanSwapchain->Resize(e.GetWidth(), e.GetHeight());
-		}
-
-		Renderer::Get()->SetViewport(e.GetWidth(), e.GetHeight());
+		// Don't resize swapchain in the callback — it deadlocks with in-flight frames.
+		// Just flag the new size; the render loop handles the actual resize.
+		m_PendingResizeWidth = e.GetWidth();
+		m_PendingResizeHeight = e.GetHeight();
+		m_PendingResize = true;
 
 		return false;
 	}
