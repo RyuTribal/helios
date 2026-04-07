@@ -107,8 +107,14 @@ namespace Engine {
         void SetMaterialUBO(Ref<RHIBuffer> ubo) { m_MaterialUBO = ubo; }
         RHIBuffer* GetMaterialUBO() const { return m_MaterialUBO.get(); }
 
-        // Upload material data to UBO and update descriptor set
-        void UpdateGPUData(RHIDevice* device);
+        // Upload material data to UBO and update descriptor set.
+        // Default textures fill unbound sampler slots (must match shader sampler types).
+        // IBL textures (irradiance, prefilter, brdf) override slots 10, 11, 12 respectively.
+        void UpdateGPUData(RHIDevice* device, RHITexture* default2D,
+                           RHITexture* defaultCube, RHITexture* defaultArray,
+                           RHITexture* irradianceTex = nullptr,
+                           RHITexture* prefilterTex = nullptr,
+                           RHITexture* brdfTex = nullptr);
 
         bool IsDirty() const { return m_Dirty; }
 

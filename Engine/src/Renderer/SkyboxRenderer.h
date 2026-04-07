@@ -7,11 +7,11 @@ namespace Engine {
     class Camera;
 
     struct SkyboxRenderData {
-        Ref<RHITexture> CubeTexture;
+        RHITexture* CubeTexture = nullptr;
         float Brightness = 1.0f;
-        Ref<RHITexture> IrradianceTexture;
-        Ref<RHITexture> PrefilterMap;
-        Ref<RHITexture> BRDFTexture;
+        RHITexture* IrradianceTexture = nullptr;
+        RHITexture* PrefilterMap = nullptr;
+        RHITexture* BRDFTexture = nullptr;
     };
 
     class SkyboxRenderer {

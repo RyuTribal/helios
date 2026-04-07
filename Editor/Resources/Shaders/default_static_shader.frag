@@ -117,7 +117,7 @@ void main() {
     vec3 albedo = texture(u_AlbedoTexture, texCoords).rgb * material.u_MaterialUniforms.AlbedoColor * specular_color;
     float roughness = texture(u_MetalnessTexture, texCoords).g * material.u_MaterialUniforms.Roughness;
     float metalness = texture(u_MetalnessTexture, texCoords).b * material.u_MaterialUniforms.Metalness;
-    vec3 ao = texture(u_AOTexture, texCoords).rgb;
+    float ao = texture(u_AOTexture, texCoords).r; // AO is grayscale (R channel)
     vec3 emission = texture(u_EmissionTexture, texCoords).rgb;
 
     vec3 F0 = mix(vec3(0.04), albedo, metalness);
@@ -157,7 +157,6 @@ void main() {
     vec3 ambient = (kD * diffuse + specular) * ao;
 
     vec3 color = ambient + Lo + emission;
-    color = color;
 
     fragColor = vec4(color, 1.0);
 }

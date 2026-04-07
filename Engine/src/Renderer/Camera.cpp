@@ -106,10 +106,12 @@ namespace Engine {
 		float orthoBottom = -m_OrthographicSize * 0.5f;
 		float orthoTop = m_OrthographicSize * 0.5f;
 		m_ProjectionMatrix = glm::ortho(orthoLeft, orthoRight, orthoBottom, orthoTop, m_Near, m_Far);
+		m_ProjectionMatrix[1][1] *= -1; // Vulkan clip space Y is inverted vs OpenGL
 	}
 	void Camera::SetPerspective()
 	{
 		m_ProjectionMatrix = glm::perspective(m_PerspectiveFOVY, m_AspectRatio, m_Near, m_Far);
+		m_ProjectionMatrix[1][1] *= -1; // Vulkan clip space Y is inverted vs OpenGL
 		SetFrustumCornersWorldSpace();
 	}
 
@@ -140,8 +142,8 @@ namespace Engine {
 	{
 		float sign = inverse_controls ? -1.0f : 1.0f;
 
-		float deltaYaw = delta.x * rotation_speed * sign;
-		float deltaPitch = delta.y * rotation_speed * sign;
+		float deltaYaw = -delta.x * rotation_speed * sign;  // Negated for Vulkan
+		float deltaPitch = -delta.y * rotation_speed * sign; // Negated for Vulkan
 
 		m_Yaw += deltaYaw;
 		m_Pitch += deltaPitch;
@@ -171,8 +173,8 @@ namespace Engine {
 	void Camera::Rotate(const glm::vec2& delta, float rotation_speed, bool inverse_controls)
 	{
 		float sign = inverse_controls ? 1.0f : -1.0f;
-		m_Yaw += delta.x * rotation_speed * sign;
-		m_Pitch += delta.y * rotation_speed * sign;
+		m_Yaw += -delta.x * rotation_speed * sign;  // Negated for Vulkan
+		m_Pitch += -delta.y * rotation_speed * sign; // Negated for Vulkan
 
 		float pitchLimit = glm::radians(89.0f); // Prevent flipping over
 		m_Pitch = glm::clamp(m_Pitch, -pitchLimit, pitchLimit);

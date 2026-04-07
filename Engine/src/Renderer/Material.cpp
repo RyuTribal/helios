@@ -92,7 +92,11 @@ namespace Engine {
         m_Dirty = true;
     }
 
-    void Material::UpdateGPUData(RHIDevice* device)
+    void Material::UpdateGPUData(RHIDevice* device, RHITexture* default2D,
+                                   RHITexture* defaultCube, RHITexture* defaultArray,
+                                   RHITexture* irradianceTex,
+                                   RHITexture* prefilterTex,
+                                   RHITexture* brdfTex)
     {
         if (!m_Dirty || !m_MaterialUBO || !m_DescriptorSet || !device)
             return;
@@ -100,10 +104,15 @@ namespace Engine {
         // Upload material uniform data
         m_MaterialUBO->SetData(&m_MaterialData, sizeof(MaterialData));
 
-        // Build descriptor writes for all texture bindings
+        // Build descriptor writes — ALL bindings must be valid to prevent GPU hangs.
+        // Sampler types must match the shader declarations:
+        //   1-9:    sampler2D      → default2D
+        //   10:     samplerCube    → irradianceTex (or defaultCube)
+        //   11:     samplerCube    → prefilterTex  (or defaultCube)
+        //   12:     sampler2D      → brdfTex       (or default2D)
+        //   13:     sampler2DArray → defaultArray
         std::vector<DescriptorWrite> writes;
 
-        // Binding 0: MaterialUBO
         DescriptorWrite uboWrite;
         uboWrite.Binding = 0;
         uboWrite.Type = DescriptorType::UniformBuffer;
@@ -111,17 +120,32 @@ namespace Engine {
         uboWrite.Range = sizeof(MaterialData);
         writes.push_back(uboWrite);
 
-        // Texture bindings (1-11)
-        for (auto& [slot, texture] : m_Textures)
+        for (uint32_t slot = 1; slot <= 13; slot++)
         {
-            if (texture && texture->GetRHITexture())
+            DescriptorWrite texWrite;
+            texWrite.Binding = slot;
+            texWrite.Type = DescriptorType::CombinedImageSampler;
+
+            auto it = m_Textures.find(slot);
+            if (it != m_Textures.end() && it->second && it->second->GetRHITexture())
             {
-                DescriptorWrite texWrite;
-                texWrite.Binding = slot;
-                texWrite.Type = DescriptorType::CombinedImageSampler;
-                texWrite.Texture = texture->GetRHITexture();
-                writes.push_back(texWrite);
+                texWrite.Texture = it->second->GetRHITexture();
             }
+            else
+            {
+                // Pick default matching the shader's sampler type
+                if (slot == 10)
+                    texWrite.Texture = irradianceTex ? irradianceTex : defaultCube;
+                else if (slot == 11)
+                    texWrite.Texture = prefilterTex ? prefilterTex : defaultCube;
+                else if (slot == 12)
+                    texWrite.Texture = brdfTex ? brdfTex : default2D;
+                else if (slot == 13)
+                    texWrite.Texture = defaultArray;
+                else
+                    texWrite.Texture = default2D;
+            }
+            writes.push_back(texWrite);
         }
 
         device->UpdateDescriptorSet(m_DescriptorSet.get(), writes);

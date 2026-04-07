@@ -15,7 +15,5 @@ layout(set = 0, binding = 1) uniform samplerCube u_EnvironmentMap;
 void main(){
     vec3 envColor = texture(u_EnvironmentMap, local_pos).rgb * ubo.u_Brightness;
 
-    // tone mapping is handled in hdr shader
-
     fragColor = vec4(envColor, 1.0);
 }

@@ -177,6 +177,7 @@ namespace Engine {
 
         Statistics* GetStats() { return &m_Stats; }
         void ResizeViewport(int width, int height);
+        void RequestViewportResize(uint32_t width, uint32_t height);
         void SetViewport(int width, int height);
 
         void SetDrawBoundingBoxes(bool should_draw) { m_DrawBoundingBox = should_draw; }
@@ -190,6 +191,12 @@ namespace Engine {
     private:
         void ResetStats();
         void RecreateImGuiFramebuffers();
+
+        // Equirectangular → cubemap conversion via compute shader
+        void ConvertEquirectToCube(RHITexture* equirect, RHITexture* cubemap, uint32_t cubeSize);
+
+        // IBL pipeline: irradiance convolution, prefilter, BRDF LUT generation
+        void GenerateIBL();
 
         // Cascade shadow map helpers
         std::vector<glm::mat4> ComputeCascadeLightMatrices(const glm::vec3& lightDir);
@@ -237,10 +244,27 @@ namespace Engine {
 
         bool m_DrawBoundingBox = false;
 
+        // Deferred viewport resize (safe: applied at start of frame after WaitIdle)
+        bool m_ViewportResizePending = false;
+        uint32_t m_PendingViewportW = 0, m_PendingViewportH = 0;
+
         const float m_Exposure = 1.0f;
 
-        // Cached ImGui descriptor for the scene viewport (forward pass color texture)
+        // Tonemap compute pass (HDR → LDR)
+        Ref<RHITexture> m_TonemapOutput; // RGBA8 LDR output
+        Ref<RHIPipeline> m_TonemapComputePipeline;
+        Ref<RHIDescriptorSetLayout> m_TonemapDescLayout;
+        Ref<RHIDescriptorSet> m_TonemapDescSet;
+
+        // Cached ImGui descriptor for the scene viewport (tonemapped LDR texture)
         VkDescriptorSet m_SceneImGuiDescriptor = VK_NULL_HANDLE;
+
+        // IBL generated textures (kept alive for descriptor binding — separate from
+        // SkyboxSettings to survive SetSkybox calls that copy scene settings)
+        Ref<RHITexture> m_IrradianceRHI;
+        Ref<RHITexture> m_PrefilterRHI;
+        Ref<RHITexture> m_BrdfRHI;
+        bool m_IBLJustGenerated = false;  // forces material re-upload on next frame
 
         // Default texture wrappers for backward compatibility
         static Ref<Texture2D> s_WhiteTexWrap;

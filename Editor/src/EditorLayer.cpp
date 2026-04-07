@@ -75,7 +75,8 @@ namespace Editor {
 		}
 		
 		m_CurrentScene->UpdateScene();
-		Engine::Renderer::Get()->EndFrame();
+		// EndFrame is called by Application::run() after BeginDrawing —
+		// calling it here would clear submitted meshes before they're rendered.
 
 		if (ScriptEngine::ShouldReload() && m_SceneState != SceneState::Play)
 		{

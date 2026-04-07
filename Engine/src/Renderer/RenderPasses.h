@@ -159,8 +159,11 @@ namespace Engine {
                      RHITexture* shadowMap, RHIBuffer* lightMatricesUBO);
         void Resize(RHIDevice* device, uint32_t width, uint32_t height);
 
-        // Ensure materials have descriptor sets allocated
-        void PrepareMaterial(RHIDevice* device, Material* material);
+        void PrepareMaterial(RHIDevice* device, Material* material,
+                             RHITexture* default2D, RHITexture* defaultCube,
+                             RHITexture* defaultArray,
+                             RHITexture* irradianceTex, RHITexture* prefilterTex,
+                             RHITexture* brdfTex);
 
     private:
         uint32_t m_Width = 0, m_Height = 0;

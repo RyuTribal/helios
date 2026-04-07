@@ -106,7 +106,8 @@ namespace Engine {
 				spec.Format = ImageFormat::R8;
 				break;
 			case 3:
-				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGB32F : ImageFormat::RGB8;
+				// stbi_load forces 4 channels output, so data is RGBA even for 3-channel sources
+				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGB32F : ImageFormat::RGBA8;
 				break;
 			case 4:
 				spec.Format = type == AssetType::CubeMap ? ImageFormat::RGBA32F : ImageFormat::RGBA8;

@@ -148,7 +148,7 @@ namespace Engine {
         rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth               = 1.0f;
         rasterizer.cullMode                = ToVkCullMode(desc.State.Cull);
-        rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.frontFace               = VK_FRONT_FACE_CLOCKWISE; // Y-flip in projection reverses winding
         rasterizer.depthBiasEnable         = VK_FALSE;
 
         // -- 6. Multisampling --

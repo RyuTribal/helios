@@ -87,12 +87,15 @@ namespace EditorPanels {
 			ImTextureID id = Engine::Renderer::Get()->GetSceneTextureID();
 			auto viewportOffset = ImGui::GetCursorPos();
 			auto viewportSize = ImGui::GetContentRegionAvail();
-			// Don't resize during ImGui render — ImmediateSubmit conflicts with in-flight frames
-			// Resize is handled by the deferred resize in Application::run()
-			// Engine::Renderer::Get()->ResizeViewport((uint32_t)viewportSize.x, (uint32_t)viewportSize.y);
+			m_ViewportSize = { viewportSize.x, viewportSize.y };
 
-			// Render viewport image
-			ImGui::Image(id, ImVec2{ viewportSize.x, viewportSize.y }, ImVec2(0, 1), ImVec2(1, 0));
+			// Deferred resize — applied at start of next frame after WaitIdle
+			Engine::Renderer::Get()->RequestViewportResize(
+				(uint32_t)viewportSize.x, (uint32_t)viewportSize.y);
+
+			// Render viewport image (Vulkan: no Y-flip needed, unlike OpenGL)
+			if (id)
+				ImGui::Image(id, ImVec2{ viewportSize.x, viewportSize.y });
 
 			auto windowSize = ImGui::GetWindowSize();
 			ImVec2 minBound = ImGui::GetWindowPos();

@@ -156,7 +156,7 @@ namespace Engine {
         desc.Type = TextureType::TextureCube;
         desc.MipLevels = 1;
         desc.ArrayLayers = 6;
-        desc.Usage = TextureUsage::Sampled | TextureUsage::Transfer;
+        desc.Usage = TextureUsage::Sampled | TextureUsage::Transfer | TextureUsage::Storage;
         desc.DebugName = "TextureCube";
 
         m_RHITexture = device->CreateTexture(desc);

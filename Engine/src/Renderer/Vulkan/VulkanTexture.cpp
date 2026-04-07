@@ -138,9 +138,11 @@ namespace Engine {
         samplerInfo.magFilter               = VK_FILTER_LINEAR;
         samplerInfo.minFilter               = VK_FILTER_LINEAR;
         samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        VkSamplerAddressMode addrMode = desc.ClampToEdge
+            ? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE : VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeU            = addrMode;
+        samplerInfo.addressModeV            = addrMode;
+        samplerInfo.addressModeW            = addrMode;
         samplerInfo.mipLodBias              = 0.0f;
         samplerInfo.anisotropyEnable        = VK_FALSE;
         samplerInfo.maxAnisotropy           = 1.0f;

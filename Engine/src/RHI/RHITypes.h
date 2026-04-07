@@ -82,6 +82,7 @@ namespace Engine {
         uint32_t ArrayLayers = 1;
         uint32_t Samples = 1;
         TextureUsage Usage = TextureUsage::Sampled;
+        bool ClampToEdge = false; // true for LUTs, IBL textures
         std::string DebugName;
     };
 

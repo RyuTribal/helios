@@ -352,17 +352,21 @@ namespace Engine {
         dirLightDesc.DebugName = "DirLightSSBO";
         DirLightSSBO = device->CreateBuffer(dirLightDesc);
 
-        // Visible indices SSBO (allocated per-frame based on tile count)
-        // Initial size for 1920x1080
+        // Visible indices SSBO — initialized to -1 so the shader's point light
+        // loop terminates immediately when light culling hasn't run.
         uint32_t tilesX = (1920 + 15) / 16;
         uint32_t tilesY = (1080 + 15) / 16;
         uint32_t numTiles = tilesX * tilesY;
+        uint32_t visSize = static_cast<uint32_t>(numTiles * sizeof(VisibleIndex) * 1024);
         BufferDesc visDesc;
-        visDesc.Size = static_cast<uint32_t>(numTiles * sizeof(VisibleIndex) * 1024);
-        visDesc.Usage = BufferUsage::Storage;
-        visDesc.Access = MemoryAccess::GPU_Only;
+        visDesc.Size = visSize;
+        visDesc.Usage = BufferUsage::Storage | BufferUsage::Transfer;
+        visDesc.Access = MemoryAccess::CPU_to_GPU;
         visDesc.DebugName = "VisibleIndicesSSBO";
         VisibleIndicesSSBO = device->CreateBuffer(visDesc);
+        // Fill with -1 (sentinel value that stops the per-tile light loop)
+        std::vector<int> sentinel(visSize / sizeof(int), -1);
+        VisibleIndicesSSBO->SetData(sentinel.data(), visSize);
 
         // Params UBO (light count, screen size, view, projection)
         BufferDesc paramsDesc;
@@ -442,46 +446,13 @@ namespace Engine {
         ParamsUBO->SetData(&params, sizeof(LightCullingParams));
     }
 
-    void LightCullingPass::Execute(RHICommandBuffer* cmd, RHITexture* depthTexture,
-                                    uint32_t lightCount, uint32_t width, uint32_t height)
+    void LightCullingPass::Execute(RHICommandBuffer* cmd, RHITexture* /*depthTexture*/,
+                                    uint32_t /*lightCount*/, uint32_t width, uint32_t height)
     {
         if (!ComputePipeline) return;
 
-        // Update descriptor set with depth texture
-        std::vector<DescriptorWrite> writes;
-
-        DescriptorWrite paramsWrite;
-        paramsWrite.Binding = 0;
-        paramsWrite.Type = DescriptorType::UniformBuffer;
-        paramsWrite.Buffer = ParamsUBO.get();
-        paramsWrite.Range = 256;
-        writes.push_back(paramsWrite);
-
-        DescriptorWrite lightWrite;
-        lightWrite.Binding = 1;
-        lightWrite.Type = DescriptorType::StorageBuffer;
-        lightWrite.Buffer = LightSSBO.get();
-        lightWrite.Range = sizeof(PointLightInfo) * MAX_POINT_LIGHTS;
-        writes.push_back(lightWrite);
-
-        DescriptorWrite visWrite;
-        visWrite.Binding = 2;
-        visWrite.Type = DescriptorType::StorageBuffer;
-        visWrite.Buffer = VisibleIndicesSSBO.get();
-        visWrite.Range = VisibleIndicesSSBO->GetSize();
-        writes.push_back(visWrite);
-
-        if (depthTexture)
-        {
-            DescriptorWrite depthWrite;
-            depthWrite.Binding = 3;
-            depthWrite.Type = DescriptorType::CombinedImageSampler;
-            depthWrite.Texture = depthTexture;
-            writes.push_back(depthWrite);
-        }
-
-        // Note: device not available here, but descriptors are updated in UploadLights or from Renderer
-        // For now we bind what we have
+        // Descriptor set is updated by the Renderer before calling Execute
+        // (all 4 bindings including depth texture are written from Renderer::BeginDrawing)
         cmd->BindPipeline(ComputePipeline.get());
         cmd->BindDescriptorSet(0, DescSet.get());
 
@@ -611,17 +582,19 @@ namespace Engine {
         }
     }
 
-    void ForwardPass::PrepareMaterial(RHIDevice* device, Material* material)
+    void ForwardPass::PrepareMaterial(RHIDevice* device, Material* material,
+                                       RHITexture* default2D, RHITexture* defaultCube,
+                                       RHITexture* defaultArray,
+                                       RHITexture* irradianceTex, RHITexture* prefilterTex,
+                                       RHITexture* brdfTex)
     {
         if (!material) return;
 
-        // Allocate descriptor set if not already allocated
         if (!material->GetDescriptorSet())
         {
             auto descSet = device->AllocateDescriptorSet(MaterialDescLayout.get());
             material->SetDescriptorSet(descSet);
 
-            // Allocate material UBO
             BufferDesc uboDesc;
             uboDesc.Size = sizeof(MaterialData);
             uboDesc.Usage = BufferUsage::Uniform;
@@ -633,7 +606,8 @@ namespace Engine {
 
         if (material->IsDirty())
         {
-            material->UpdateGPUData(device);
+            material->UpdateGPUData(device, default2D, defaultCube, defaultArray,
+                                    irradianceTex, prefilterTex, brdfTex);
         }
     }
 
@@ -644,21 +618,6 @@ namespace Engine {
                                RHITexture* shadowMap, RHIBuffer* lightMatricesUBO)
     {
         if (!Pipeline || !camera) return;
-
-        // Transition color texture to COLOR_ATTACHMENT_OPTIMAL before render pass
-        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
-        auto* vkColorTex = static_cast<VulkanTexture*>(ColorTexture.get());
-        auto* vkDepthTex = static_cast<VulkanTexture*>(DepthTexture.get());
-
-        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
-            vkColorTex->GetVkImage(),
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        // Transition depth texture to DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
-            vkDepthTex->GetVkImage(),
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_ASPECT_DEPTH_BIT);
 
         // Upload global UBO
         GlobalUBOData globalData;
@@ -672,57 +631,10 @@ namespace Engine {
         globalData._padding = 0.0f;
         GlobalUBO->SetData(&globalData, sizeof(GlobalUBOData));
 
-        // Update global descriptor set
-        std::vector<DescriptorWrite> globalWrites;
+        // Note: render pass is already begun by the Renderer (to allow skybox/debug
+        // rendering within the same render pass). Descriptor set is updated by the
+        // Renderer before calling Execute.
 
-        DescriptorWrite uboWrite;
-        uboWrite.Binding = 0;
-        uboWrite.Type = DescriptorType::UniformBuffer;
-        uboWrite.Buffer = GlobalUBO.get();
-        uboWrite.Range = sizeof(GlobalUBOData);
-        globalWrites.push_back(uboWrite);
-
-        if (lightCulling)
-        {
-            DescriptorWrite lightWrite;
-            lightWrite.Binding = 1;
-            lightWrite.Type = DescriptorType::StorageBuffer;
-            lightWrite.Buffer = lightCulling->LightSSBO.get();
-            lightWrite.Range = sizeof(PointLightInfo) * MAX_POINT_LIGHTS;
-            globalWrites.push_back(lightWrite);
-
-            DescriptorWrite dirWrite;
-            dirWrite.Binding = 2;
-            dirWrite.Type = DescriptorType::StorageBuffer;
-            dirWrite.Buffer = lightCulling->DirLightSSBO.get();
-            dirWrite.Range = sizeof(DirectionalLightInfo) * MAX_DIR_LIGHTS;
-            globalWrites.push_back(dirWrite);
-
-            DescriptorWrite visWrite;
-            visWrite.Binding = 3;
-            visWrite.Type = DescriptorType::StorageBuffer;
-            visWrite.Buffer = lightCulling->VisibleIndicesSSBO.get();
-            visWrite.Range = lightCulling->VisibleIndicesSSBO->GetSize();
-            globalWrites.push_back(visWrite);
-        }
-
-        if (lightMatricesUBO)
-        {
-            DescriptorWrite lmWrite;
-            lmWrite.Binding = 4;
-            lmWrite.Type = DescriptorType::UniformBuffer;
-            lmWrite.Buffer = lightMatricesUBO;
-            lmWrite.Range = sizeof(glm::mat4) * 16;
-            globalWrites.push_back(lmWrite);
-        }
-
-        // Note: we can't update descriptor set here without a device pointer
-        // This is done before execute from the Renderer
-
-        ClearValues clear;
-        clear.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
-        clear.Depth = 1.0f;
-        cmd->BeginRenderPass(RenderPass.get(), Framebuffer.get(), clear);
         cmd->BindPipeline(Pipeline.get());
         cmd->SetViewport(0, 0, static_cast<float>(m_Width), static_cast<float>(m_Height));
         cmd->SetScissor(0, 0, m_Width, m_Height);
@@ -757,12 +669,7 @@ namespace Engine {
             }
         }
 
-        cmd->EndRenderPass();
-
-        // Transition color to SHADER_READ_ONLY_OPTIMAL for tonemap sampling / ImGui viewport
-        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
-            vkColorTex->GetVkImage(),
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // Note: render pass is NOT ended here — Renderer ends it after skybox/debug
     }
 
     void ForwardPass::Resize(RHIDevice* device, uint32_t width, uint32_t height)

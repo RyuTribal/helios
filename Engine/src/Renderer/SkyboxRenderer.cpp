@@ -139,7 +139,7 @@ namespace Engine {
         DescriptorWrite texWrite;
         texWrite.Binding = 1;
         texWrite.Type = DescriptorType::CombinedImageSampler;
-        texWrite.Texture = settings.CubeTexture.get();
+        texWrite.Texture = settings.CubeTexture;
         m_Device->UpdateDescriptorSet(m_DescSet.get(), { texWrite });
 
         // Draw
