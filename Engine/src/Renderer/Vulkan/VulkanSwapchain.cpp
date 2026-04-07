@@ -156,10 +156,16 @@ namespace Engine {
         VkResult result = vkAcquireNextImageKHR(device, m_Swapchain, UINT64_MAX,
             m_ImageAvailable[m_CurrentFrame], VK_NULL_HANDLE, &m_CurrentImageIndex);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || m_NeedsResize)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            m_NeedsResize = false;
-            // Don't resize here — caller will resize with correct window dimensions
+            // Swapchain truly out of date — caller must resize
+            return false;
+        }
+
+        // VK_SUBOPTIMAL_KHR is still a success — the image was acquired, just render it
+        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        {
+            HVE_CORE_ERROR_TAG("Vulkan", "Failed to acquire swapchain image: {}", (int)result);
             return false;
         }
 
