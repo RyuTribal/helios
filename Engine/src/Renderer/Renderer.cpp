@@ -5,6 +5,8 @@
 #include "Renderer/Vulkan/VulkanDevice.h"
 #include "Renderer/Vulkan/VulkanCommandBuffer.h"
 #include "Renderer/Vulkan/VulkanTexture.h"
+#include "ImGui/imgui_impl_vulkan.h"
+#include <imgui.h>
 
 namespace Engine
 {
@@ -368,12 +370,46 @@ namespace Engine
 
         } // end if(false) — disabled render passes
 
-        // Transition swapchain image to present
+        // Render ImGui into the swapchain image
         auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
         auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+
+        // Transition swapchain image to color attachment for ImGui rendering
         VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
             vkSwapchain->GetCurrentVkImage(),
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        // Begin dynamic rendering on swapchain image
+        VkRenderingAttachmentInfo colorAttachment{};
+        colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachment.imageView = vkSwapchain->GetCurrentImageView();
+        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.clearValue.color = {{0.1f, 0.1f, 0.1f, 1.0f}};
+
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.renderArea = {{0, 0}, {vkSwapchain->GetWidth(), vkSwapchain->GetHeight()}};
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachment;
+
+        vkCmdBeginRendering(vkCmd->GetVkCommandBuffer(), &renderingInfo);
+
+        // Record ImGui draw commands
+        ImDrawData* drawData = ImGui::GetDrawData();
+        if (drawData)
+        {
+            ImGui_ImplVulkan_RenderDrawData(drawData, vkCmd->GetVkCommandBuffer());
+        }
+
+        vkCmdEndRendering(vkCmd->GetVkCommandBuffer());
+
+        // Transition swapchain image to present
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkSwapchain->GetCurrentVkImage(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
         cmd->End();
 
