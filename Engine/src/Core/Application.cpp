@@ -113,8 +113,9 @@ namespace Engine
 
 	void Application::run()
 	{
-		m_Window->SetMaximized(m_Window->GetMaximized());
-		m_Window->SetFullScreen(m_Window->GetFullScreen(), m_Window->GetFullScreenType());
+		// Don't auto-maximize — causes swapchain resize issues on Wayland
+		// m_Window->SetMaximized(m_Window->GetMaximized());
+		// m_Window->SetFullScreen(m_Window->GetFullScreen(), m_Window->GetFullScreenType());
 
 		auto last_frame = std::chrono::high_resolution_clock::now();
 		//PhysicsEngine::tmpRunner();
