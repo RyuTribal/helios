@@ -1,5 +1,0 @@
-if(EXISTS "/home/ryutribal/programming/helios/helios-rewrite/build/tests/helios-tests[1]_tests.cmake")
-  include("/home/ryutribal/programming/helios/helios-rewrite/build/tests/helios-tests[1]_tests.cmake")
-else()
-  add_test(helios-tests_NOT_BUILT helios-tests_NOT_BUILT)
-endif()

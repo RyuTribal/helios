@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/helios-tests.dir/link.d "CMakeFiles/helios-tests.dir/ecs/test_placeholder.cpp.o" -o ../bin/helios-tests  ../lib/libhelios-core.a ../lib/libgtest_main.a ../lib/libglm.a ../lib/libgtest.a
