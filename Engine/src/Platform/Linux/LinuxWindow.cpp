@@ -4,7 +4,6 @@
 #include "Events/ApplicationEvent.h"
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
-#include "glad/gl.h"
 
 
 namespace Engine
@@ -121,10 +120,10 @@ namespace Engine
 			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 		}
 
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Vulkan — no OpenGL context
+
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
-		// TODO Task 12: Initialize Vulkan surface/context here instead of OpenGL RenderContext
 		glfwSetWindowUserPointer(m_Window, &m_Data);
-		glfwSwapInterval(m_Data.VSync ? 1 : 0);
 
 		// Set GLFW callbacks
 		glfwSetWindowSizeCallback(m_Window, OnSizeChange);
@@ -236,7 +235,6 @@ namespace Engine
 	void LinuxWindow::OnUpdate()
 	{
 		glfwPollEvents();
-		// TODO Task 12: Vulkan present is handled by Renderer/Swapchain, not here
 	}
 
 }

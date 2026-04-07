@@ -33,7 +33,6 @@ project "Engine"
     links
     {
         "GLFW",
-        "Glad",
         "ImGui",
         "JoltPhysics",
         "%{Library.Tracy}",
@@ -57,7 +56,6 @@ project "Engine"
         "vendor/",
         "vendor/SoLoud",
         "%{IncludeDir.GLFW}",
-        "%{IncludeDir.Glad}",
         "%{IncludeDir.ImGui}",
         "%{IncludeDir.glm}",
         "%{IncludeDir.Jolt}",
@@ -128,7 +126,6 @@ project "Engine"
         links
         {
             "vulkan",
-            "GL",
             "X11",
             "assimp",
             "pthread",

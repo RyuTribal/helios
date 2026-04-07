@@ -2,14 +2,18 @@
 #include "ImGui/ImGuiLayer.h"
 
 #include "Core/Application.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/Vulkan/VulkanContext.h"
+#include "Renderer/Vulkan/VulkanDevice.h"
+#include "Renderer/Vulkan/VulkanSwapchain.h"
 
 #include <GLFW/glfw3.h>
-#include <glad/gl.h>
+#include <vulkan/vulkan.h>
 
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "imgui_impl_vulkan.h"
 #include "ImGui/ImGuizmo.h"
 
 namespace Engine
@@ -18,6 +22,7 @@ namespace Engine
 	ImGuiLayer::ImGuiLayer()
 	{
 	}
+
 	void ImGuiLayer::OnAttach()
 	{
 		IMGUI_CHECKVERSION();
@@ -25,21 +30,7 @@ namespace Engine
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-#ifdef PLATFORM_LINUX
-		// Disable viewports on Linux — Wayland doesn't support application-positioned windows,
-		// causing popups/menus to open as separate unpositioned OS windows.
-		const char* session = std::getenv("XDG_SESSION_TYPE");
-		if (!session || std::string(session) != "x11")
-		{
-			// Wayland or unknown — keep viewports disabled
-		}
-		else
-		{
-			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		}
-#else
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-#endif
+		// Disable viewports for Vulkan (multi-viewport with Vulkan is complex, can be re-added later)
 
 		std::string boldFontPath = "Resources/Fonts/opensans/static/OpenSans-Bold.ttf";
 		std::string regularFontPath = "Resources/Fonts/opensans/static/OpenSans-Regular.ttf";
@@ -54,28 +45,47 @@ namespace Engine
 		}
 
 		ImGui::StyleColorsDark();
-
-		ImGuiStyle& style = ImGui::GetStyle();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			style.WindowRounding = 0.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}
-
 		SetDarkThemeColors();
 
 		Application& app = Application::Get();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.GetWindow().GetNativeWindow());
 
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init("#version 410");
+		// Init GLFW backend for Vulkan (not OpenGL)
+		ImGui_ImplGlfw_InitForVulkan(window, true);
 
+		// Init Vulkan backend
+		auto* device = static_cast<VulkanDevice*>(Renderer::GetDevice());
+		auto* swapchain = static_cast<VulkanSwapchain*>(Renderer::GetSwapchain());
 
+		ImGui_ImplVulkan_InitInfo initInfo{};
+		initInfo.Instance = VulkanContext::GetInstance();
+		initInfo.PhysicalDevice = device->GetPhysicalDevice();
+		initInfo.Device = device->GetDevice();
+		initInfo.QueueFamily = device->GetGraphicsQueueFamily();
+		initInfo.Queue = device->GetGraphicsQueue();
+		initInfo.DescriptorPool = device->GetDescriptorPool();
+		initInfo.MinImageCount = 2;
+		initInfo.ImageCount = swapchain->GetImageCount();
+		initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+		// Use dynamic rendering (Vulkan 1.3) — no render pass needed
+		initInfo.UseDynamicRendering = true;
+		VkFormat swapchainFormat = swapchain->GetVkFormat();
+		initInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+		initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &swapchainFormat;
+
+		ImGui_ImplVulkan_Init(&initInfo);
+
+		// Upload fonts
+		ImGui_ImplVulkan_CreateFontsTexture();
+
+		HVE_CORE_TRACE_TAG("ImGui", "ImGui Vulkan backend initialized");
 	}
 
 	void ImGuiLayer::OnDetach()
 	{
-		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
@@ -92,7 +102,7 @@ namespace Engine
 
 	void ImGuiLayer::Begin()
 	{
-		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGuizmo::BeginFrame();
@@ -106,15 +116,8 @@ namespace Engine
 		io.DisplaySize = ImVec2((float)app.GetWindow().GetWidth(), (float)app.GetWindow().GetHeight());
 
 		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			GLFWwindow* backup_current_context = glfwGetCurrentContext();
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(backup_current_context);
-		}
+		// ImGui draw data will be recorded into the Vulkan command buffer by the Renderer
+		// (via ImGui_ImplVulkan_RenderDrawData in Renderer::BeginDrawing after the tonemap pass)
 	}
 
 	void ImGuiLayer::SetDarkThemeColors()

@@ -65,7 +65,6 @@ workspace "Helios"
 
 group "Dependencies"
     include "Engine/vendor/GLFW"
-    include "Engine/vendor/Glad"
     include "Engine/vendor/imgui"
     include "Engine/vendor/JoltPhysics/JoltPhysicsPremake.lua"
     include "Engine/vendor/JoltPhysics/JoltViewerPremake.lua"

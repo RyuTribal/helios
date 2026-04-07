@@ -16,6 +16,7 @@ namespace Engine {
         VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
         uint32_t GetGraphicsQueueFamily() const { return m_GraphicsQueueFamily; }
         VmaAllocator GetAllocator() const { return m_Allocator; }
+        VkDescriptorPool GetDescriptorPool() const { return m_DescriptorPool; }
 
         // RHIDevice interface -- stub all for now, implement in future tasks
         Ref<RHITexture> CreateTexture(const TextureDesc& desc, const void* initialData) override;

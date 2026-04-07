@@ -1,11 +1,9 @@
 #include "pch.h"
 #include "WindowsWindow.h"
 
-#include "Renderer/RenderContext.h"
 #include "Events/ApplicationEvent.h"
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
-#include "glad/gl.h"
 
 
 namespace Engine

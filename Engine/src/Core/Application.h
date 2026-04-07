@@ -3,6 +3,8 @@
 #include "Window.h"
 #include "Events/ApplicationEvent.h"
 #include "ImGui/ImGuiLayer.h"
+#include "RHI/RHI.h"
+#include <vulkan/vulkan.h>
 
 namespace Engine
 {
@@ -45,6 +47,11 @@ namespace Engine
 		LayerStack m_LayerStack;
 
 		FrameData m_FrameData;
+
+		// Vulkan resources (owned by Application, passed to Renderer)
+		Ref<RHIDevice> m_VulkanDevice;
+		Ref<RHISwapchain> m_VulkanSwapchain;
+		VkSurfaceKHR m_VulkanSurface = VK_NULL_HANDLE;
 
 	private:
 		static Application* s_Instance;

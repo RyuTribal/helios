@@ -71,7 +71,8 @@ namespace Editor {
 		Ref<EditorCamera> m_Camera;
 		std::vector<EntityHandle*> entities{};
 		bool b_EditDockspace = true;
-		Ref<Framebuffer> m_SceneBuffer;
+		// TODO: Replace with proper RHI scene texture for viewport rendering
+		// Ref<RHIFramebuffer> m_SceneBuffer;
 		Ref<Project> m_Project;
 
 		char m_NewSceneNameBuffer[256];

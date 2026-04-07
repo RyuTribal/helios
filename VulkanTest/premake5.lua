@@ -22,7 +22,6 @@ project "VulkanTest"
     links {
         "Engine",
         "GLFW",
-        "Glad",
         "ImGui",
         "JoltPhysics",
         "%{Library.Tracy}",

@@ -21,7 +21,6 @@ project "Editor"
     {
         "%{wks.location}/Engine/vendor/spdlog/include",
         "%{IncludeDir.glm}",
-        "%{IncludeDir.Glad}",
         "%{IncludeDir.Jolt}",
         "%{IncludeDir.Jolt}/Jolt",
         "%{IncludeDir.Tracy}",
@@ -37,7 +36,6 @@ project "Editor"
     {
         "Engine",
         "GLFW",
-        "Glad",
         "ImGui",
         "JoltPhysics",
         "%{Library.Tracy}",
@@ -83,7 +81,7 @@ project "Editor"
 
         links
         {
-            "GL",
+            "vulkan",
             "X11",
             "assimp",
             "pthread",

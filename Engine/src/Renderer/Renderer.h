@@ -12,9 +12,9 @@
 #include "PipelineCache.h"
 #include "RHI/RHI.h"
 
-namespace Engine {
+struct GLFWwindow;
 
-    struct GLFWwindow;
+namespace Engine {
 
     enum class AAType
     {
@@ -165,6 +165,7 @@ namespace Engine {
         static void CreateRenderer() { HVE_CORE_WARN_TAG("Renderer", "CreateRenderer() called without device/swapchain - deferred until Vulkan init"); }
         static Renderer* Get() { return s_Instance; }
         static RHIDevice* GetDevice() { return s_Instance ? s_Instance->m_Device : nullptr; }
+        static RHISwapchain* GetSwapchain() { return s_Instance ? s_Instance->m_Swapchain : nullptr; }
 
         // Accessors
         Camera* GetCamera() { return m_CurrentCamera; }

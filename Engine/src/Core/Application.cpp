@@ -4,8 +4,13 @@
 #include "Script/ScriptEngine.h"
 
 #include "Renderer/Renderer.h"
+#include "Renderer/Vulkan/VulkanContext.h"
+#include "Renderer/Vulkan/VulkanDevice.h"
+#include "Renderer/Vulkan/VulkanSwapchain.h"
 #include "Physics/PhysicsEngine.h"
 #include "Sound/SoundEngine.h"
+
+#include <GLFW/glfw3.h>
 
 
 namespace Engine
@@ -18,7 +23,24 @@ namespace Engine
 		s_Instance = this;
 		m_Window = std::unique_ptr<Window>(Window::Create(props));
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
-		Renderer::CreateRenderer();
+
+		// Initialize Vulkan
+#ifdef DEBUG
+		bool enableValidation = true;
+#else
+		bool enableValidation = false;
+#endif
+		VulkanContext::Init("Helios", enableValidation);
+		auto* nativeWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
+		m_VulkanSurface = VulkanContext::CreateSurface(nativeWindow);
+		m_VulkanDevice = CreateRef<VulkanDevice>(m_VulkanSurface);
+		m_VulkanSwapchain = CreateRef<VulkanSwapchain>(
+			static_cast<VulkanDevice*>(m_VulkanDevice.get()),
+			m_VulkanSurface,
+			m_Window->GetWidth(), m_Window->GetHeight());
+
+		Renderer::CreateRenderer(m_VulkanDevice.get(), m_VulkanSwapchain.get());
+
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);
 
@@ -60,6 +82,17 @@ namespace Engine
 		{
 			(*--it)->OnDetach();
 		}
+
+		// Vulkan cleanup (reverse order of creation)
+		if (m_VulkanDevice) m_VulkanDevice->WaitIdle();
+		m_VulkanSwapchain.reset();
+		m_VulkanDevice.reset();
+		if (m_VulkanSurface != VK_NULL_HANDLE)
+		{
+			VulkanContext::DestroySurface(m_VulkanSurface);
+			m_VulkanSurface = VK_NULL_HANDLE;
+		}
+		VulkanContext::Shutdown();
 	}
 
 	void Application::PushLayer(Layer* layer)
