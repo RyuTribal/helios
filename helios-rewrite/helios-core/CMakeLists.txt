@@ -10,6 +10,9 @@ target_sources(helios-core
         src/helios/ecs/event_storage.cpp
         src/helios/ecs/world.cpp
         src/helios/ecs/commands.cpp
+        src/helios/ecs/thread_pool.cpp
+        src/helios/ecs/dag_builder.cpp
+        src/helios/ecs/scheduler.cpp
         src/helios/core/uuid.cpp
         src/helios/core/log_system.cpp
 )
