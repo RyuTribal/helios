@@ -1,5 +1,6 @@
 // helios-core/src/helios/ecs/scheduler.cpp
 #include "helios/ecs/scheduler.h"
+#include "helios/core/engine_log_channels.h"
 
 namespace helios {
 
@@ -12,6 +13,8 @@ SystemId Scheduler::next_id() {
 
 void Scheduler::rebuild_plan(Schedule schedule) {
     auto& data = m_schedules[static_cast<size_t>(schedule)];
+    HELIOS_LOG(Scheduler, Debug, "Rebuilding execution plan for schedule {} ({} systems)",
+        static_cast<int>(schedule), data.systems.size());
     data.plan  = build_execution_plan(data.systems);
     data.dirty = false;
 }
@@ -27,6 +30,9 @@ void Scheduler::run(World& world, Schedule schedule) {
     }
 
     const auto& plan = data.plan;
+
+    HELIOS_LOG(Scheduler, Trace, "Running schedule {} ({} systems)",
+        static_cast<int>(schedule), data.systems.size());
 
     if (!m_parallel || !m_pool) {
         // --- Sequential execution ---
@@ -45,6 +51,8 @@ void Scheduler::run(World& world, Schedule schedule) {
                 data.systems[stage.system_indices[0]].run(world);
             } else {
                 // Multiple systems -- dispatch to pool
+                HELIOS_LOG(Scheduler, Trace, "Dispatching {} systems in parallel for stage",
+                    stage.system_indices.size());
                 std::vector<std::future<void>> futures;
                 futures.reserve(stage.system_indices.size());
 

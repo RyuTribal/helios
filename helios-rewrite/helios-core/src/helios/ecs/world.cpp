@@ -1,5 +1,6 @@
 #include "helios/ecs/world.h"
 #include "helios/ecs/commands.h"
+#include "helios/core/engine_log_channels.h"
 
 namespace helios {
 
@@ -8,11 +9,13 @@ Entity World::spawn() {
     ArchetypeId empty_id;
     Archetype& arch = m_archetypes.get_or_create(empty_id);
     m_archetypes.add_entity(arch, e);
+    HELIOS_LOG(ECS, Trace, "Spawned entity {{index={}, gen={}}}", e.index, e.generation);
     return e;
 }
 
 void World::despawn(Entity entity) {
     if (!m_allocator.is_alive(entity)) return;
+    HELIOS_LOG(ECS, Trace, "Despawning entity {{index={}, gen={}}}", entity.index, entity.generation);
     m_archetypes.remove_entity(entity);
     m_allocator.deallocate(entity);
 }

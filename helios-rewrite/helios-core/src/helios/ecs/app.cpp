@@ -1,6 +1,7 @@
 // helios-core/src/helios/ecs/app.cpp
 #include "helios/ecs/app.h"
 #include "helios/ecs/time.h"
+#include "helios/core/engine_log_channels.h"
 
 namespace helios {
 
@@ -21,6 +22,7 @@ void App::enable_parallel(uint32_t thread_count) {
 }
 
 void App::tick() {
+    HELIOS_LOG(Core, Trace, "App::tick frame={}", m_world.resource<Time>().frame_count());
     auto frame_start = std::chrono::high_resolution_clock::now();
 
     m_scheduler.run(m_world, Schedule::PreUpdate);
@@ -59,14 +61,18 @@ void App::tick() {
 }
 
 void App::run() {
+    HELIOS_LOG(Core, Info, "App starting");
     // Run startup systems exactly once
     m_scheduler.run(m_world, Schedule::Startup);
+    HELIOS_LOG(Core, Debug, "Startup systems complete");
 
     m_running = true;
 
     while (m_running) {
         tick();
     }
+
+    HELIOS_LOG(Core, Info, "App shutting down");
 }
 
 } // namespace helios

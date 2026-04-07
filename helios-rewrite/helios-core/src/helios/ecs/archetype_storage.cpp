@@ -1,4 +1,5 @@
 #include "helios/ecs/archetype_storage.h"
+#include "helios/core/engine_log_channels.h"
 
 namespace helios {
 
@@ -10,6 +11,7 @@ Archetype& ArchetypeStorage::get_or_create(const ArchetypeId& id) {
     auto arch = std::make_unique<Archetype>(create_archetype(id, m_column_factories));
     auto* ptr = arch.get();
     m_archetypes.emplace(id, std::move(arch));
+    HELIOS_LOG(ECS, Debug, "Created archetype with {} component(s)", id.size());
     return *ptr;
 }
 
@@ -46,6 +48,8 @@ void ArchetypeStorage::remove_entity(Entity entity) {
 void ArchetypeStorage::move_entity(Entity entity, Archetype& from, Archetype& to) {
     auto loc_it = m_entity_locations.find(entity);
     assert(loc_it != m_entity_locations.end());
+    HELIOS_LOG(ECS, Trace, "Moving entity {{index={}, gen={}}} between archetypes ({} -> {} components)",
+        entity.index, entity.generation, from.id.size(), to.id.size());
     size_t src_row = loc_it->second.row;
 
     // Temporary buffer for moving component data between columns.

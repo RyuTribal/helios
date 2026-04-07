@@ -1,5 +1,6 @@
 #include "helios/ecs/commands.h"
 #include "helios/ecs/world.h"
+#include "helios/core/engine_log_channels.h"
 
 namespace helios {
 
@@ -26,6 +27,7 @@ void Commands::despawn(Entity entity) {
 }
 
 void Commands::apply(World& world) {
+    HELIOS_LOG(ECS, Trace, "Applying {} deferred command(s)", m_commands.size());
     for (auto& cmd : m_commands) {
         cmd.execute(world);
     }

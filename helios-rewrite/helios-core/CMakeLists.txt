@@ -17,6 +17,7 @@ target_sources(helios-core
         src/helios/core/uuid.cpp
         src/helios/core/log_entry.cpp
         src/helios/core/log_system.cpp
+        src/helios/core/engine_log_channels.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
