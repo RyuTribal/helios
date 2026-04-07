@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "RenderPasses.h"
+#include "Renderer/Vulkan/VulkanCommandBuffer.h"
+#include "Renderer/Vulkan/VulkanTexture.h"
 
 namespace Engine {
 
@@ -91,6 +93,14 @@ namespace Engine {
     {
         if (!Pipeline) return;
 
+        // Transition depth texture to DEPTH_STENCIL_ATTACHMENT_OPTIMAL before render pass
+        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+        auto* vkDepthTex = static_cast<VulkanTexture*>(DepthTexture.get());
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkDepthTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+
         // Upload camera matrices
         struct { glm::mat4 view, proj; } camData = { view, projection };
         CameraUBO->SetData(&camData, sizeof(camData));
@@ -121,6 +131,12 @@ namespace Engine {
         }
 
         cmd->EndRenderPass();
+
+        // Transition depth to SHADER_READ_ONLY_OPTIMAL so light culling can sample it
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkDepthTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
     }
 
     void DepthPrePass::Resize(RHIDevice* device, uint32_t width, uint32_t height)
@@ -239,6 +255,14 @@ namespace Engine {
     {
         if (!Pipeline || lightMatrices.empty()) return;
 
+        // Transition shadow map to DEPTH_STENCIL_ATTACHMENT_OPTIMAL before render pass
+        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+        auto* vkShadowTex = static_cast<VulkanTexture*>(ShadowMap.get());
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkShadowTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+
         // Upload light matrices
         LightMatricesUBO->SetData(lightMatrices.data(),
             static_cast<uint32_t>(lightMatrices.size() * sizeof(glm::mat4)));
@@ -269,6 +293,12 @@ namespace Engine {
         }
 
         cmd->EndRenderPass();
+
+        // Transition shadow map to SHADER_READ_ONLY_OPTIMAL for forward pass sampling
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkShadowTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
     }
 
     void ShadowPass::Resize(RHIDevice* device, uint32_t resolution, uint32_t cascadeCount)
@@ -615,6 +645,21 @@ namespace Engine {
     {
         if (!Pipeline || !camera) return;
 
+        // Transition color texture to COLOR_ATTACHMENT_OPTIMAL before render pass
+        auto* vkCmd = static_cast<VulkanCommandBuffer*>(cmd);
+        auto* vkColorTex = static_cast<VulkanTexture*>(ColorTexture.get());
+        auto* vkDepthTex = static_cast<VulkanTexture*>(DepthTexture.get());
+
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkColorTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        // Transition depth texture to DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkDepthTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+
         // Upload global UBO
         GlobalUBOData globalData;
         globalData.CameraView = camera->GetView();
@@ -713,6 +758,11 @@ namespace Engine {
         }
 
         cmd->EndRenderPass();
+
+        // Transition color to SHADER_READ_ONLY_OPTIMAL for tonemap sampling / ImGui viewport
+        VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
+            vkColorTex->GetVkImage(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
     void ForwardPass::Resize(RHIDevice* device, uint32_t width, uint32_t height)
