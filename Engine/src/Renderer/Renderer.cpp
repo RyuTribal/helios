@@ -66,14 +66,54 @@ namespace Engine
                              m_ForwardPass.RenderPass.get(),
                              static_cast<uint32_t>(m_Width), static_cast<uint32_t>(m_Height));
 
+        // Create ImGui framebuffers for each swapchain image
+        RecreateImGuiFramebuffers();
+
         HVE_CORE_INFO_TAG("Renderer", "Modular Vulkan renderer initialized ({}x{})",
                           (int)m_Width, (int)m_Height);
+    }
+
+    void Renderer::RecreateImGuiFramebuffers()
+    {
+        auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
+        VkDevice device = static_cast<VulkanDevice*>(m_Device)->GetDevice();
+        VkRenderPass imguiRP = ::GetImGuiRenderPass();
+
+        // Destroy old framebuffers
+        for (auto fb : m_ImGuiFramebuffers)
+            vkDestroyFramebuffer(device, fb, nullptr);
+        m_ImGuiFramebuffers.clear();
+
+        // Create one per swapchain image
+        const auto& imageViews = vkSwapchain->GetImageViews();
+        for (uint32_t i = 0; i < imageViews.size(); i++)
+        {
+            VkImageView view = imageViews[i];
+            VkFramebufferCreateInfo fbInfo{};
+            fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            fbInfo.renderPass = imguiRP;
+            fbInfo.attachmentCount = 1;
+            fbInfo.pAttachments = &view;
+            fbInfo.width = vkSwapchain->GetWidth();
+            fbInfo.height = vkSwapchain->GetHeight();
+            fbInfo.layers = 1;
+
+            VkFramebuffer fb;
+            vkCreateFramebuffer(device, &fbInfo, nullptr, &fb);
+            m_ImGuiFramebuffers.push_back(fb);
+        }
     }
 
     Renderer::~Renderer()
     {
         if (m_Device)
+        {
             m_Device->WaitIdle();
+            VkDevice device = static_cast<VulkanDevice*>(m_Device)->GetDevice();
+            for (auto fb : m_ImGuiFramebuffers)
+                vkDestroyFramebuffer(device, fb, nullptr);
+            m_ImGuiFramebuffers.clear();
+        }
         DefaultTextures::Shutdown();
     }
 
@@ -134,25 +174,10 @@ namespace Engine
         // The render passes need proper Vulkan validation layer debugging to find
         // the exact image layout transition issue.
 
-        // Use legacy render pass for ImGui (dynamic rendering caused GPU hang on Intel Mesa)
-        // Create per-swapchain-image framebuffer on the fly
-        // (This is not ideal for perf but ensures correctness)
-        VkImageView swapImageView = vkSwapchain->GetCurrentImageView();
-
-        // Get or create the ImGui render pass (created by ImGuiLayer, stored globally)
+        // Use pre-created framebuffer for the current swapchain image
         VkRenderPass imguiRP = ::GetImGuiRenderPass();
-
-        VkFramebufferCreateInfo fbInfo{};
-        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbInfo.renderPass = imguiRP;
-        fbInfo.attachmentCount = 1;
-        fbInfo.pAttachments = &swapImageView;
-        fbInfo.width = vkSwapchain->GetWidth();
-        fbInfo.height = vkSwapchain->GetHeight();
-        fbInfo.layers = 1;
-
-        VkFramebuffer imguiFB;
-        vkCreateFramebuffer(static_cast<VulkanDevice*>(m_Device)->GetDevice(), &fbInfo, nullptr, &imguiFB);
+        uint32_t imageIndex = vkSwapchain->GetCurrentImageIndex();
+        VkFramebuffer imguiFB = m_ImGuiFramebuffers[imageIndex];
 
         // Transition swapchain image
         VulkanTexture::TransitionLayout(vkCmd->GetVkCommandBuffer(),
@@ -179,8 +204,6 @@ namespace Engine
 
         vkCmdEndRenderPass(vkCmd->GetVkCommandBuffer());
 
-        // Destroy temporary framebuffer (deferred — we're still recording, but it'll be freed after submit)
-        // Actually we need to defer destruction. For now just leak it (TODO: proper cleanup)
         // The render pass transitions the image to PRESENT_SRC_KHR via finalLayout
 
         cmd->End();
@@ -241,6 +264,9 @@ namespace Engine
 
         m_DepthPrePass.Resize(m_Device, w, h);
         m_ForwardPass.Resize(m_Device, w, h);
+
+        // Recreate ImGui framebuffers for new swapchain images
+        RecreateImGuiFramebuffers();
 
         m_SceneImGuiDescriptor = VK_NULL_HANDLE;
     }

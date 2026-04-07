@@ -189,6 +189,7 @@ namespace Engine {
 
     private:
         void ResetStats();
+        void RecreateImGuiFramebuffers();
 
         // Cascade shadow map helpers
         std::vector<glm::mat4> ComputeCascadeLightMatrices(const glm::vec3& lightDir);
@@ -213,6 +214,9 @@ namespace Engine {
         // Per-frame command buffers (one per frame in flight)
         static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
         Ref<RHICommandBuffer> m_CommandBuffers[MAX_FRAMES_IN_FLIGHT];
+
+        // ImGui swapchain framebuffers (one per swapchain image, recreated on resize)
+        std::vector<VkFramebuffer> m_ImGuiFramebuffers;
 
         // Submission queues (cleared each frame)
         std::vector<Ref<Mesh>> m_Meshes;
