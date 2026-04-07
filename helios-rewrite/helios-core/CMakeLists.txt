@@ -10,6 +10,7 @@ target_sources(helios-core
         src/helios/ecs/event_storage.cpp
         src/helios/ecs/world.cpp
         src/helios/ecs/commands.cpp
+        src/helios/core/uuid.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
