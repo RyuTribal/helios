@@ -8,6 +8,7 @@ add_executable(helios-tests
     ecs/test_query.cpp
     ecs/test_world.cpp
     ecs/test_commands.cpp
+    ecs/test_components.cpp
 )
 
 target_link_libraries(helios-tests
