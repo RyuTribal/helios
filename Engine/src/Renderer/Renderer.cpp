@@ -257,8 +257,15 @@ namespace Engine
         }
 
         auto* cmd = m_CommandBuffer.get();
+        auto* vkSwapchain2 = static_cast<VulkanSwapchain*>(m_Swapchain);
+        auto* vkCmd2 = static_cast<VulkanCommandBuffer*>(cmd);
         cmd->Begin();
 
+        // TODO: Full render pass pipeline — currently disabled until image layout
+        // transitions are properly implemented in each pass. For now, just present
+        // a cleared swapchain image so the window + ImGui work.
+        if (false) // DISABLED — enable when render passes handle layout transitions
+        {
         // 1. Depth pre-pass
         m_DepthPrePass.Execute(cmd, m_Meshes,
                                 m_CurrentCamera->GetView(),
@@ -358,6 +365,8 @@ namespace Engine
         // 8. Tonemapping -> swapchain
         // TODO: need swapchain framebuffer integration
         // m_TonemapPass.Execute(cmd, swapchainFramebuffer, m_ForwardPass.ColorTexture.get(), m_Exposure);
+
+        } // end if(false) — disabled render passes
 
         // Transition swapchain image to present
         auto* vkSwapchain = static_cast<VulkanSwapchain*>(m_Swapchain);
