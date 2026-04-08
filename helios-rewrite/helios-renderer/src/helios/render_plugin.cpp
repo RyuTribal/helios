@@ -117,9 +117,10 @@ void present_frame(ResMut<RenderContext> ctx,
     ctx->swapchain->present();
 }
 
-// --- System: handle window resize -> recreate swapchain ---
+// --- System: handle window resize -> recreate swapchain + depth buffer ---
 void handle_swapchain_resize(
     ResMut<RenderContext> ctx,
+    ResMut<SimpleRenderState> simple,
     Res<Windows> windows,
     EventReader<WindowResized> resize_events)
 {
@@ -144,6 +145,17 @@ void handle_swapchain_resize(
         auto new_swapchain = ctx->device->create_swapchain(desc);
         if (new_swapchain) {
             ctx->swapchain = std::move(new_swapchain);
+
+            // Recreate depth buffer to match the new swapchain size
+            if (simple->depth_texture) {
+                rhi::TextureDesc depth_desc;
+                depth_desc.width = e.width;
+                depth_desc.height = e.height;
+                depth_desc.format = rhi::TextureFormat::Depth32F;
+                depth_desc.usage = rhi::TextureUsage::DepthAttachment;
+                depth_desc.debug_name = "DepthBuffer";
+                simple->depth_texture = ctx->device->create_texture(depth_desc);
+            }
         } else {
             HELIOS_LOG(Render, Warn, "Swapchain recreation failed for {}x{}, will retry", e.width, e.height);
         }
