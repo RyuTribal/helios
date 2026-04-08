@@ -149,7 +149,7 @@ int main()
     });
 
     // --- Create secondary surface + swapchain ---
-    void* secondary_surface = device->create_surface(secondary_win.native_handle());
+    void* secondary_surface = device->create_surface(secondary_win->native_handle());
     if (!secondary_surface) {
         HELIOS_LOG(Core, Error, "Failed to create secondary surface");
         return 1;
@@ -198,12 +198,16 @@ int main()
             if (secondary_win->should_close()) {
                 HELIOS_LOG(Core, Info, "Secondary window closed -- cleaning up");
                 device->wait_idle();
+                // Destroy GPU resources first (reference surface/device)
                 secondary_cmd.reset();
                 secondary_swapchain.reset();
+                // Destroy Vulkan surface (while GLFW + VkInstance still alive)
                 device->destroy_surface(secondary_surface);
                 secondary_surface = nullptr;
-                secondary_win.reset();  // destroy GLFW window after its Vulkan resources
+                // Destroy GLFW window (safe: primary keeps GLFW ref count > 0)
+                secondary_win.reset();
                 secondary_alive = false;
+                HELIOS_LOG(Core, Info, "Secondary window destroyed");
             } else {
                 render_window(*device, *secondary_swapchain, *secondary_cmd, red_clear);
             }
@@ -222,16 +226,18 @@ int main()
         secondary_surface = nullptr;
     }
 
-    // Destroy primary GPU resources
+    // Correct destruction order on Wayland:
+    // 1. GPU resources that reference swapchain/surfaces
     primary_cmd.reset();
     primary_swapchain.reset();
 
-    // Destroy GLFW windows BEFORE VkInstance (GLFW/Wayland cleanup needs Vulkan alive)
+    // 2. Device (destroys VkDevice → VkSurface → VkInstance)
+    //    Must happen WHILE GLFW is still initialized (Wayland display alive)
+    device.reset();
+
+    // 3. GLFW windows last (last one triggers glfwTerminate)
     secondary_win.reset();
     primary_win.reset();
-
-    // Device last (destroys VkDevice, primary surface, VkInstance)
-    device.reset();
 
     HELIOS_LOG(Core, Info, "=== Sandbox shutdown ===");
     return 0;
