@@ -5,13 +5,23 @@
 
 namespace helios::renderer {
 
-RenderThread::RenderThread(rhi::Device& device, rhi::Swapchain& swapchain, GraphBuildFn graph_builder)
+RenderThread::RenderThread(rhi::Device& device,
+                           std::unique_ptr<rhi::Swapchain>* swapchain_ptr,
+                           GraphBuildFn graph_builder)
     : m_device(device)
-    , m_swapchain(swapchain)
+    , m_swapchain_ptr(swapchain_ptr)
     , m_graph_builder(std::move(graph_builder))
     , m_thread(&RenderThread::thread_main, this)
 {
+    HELIOS_ASSERT(swapchain_ptr != nullptr, "RenderThread: swapchain_ptr must not be null");
     HELIOS_LOG(Graph, Info, "RenderThread: started");
+}
+
+void RenderThread::set_swapchain(std::unique_ptr<rhi::Swapchain>* swapchain_ptr) {
+    HELIOS_ASSERT(swapchain_ptr != nullptr, "RenderThread::set_swapchain: swapchain_ptr must not be null");
+    // Must only be called while the render thread is idle (after wait_idle()).
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_swapchain_ptr = swapchain_ptr;
 }
 
 RenderThread::~RenderThread() {
@@ -79,7 +89,7 @@ void RenderThread::thread_main() {
         HELIOS_LOG(Graph, Trace, "RenderThread: processing frame {}", packet.frame_number);
 
         // 1. Acquire swapchain image.
-        if (!m_swapchain.acquire_next_image()) {
+        if (!(*m_swapchain_ptr)->acquire_next_image()) {
             // Swapchain out of date (e.g. window resized). Skip this frame.
             // The main thread will handle resize and resubmit.
             HELIOS_LOG(Graph, Warn, "RenderThread: swapchain acquire failed, skipping frame");
@@ -94,7 +104,7 @@ void RenderThread::thread_main() {
         graph.compile_and_execute(m_device, pool);
 
         // 4. Present.
-        m_swapchain.present();
+        (*m_swapchain_ptr)->present();
 
         // 5. Tick the resource pool (evict stale resources).
         pool.tick();

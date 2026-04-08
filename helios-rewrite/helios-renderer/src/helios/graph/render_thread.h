@@ -23,11 +23,22 @@ class RenderThread {
 public:
     // Starts the render thread immediately. The thread runs until destruction.
     //
-    // device / swapchain -- GPU objects owned externally (e.g. by VulkanRenderPlugin).
-    //                       Must outlive the RenderThread.
-    // graph_builder      -- callback that populates the RenderGraph from a FramePacket.
-    //                       Called on the render thread each frame.
-    RenderThread(rhi::Device& device, rhi::Swapchain& swapchain, GraphBuildFn graph_builder);
+    // device        -- GPU device owned externally; must outlive the RenderThread.
+    // swapchain_ptr -- pointer to the swapchain unique_ptr owned externally.
+    //                 Storing a pointer-to-unique_ptr means the render thread
+    //                 always dereferences the *current* swapchain, even after the
+    //                 main thread replaces it during a resize via
+    //                 `ctx->swapchain = std::move(new_swapchain)`.
+    //                 The pointed-to unique_ptr must outlive the RenderThread.
+    // graph_builder -- callback that populates the RenderGraph from a FramePacket.
+    //                 Called on the render thread each frame.
+    RenderThread(rhi::Device& device,
+                 std::unique_ptr<rhi::Swapchain>* swapchain_ptr,
+                 GraphBuildFn graph_builder);
+
+    // Update the swapchain pointer (called from the main thread after resize,
+    // while the render thread is idle -- use wait_idle() before calling this).
+    void set_swapchain(std::unique_ptr<rhi::Swapchain>* swapchain_ptr);
 
     // Signals shutdown, wakes the thread, and joins.
     ~RenderThread();
@@ -55,7 +66,10 @@ private:
     void thread_main();
 
     rhi::Device& m_device;
-    rhi::Swapchain& m_swapchain;
+    // Pointer to the owner's unique_ptr<Swapchain>. Indirecting through the
+    // unique_ptr rather than caching the raw Swapchain* means we always reach
+    // the *current* swapchain even if the main thread replaces it on resize.
+    std::unique_ptr<rhi::Swapchain>* m_swapchain_ptr;
     GraphBuildFn m_graph_builder;
 
     std::thread m_thread;
