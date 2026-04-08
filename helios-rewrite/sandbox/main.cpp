@@ -10,6 +10,7 @@
 #include <helios/input/input_plugin.h>
 #include <helios/input/input_map.h>
 #include <helios/input/raw_input.h>
+#include <helios/render_plugin.h>
 #include <helios/forward_plus/forward_plus_plugin.h>
 #include <helios/graph/frame_packet.h>
 
@@ -163,14 +164,15 @@ int main() {
 
     App app;
 
-    // Engine plugins
+    // Engine plugins (order matters: Window → Render → ForwardPlus)
     app.add_plugin(WindowPlugin{ .primary_window = WindowDesc{
         .title = "Helios Sandbox",
         .width = 1280,
         .height = 720,
     }});
     app.add_plugin(InputPlugin{});
-    app.add_plugin(ForwardPlusPlugin{});
+    app.add_plugin(RenderPlugin{});          // GPU infrastructure (device, swapchain, present)
+    app.add_plugin(ForwardPlusPlugin{});     // shading model (just the render graph passes)
 
     // Game plugins
     app.add_plugin(GamePlugin{});

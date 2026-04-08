@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(vk-bootstrap)
 add_library(helios-renderer STATIC
     # RHI factory (runtime backend selection)
     src/helios/rhi/rhi_factory.cpp
+    src/helios/render_plugin.cpp
     # Vulkan backend
     src/helios/vulkan/vulkan_context.cpp
     src/helios/vulkan/vulkan_device.cpp
