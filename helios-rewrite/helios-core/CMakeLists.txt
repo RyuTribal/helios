@@ -21,6 +21,13 @@ target_sources(helios-core
         src/helios/core/engine_log_channels.cpp
         src/helios/core/assert.cpp
         src/helios/core/crash_handler.cpp
+        src/helios/window/window.cpp
+        src/helios/window/windows.cpp
+        src/helios/window/window_plugin.cpp
+        src/helios/input/raw_input.cpp
+        src/helios/input/input_map.cpp
+        src/helios/input/input_systems.cpp
+        src/helios/input/input_plugin.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
@@ -33,6 +40,8 @@ target_link_libraries(helios-core
     PUBLIC
         glm::glm
         spdlog::spdlog
+    PRIVATE
+        glfw
 )
 
 target_compile_features(helios-core PUBLIC cxx_std_20)
