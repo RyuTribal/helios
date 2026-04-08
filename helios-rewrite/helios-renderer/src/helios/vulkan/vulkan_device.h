@@ -73,7 +73,9 @@ public:
     VkQueue graphics_queue() const { return m_graphics_queue; }
     uint32_t graphics_queue_family() const { return m_graphics_queue_family; }
     VmaAllocator allocator() const { return m_allocator; }
-    VkDescriptorPool descriptor_pool() const { return m_descriptor_pool; }
+    VkDescriptorPool descriptor_pool() const {
+        return m_descriptor_pools.empty() ? VK_NULL_HANDLE : m_descriptor_pools.back();
+    }
     VulkanContext& context() const { return *m_context; }
 
     explicit operator bool() const { return m_device != VK_NULL_HANDLE; }
@@ -87,12 +89,14 @@ protected:
     VkQueue m_graphics_queue                 = VK_NULL_HANDLE;
     uint32_t m_graphics_queue_family         = 0;
     VmaAllocator m_allocator                 = VK_NULL_HANDLE;
-    VkDescriptorPool m_descriptor_pool       = VK_NULL_HANDLE;
+    std::vector<VkDescriptorPool> m_descriptor_pools;
 
     // Immediate submit resources
     VkCommandPool m_immediate_cmd_pool       = VK_NULL_HANDLE;
     VkCommandBuffer m_immediate_cmd_buffer   = VK_NULL_HANDLE;
     VkFence m_immediate_fence                = VK_NULL_HANDLE;
+
+    VkDescriptorPool create_descriptor_pool();
 };
 
 // Template specializations for native_handle

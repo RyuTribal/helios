@@ -153,22 +153,8 @@ VulkanDevice::VulkanDevice(VulkanContext& context, VkSurfaceKHR surface, uint32_
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     vkCreateFence(m_device, &fence_info, nullptr, &m_immediate_fence);
 
-    // --- Descriptor pool ---
-    std::vector<VkDescriptorPoolSize> pool_sizes = {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         100 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         100 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,           20 },
-    };
-
-    VkDescriptorPoolCreateInfo descriptor_pool_info{};
-    descriptor_pool_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptor_pool_info.maxSets       = 200;
-    descriptor_pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
-    descriptor_pool_info.pPoolSizes    = pool_sizes.data();
-    descriptor_pool_info.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-
-    vkCreateDescriptorPool(m_device, &descriptor_pool_info, nullptr, &m_descriptor_pool);
+    // --- Descriptor pool (growable chain) ---
+    m_descriptor_pools.push_back(create_descriptor_pool());
 
     // --- Debug names ---
     context.set_debug_name(m_device, VK_OBJECT_TYPE_DEVICE,
@@ -180,7 +166,7 @@ VulkanDevice::VulkanDevice(VulkanContext& context, VkSurfaceKHR surface, uint32_
     context.set_debug_name(m_device, VK_OBJECT_TYPE_FENCE,
         reinterpret_cast<uint64_t>(m_immediate_fence), "ImmediateFence");
     context.set_debug_name(m_device, VK_OBJECT_TYPE_DESCRIPTOR_POOL,
-        reinterpret_cast<uint64_t>(m_descriptor_pool), "MainDescriptorPool");
+        reinterpret_cast<uint64_t>(m_descriptor_pools.back()), "DescriptorPool[0]");
 
     HELIOS_LOG_INFO(Renderer, "Vulkan device and VMA allocator created");
 }
@@ -197,7 +183,7 @@ VulkanDevice::VulkanDevice(VulkanDevice&& other) noexcept
     , m_graphics_queue(std::exchange(other.m_graphics_queue, VK_NULL_HANDLE))
     , m_graphics_queue_family(std::exchange(other.m_graphics_queue_family, 0))
     , m_allocator(std::exchange(other.m_allocator, VK_NULL_HANDLE))
-    , m_descriptor_pool(std::exchange(other.m_descriptor_pool, VK_NULL_HANDLE))
+    , m_descriptor_pools(std::move(other.m_descriptor_pools))
     , m_immediate_cmd_pool(std::exchange(other.m_immediate_cmd_pool, VK_NULL_HANDLE))
     , m_immediate_cmd_buffer(std::exchange(other.m_immediate_cmd_buffer, VK_NULL_HANDLE))
     , m_immediate_fence(std::exchange(other.m_immediate_fence, VK_NULL_HANDLE))
@@ -214,12 +200,33 @@ VulkanDevice& VulkanDevice::operator=(VulkanDevice&& other) noexcept
         m_graphics_queue       = std::exchange(other.m_graphics_queue, VK_NULL_HANDLE);
         m_graphics_queue_family = std::exchange(other.m_graphics_queue_family, 0);
         m_allocator            = std::exchange(other.m_allocator, VK_NULL_HANDLE);
-        m_descriptor_pool      = std::exchange(other.m_descriptor_pool, VK_NULL_HANDLE);
+        m_descriptor_pools     = std::move(other.m_descriptor_pools);
         m_immediate_cmd_pool   = std::exchange(other.m_immediate_cmd_pool, VK_NULL_HANDLE);
         m_immediate_cmd_buffer = std::exchange(other.m_immediate_cmd_buffer, VK_NULL_HANDLE);
         m_immediate_fence      = std::exchange(other.m_immediate_fence, VK_NULL_HANDLE);
     }
     return *this;
+}
+
+VkDescriptorPool VulkanDevice::create_descriptor_pool()
+{
+    std::vector<VkDescriptorPoolSize> pool_sizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         100 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         100 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,           20 },
+    };
+
+    VkDescriptorPoolCreateInfo info{};
+    info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    info.maxSets       = 200;
+    info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+    info.pPoolSizes    = pool_sizes.data();
+    info.flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+    vkCreateDescriptorPool(m_device, &info, nullptr, &pool);
+    return pool;
 }
 
 void VulkanDevice::destroy()
@@ -233,8 +240,9 @@ void VulkanDevice::destroy()
         if (m_immediate_cmd_pool != VK_NULL_HANDLE)
             vkDestroyCommandPool(m_device, m_immediate_cmd_pool, nullptr);
 
-        if (m_descriptor_pool != VK_NULL_HANDLE)
-            vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
+        for (VkDescriptorPool pool : m_descriptor_pools)
+            vkDestroyDescriptorPool(m_device, pool, nullptr);
+        m_descriptor_pools.clear();
 
         if (m_allocator != VK_NULL_HANDLE)
             vmaDestroyAllocator(m_allocator);
@@ -244,7 +252,6 @@ void VulkanDevice::destroy()
         m_immediate_fence      = VK_NULL_HANDLE;
         m_immediate_cmd_pool   = VK_NULL_HANDLE;
         m_immediate_cmd_buffer = VK_NULL_HANDLE;
-        m_descriptor_pool      = VK_NULL_HANDLE;
         m_allocator            = VK_NULL_HANDLE;
         m_device               = VK_NULL_HANDLE;
         m_physical_device      = VK_NULL_HANDLE;
@@ -339,18 +346,40 @@ std::unique_ptr<rhi::DescriptorSet> VulkanDevice::allocate_descriptor_set(
 
     VkDescriptorSetAllocateInfo alloc_info{};
     alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool     = m_descriptor_pool;
     alloc_info.descriptorSetCount = 1;
     alloc_info.pSetLayouts        = &dsl;
 
     VkDescriptorSet set;
-    VkResult result = vkAllocateDescriptorSets(m_device, &alloc_info, &set);
-    if (result != VK_SUCCESS) {
-        HELIOS_LOG_ERROR(Renderer, "Failed to allocate descriptor set");
-        return std::make_unique<VulkanDescriptorSet>();  // return empty/null
+
+    // Try each pool from newest to oldest, then grow if all are exhausted
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        alloc_info.descriptorPool = m_descriptor_pools.back();
+        VkResult result = vkAllocateDescriptorSets(m_device, &alloc_info, &set);
+        if (result == VK_SUCCESS) {
+            return std::make_unique<VulkanDescriptorSet>(*this, set);
+        }
+
+        if (result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL) {
+            if (attempt == 0) {
+                // Grow: allocate a fresh pool and retry once
+                HELIOS_LOG(Renderer, Info, "Descriptor pool exhausted, allocating new pool (total: {})",
+                           m_descriptor_pools.size() + 1);
+                VkDescriptorPool new_pool = create_descriptor_pool();
+                m_descriptor_pools.push_back(new_pool);
+                m_context->set_debug_name(m_device, VK_OBJECT_TYPE_DESCRIPTOR_POOL,
+                    reinterpret_cast<uint64_t>(new_pool), "DescriptorPool[overflow]");
+            } else {
+                HELIOS_LOG_ERROR(Renderer, "Failed to allocate descriptor set even after growing pool");
+                return std::make_unique<VulkanDescriptorSet>();
+            }
+        } else {
+            HELIOS_LOG_ERROR(Renderer, "Failed to allocate descriptor set (vkResult={})", static_cast<int>(result));
+            return std::make_unique<VulkanDescriptorSet>();
+        }
     }
 
-    return std::make_unique<VulkanDescriptorSet>(*this, set);
+    // Unreachable, but satisfies the compiler
+    return std::make_unique<VulkanDescriptorSet>();
 }
 
 std::unique_ptr<rhi::RenderPass> VulkanDevice::create_render_pass(const RenderPassDesc& desc)
