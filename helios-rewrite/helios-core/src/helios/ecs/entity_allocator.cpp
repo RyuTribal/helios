@@ -24,6 +24,7 @@ void EntityAllocator::deallocate(Entity entity) {
     HELIOS_ASSERT(entry.generation == entity.generation);
     entry.alive = false;
     entry.generation++;
+    if (entry.generation == 0) entry.generation = 1;  // skip INVALID generation
     m_free_list.push_back(entity.index);
     --m_alive_count;
 }
