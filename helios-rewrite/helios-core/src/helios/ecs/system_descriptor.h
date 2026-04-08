@@ -2,6 +2,7 @@
 #pragma once
 
 #include "helios/ecs/access_descriptor.h"
+#include "helios/core/assert.h"
 
 #include <cstdint>
 #include <functional>
@@ -57,11 +58,15 @@ public:
         : m_desc(desc) {}
 
     SystemDescriptorBuilder& after(SystemId id) {
+        HELIOS_ASSERT(id.value != 0,
+            "after() called with invalid SystemId -- check id_of() returned a valid system");
         m_desc.after.push_back(id);
         return *this;
     }
 
     SystemDescriptorBuilder& before(SystemId id) {
+        HELIOS_ASSERT(id.value != 0,
+            "before() called with invalid SystemId -- check id_of() returned a valid system");
         m_desc.before.push_back(id);
         return *this;
     }

@@ -8,6 +8,7 @@
 #include "helios/ecs/commands.h"
 #include "helios/ecs/system_param_traits.h"
 #include "helios/ecs/thread_pool.h"
+#include "helios/core/assert.h"
 
 #include <array>
 #include <atomic>
@@ -115,7 +116,10 @@ SystemDescriptorBuilder Scheduler::add_system(Schedule schedule, F&& system,
                         std::forward<F>(system));
 
     // Store name → id mapping for cross-plugin ordering via id_of()
-    m_name_ids[desc.name] = id;
+    auto [it, inserted] = m_name_ids.emplace(desc.name, id);
+    HELIOS_ASSERT(inserted,
+        ("Duplicate system name: '" + desc.name + "' -- system names must be unique").c_str());
+    (void)it;
 
     data.systems.push_back(std::move(desc));
     return SystemDescriptorBuilder(data.systems.back());
