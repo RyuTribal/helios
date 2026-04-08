@@ -171,4 +171,20 @@ void* Window::native_handle() const {
     return static_cast<void*>(m_impl->glfw_window);
 }
 
+void Window::set_cursor_mode(CursorMode mode) {
+    if (mode == CursorMode::Captured) {
+        glfwSetInputMode(m_impl->glfw_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(m_impl->glfw_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    } else {
+        glfwSetInputMode(m_impl->glfw_window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+        glfwSetInputMode(m_impl->glfw_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+}
+
+Window::CursorMode Window::cursor_mode() const {
+    int mode = glfwGetInputMode(m_impl->glfw_window, GLFW_CURSOR);
+    return (mode == GLFW_CURSOR_DISABLED) ? CursorMode::Captured : CursorMode::Normal;
+}
+
 } // namespace helios

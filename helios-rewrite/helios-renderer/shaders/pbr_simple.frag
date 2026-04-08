@@ -95,13 +95,16 @@ void main() {
     vec3 Lo = (kD * albedo / PI + specular) * camera.u_LightColor * camera.u_LightIntensity * NdotL;
 
     // Naive environment reflections (IBL approximation)
-    float max_lod = 4.0; // cubemap has few mips, keep it simple
-    vec3 env_specular = textureLod(u_EnvMap, R, roughness * max_lod).rgb;
+    // Negate Y to correct for Vulkan's negative-viewport-height Y flip
+    float max_lod = 4.0;
+    vec3 env_R = vec3(R.x, -R.y, R.z);
+    vec3 env_specular = textureLod(u_EnvMap, env_R, roughness * max_lod).rgb;
     vec3 env_fresnel  = fresnelSchlick(max(dot(N, V), 0.0), F0);
     vec3 env_reflect  = env_specular * env_fresnel * (1.0 - roughness * 0.5);
 
     // Ambient: rough cubemap sample at normal direction
-    vec3 env_diffuse = textureLod(u_EnvMap, N, max_lod).rgb;
+    vec3 env_N = vec3(N.x, -N.y, N.z);
+    vec3 env_diffuse = textureLod(u_EnvMap, env_N, max_lod).rgb;
     vec3 ambient     = kD * albedo * env_diffuse * 0.3;
 
     vec3 color = Lo + ambient + env_reflect * 0.5 + emissive;

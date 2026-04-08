@@ -133,7 +133,7 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& device, const GraphicsPipelineDesc&
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth               = 1.0f;
     rasterizer.cullMode                = to_vk_cull_mode(desc.state.cull);
-    rasterizer.frontFace               = VK_FRONT_FACE_CLOCKWISE; // Y-flip in projection reverses winding
+    rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable         = VK_FALSE;
 
     // -- 6. Multisampling --

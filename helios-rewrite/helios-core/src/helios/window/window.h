@@ -63,6 +63,12 @@ public:
     bool should_close() const;
     const std::string& title() const;
 
+    /// Cursor mode: Normal shows the cursor, Captured hides and locks it
+    /// (with raw mouse motion when available). Useful for orbit/FPS cameras.
+    enum class CursorMode { Normal, Captured };
+    void set_cursor_mode(CursorMode mode);
+    CursorMode cursor_mode() const;
+
     // Returns the per-frame callback data accumulated since last clear.
     const WindowCallbackData& callback_data() const;
 

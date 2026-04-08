@@ -19,7 +19,6 @@
 
 #include "asset_loader.h"
 
-#include <GLFW/glfw3.h>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -94,38 +93,32 @@ struct OrbitCamera {
 // ============================================================
 
 void orbit_camera_system(Res<RawInput> input,
-                         Res<Windows> windows,
-                         Res<Time> time,
+                         ResMut<Windows> windows,
                          ResMut<OrbitCamera> orbit,
                          Query<Transform, With<ActiveCamera>> cameras)
 {
-    (void)time;
     if (!windows->has_primary()) return;
-    auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+    auto& win = windows->primary();
 
     bool rmb = input->mouse_button_pressed(MouseButton::Right);
 
     // Transition: start panning
     if (rmb && !orbit->panning) {
         orbit->panning = true;
-        glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        if (glfwRawMouseMotionSupported())
-            glfwSetInputMode(glfw_win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+        win.set_cursor_mode(Window::CursorMode::Captured);
     }
     // Transition: stop panning
     if (!rmb && orbit->panning) {
         orbit->panning = false;
-        glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        glfwSetInputMode(glfw_win, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+        win.set_cursor_mode(Window::CursorMode::Normal);
     }
 
     // Apply mouse delta while panning
     if (orbit->panning) {
         glm::vec2 delta = input->mouse_delta();
-        orbit->yaw   -= delta.x * orbit->sensitivity;
-        orbit->pitch -= delta.y * orbit->sensitivity;
+        orbit->yaw   += delta.x * orbit->sensitivity;
+        orbit->pitch += delta.y * orbit->sensitivity;
 
-        // Clamp pitch to avoid gimbal lock
         constexpr float max_pitch = glm::radians(89.0f);
         orbit->pitch = glm::clamp(orbit->pitch, -max_pitch, max_pitch);
     }
@@ -145,13 +138,9 @@ void orbit_camera_system(Res<RawInput> input,
 
     glm::vec3 cam_pos = orbit->target + offset;
 
-    // Update the camera entity's Transform
     for (auto [t] : cameras) {
         t.position = cam_pos;
-        // Look-at rotation: compute quaternion from direction
-        glm::vec3 forward = glm::normalize(orbit->target - cam_pos);
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-        glm::mat4 look = glm::lookAt(cam_pos, orbit->target, up);
+        glm::mat4 look = glm::lookAt(cam_pos, orbit->target, glm::vec3(0, 1, 0));
         t.rotation = glm::conjugate(glm::quat_cast(look));
     }
 }
