@@ -18,6 +18,8 @@ struct CameraData {
     glm::vec3 position{0.0f};
     float near_plane = 0.1f;
     float far_plane = 500.0f;
+    float fov_y = 45.0f;             // vertical FOV in degrees (for cascade splits, light culling)
+    float aspect_ratio = 16.0f / 9.0f; // width / height
 };
 
 // ---------------------------------------------------------------------------

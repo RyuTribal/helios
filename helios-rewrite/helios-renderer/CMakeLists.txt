@@ -37,6 +37,10 @@ add_library(helios-renderer STATIC
     src/helios/vulkan/vulkan_swapchain.cpp
     src/helios/vulkan/vulkan_vma.cpp
     src/helios/pipeline_cache.cpp
+    # Forward+ pipeline
+    src/helios/forward_plus/forward_plus_plugin.cpp
+    src/helios/forward_plus/extract_render_data.cpp
+    src/helios/forward_plus/default_textures.cpp
     # Render graph
     src/helios/graph/render_graph.cpp
     src/helios/graph/render_graph_builder.cpp
