@@ -17,6 +17,7 @@ namespace helios {
 
 // --- System: begin frame (acquire + begin command buffer + begin rendering) ---
 void frame_begin(ResMut<RenderContext> ctx) {
+    ctx->frame_active = false;
     HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
     HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
     if (!ctx->swapchain) return;
@@ -26,6 +27,7 @@ void frame_begin(ResMut<RenderContext> ctx) {
         return;
     }
 
+    ctx->frame_active = true;
     ctx->cmd->begin();
 
     rhi::ClearValues clear;
@@ -35,21 +37,19 @@ void frame_begin(ResMut<RenderContext> ctx) {
     clear.color[3] = ctx->clear_color[3];
     clear.depth = 1.0f;
 
-    // Begin rendering with depth attachment if available
     rhi::Texture* depth_ptr = ctx->depth_texture ? ctx->depth_texture.get() : nullptr;
     ctx->swapchain->begin_rendering(*ctx->cmd, clear, depth_ptr);
 }
 
 // --- System: end frame (end rendering + submit + present) ---
 void frame_end(ResMut<RenderContext> ctx) {
-    if (!ctx->swapchain) return;
-    // If acquire failed in frame_begin, the command buffer was never started.
-    // The swapchain tracks this internally; end_rendering / present are safe no-ops.
+    if (!ctx->frame_active) return;
 
     ctx->swapchain->end_rendering(*ctx->cmd);
     ctx->cmd->end();
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
     ctx->swapchain->present();
+    ctx->frame_active = false;
 }
 
 // --- System: handle window resize -> recreate swapchain + depth buffer ---

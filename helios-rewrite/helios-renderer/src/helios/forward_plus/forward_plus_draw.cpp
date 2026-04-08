@@ -12,7 +12,7 @@ void forward_plus_draw(ResMut<RenderContext> ctx,
                        Res<renderer::FramePacket> packet,
                        ResMut<SkyboxState> skybox,
                        ResMut<PBRRenderState> pbr) {
-    if (!ctx->swapchain) return;
+    if (!ctx->frame_active) return;
 
     const float w = static_cast<float>(ctx->swapchain->width());
     const float h = static_cast<float>(ctx->swapchain->height());
