@@ -197,6 +197,15 @@ void RenderPlugin::build(App& app) {
     app.add_system(Schedule::PreRender, present_frame, "present_frame");
     app.add_system(Schedule::PreUpdate, handle_swapchain_resize, "handle_swapchain_resize");
 
+    // Flush the GPU on shutdown so in-flight commands complete before
+    // resource destructors run (prevents VK_ERROR_DEVICE_LOST).
+    app.set_shutdown_hook([](World& world) {
+        auto& ctx = world.resource<RenderContext>();
+        if (ctx.device) {
+            ctx.device->wait_idle();
+        }
+    });
+
     HELIOS_LOG(Render, Info, "RenderPlugin ready");
 }
 

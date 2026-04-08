@@ -96,6 +96,16 @@ public:
         m_has_post_pre_render = static_cast<bool>(m_post_pre_render);
     }
 
+    // ---- Shutdown hook ----
+
+    using ShutdownFn = std::function<void(World&)>;
+
+    /// Install a callback that runs after the main loop exits but before
+    /// resource destructors fire.  Used by RenderPlugin to flush the GPU.
+    void set_shutdown_hook(ShutdownFn fn) {
+        m_shutdown_hook = std::move(fn);
+    }
+
 private:
     World     m_world;
     Scheduler m_scheduler;
@@ -110,6 +120,9 @@ private:
 
     // Optional callback run after PreRender schedule (e.g. FramePacket submission).
     PostPreRenderFn m_post_pre_render;
+
+    // Optional callback run at shutdown before resource destruction.
+    ShutdownFn m_shutdown_hook;
 };
 
 // ============================================================================
