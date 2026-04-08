@@ -26,9 +26,7 @@ public:
 
     ~VulkanDeviceWithContext() override {
         // Correct destruction order: device first, then surface, then context.
-        // We must explicitly destroy the VkDevice before m_owned_context
-        // (which holds the VkInstance) is destroyed by member dtors.
-        destroy();  // VulkanDevice::destroy() -- idempotent, ~VulkanDevice will no-op
+        destroy();  // VulkanDevice::destroy() -- idempotent
 
         if (m_owned_surface != VK_NULL_HANDLE && m_owned_context) {
             m_owned_context->destroy_surface(m_owned_surface);

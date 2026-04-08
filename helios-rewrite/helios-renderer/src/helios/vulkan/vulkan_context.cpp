@@ -98,7 +98,11 @@ VulkanContext& VulkanContext::operator=(VulkanContext&& other) noexcept
 void VulkanContext::destroy()
 {
     if (m_instance.instance != VK_NULL_HANDLE) {
-        vkb::destroy_debug_utils_messenger(m_instance.instance, m_instance.debug_messenger);
+        // Only destroy debug messenger if validation was enabled AND messenger exists
+        if (m_instance.debug_messenger != VK_NULL_HANDLE) {
+            vkb::destroy_debug_utils_messenger(m_instance.instance, m_instance.debug_messenger);
+            m_instance.debug_messenger = VK_NULL_HANDLE;
+        }
         vkb::destroy_instance(m_instance);
         m_instance = {};
         HELIOS_LOG_INFO(Renderer, "Vulkan instance destroyed");
