@@ -99,20 +99,20 @@ int main()
             gpu.vram_bytes / (1024 * 1024), gpu.api_version);
     }
 
-    // --- Create two windows ---
-    Window primary_win(WindowDesc{
+    // --- Create two windows (unique_ptr for explicit destruction order control) ---
+    auto primary_win = std::make_unique<Window>(WindowDesc{
         .title  = "Helios Sandbox - Primary (Blue)",
         .width  = 1280,
         .height = 720,
     });
-    Window secondary_win(WindowDesc{
+    auto secondary_win = std::make_unique<Window>(WindowDesc{
         .title  = "Helios Sandbox - Secondary (Red)",
         .width  = 640,
         .height = 480,
     });
 
-    HELIOS_LOG(Core, Info, "Primary window:   {}x{}", primary_win.width(), primary_win.height());
-    HELIOS_LOG(Core, Info, "Secondary window: {}x{}", secondary_win.width(), secondary_win.height());
+    HELIOS_LOG(Core, Info, "Primary window:   {}x{}", primary_win->width(), primary_win->height());
+    HELIOS_LOG(Core, Info, "Secondary window: {}x{}", secondary_win->width(), secondary_win->height());
 
     // --- ECS demo: spawn some entities to show the ECS still works ---
     {
@@ -136,7 +136,7 @@ int main()
 
     // --- Create device via RHI factory (uses primary window for initial surface) ---
     auto device = create_device(Backend::Vulkan, "HeliosSandbox",
-        static_cast<GLFWwindow*>(primary_win.native_handle()));
+        static_cast<GLFWwindow*>(primary_win->native_handle()));
     if (!device) {
         HELIOS_LOG(Core, Error, "Failed to create RHI device");
         return 1;
@@ -144,8 +144,8 @@ int main()
 
     // --- Create primary swapchain ---
     auto primary_swapchain = device->create_swapchain(SwapchainDesc{
-        .width   = primary_win.width(),
-        .height  = primary_win.height(),
+        .width   = primary_win->width(),
+        .height  = primary_win->height(),
     });
 
     // --- Create secondary surface + swapchain ---
@@ -156,8 +156,8 @@ int main()
     }
 
     auto secondary_swapchain = device->create_swapchain(SwapchainDesc{
-        .width   = secondary_win.width(),
-        .height  = secondary_win.height(),
+        .width   = secondary_win->width(),
+        .height  = secondary_win->height(),
         .surface = secondary_surface,
     });
 
@@ -187,7 +187,7 @@ int main()
     bool secondary_alive = true;
 
     // --- Main loop: runs until primary window closes ---
-    while (!primary_win.should_close()) {
+    while (!primary_win->should_close()) {
         glfwPollEvents();
 
         // Always render to primary
@@ -195,13 +195,14 @@ int main()
 
         // Handle secondary window lifecycle
         if (secondary_alive) {
-            if (secondary_win.should_close()) {
-                HELIOS_LOG(Core, Info, "Secondary window closed -- cleaning up its RHI resources");
+            if (secondary_win->should_close()) {
+                HELIOS_LOG(Core, Info, "Secondary window closed -- cleaning up");
                 device->wait_idle();
                 secondary_cmd.reset();
                 secondary_swapchain.reset();
                 device->destroy_surface(secondary_surface);
                 secondary_surface = nullptr;
+                secondary_win.reset();  // destroy GLFW window after its Vulkan resources
                 secondary_alive = false;
             } else {
                 render_window(*device, *secondary_swapchain, *secondary_cmd, red_clear);
@@ -221,11 +222,15 @@ int main()
         secondary_surface = nullptr;
     }
 
-    // Destroy primary resources
+    // Destroy primary GPU resources
     primary_cmd.reset();
     primary_swapchain.reset();
 
-    // Device last (destroys GPU device, primary surface, backend context)
+    // Destroy GLFW windows BEFORE VkInstance (GLFW/Wayland cleanup needs Vulkan alive)
+    secondary_win.reset();
+    primary_win.reset();
+
+    // Device last (destroys VkDevice, primary surface, VkInstance)
     device.reset();
 
     HELIOS_LOG(Core, Info, "=== Sandbox shutdown ===");
