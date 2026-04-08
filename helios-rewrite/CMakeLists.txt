@@ -59,6 +59,9 @@ endif()
 # Engine core library
 add_subdirectory(helios-core)
 
+# Renderer library
+add_subdirectory(helios-renderer)
+
 # Sandbox (user-facing example application)
 add_subdirectory(sandbox)
 
