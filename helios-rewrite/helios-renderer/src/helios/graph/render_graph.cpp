@@ -101,7 +101,8 @@ void RenderGraph::compile_only() {
 // Compile + Execute
 // ---------------------------------------------------------------------------
 
-void RenderGraph::compile_and_execute(rhi::Device& device, ResourcePool& pool) {
+void RenderGraph::compile_and_execute(rhi::Device& device, ResourcePool& pool,
+                                      rhi::Swapchain* swapchain) {
     // Phase 1: Setup is already complete (add_pass ran setup lambdas eagerly).
 
     // Phase 2: Compile.
@@ -190,15 +191,35 @@ void RenderGraph::compile_and_execute(rhi::Device& device, ResourcePool& pool) {
         // We translate them into pipeline_barrier calls on the command buffer.
         for (const auto& pb : m_barriers) {
             if (pb.pass_index == pi) {
-                for ([[maybe_unused]] const auto& b : pb.barriers) {
-                    // Issue a generic pipeline barrier.
-                    // The RHI's pipeline_barrier takes a BarrierDesc with
-                    // src/dst stage info. We use a broad barrier for now;
-                    // a more refined mapping from ResourceUsage to pipeline
-                    // stages can be added when the RHI barrier API is extended.
+                // Map a ResourceUsage value to the corresponding ShaderStage.
+                // ColorAttachment / DepthAttachment are written in the fragment
+                // stage.  Storage reads/writes happen in compute.  Plain shader
+                // reads default to fragment (the most common consumer).
+                // Transfer has no dedicated ShaderStage value, so we approximate
+                // with Compute (both are outside the rasterization pipeline).
+                auto usage_to_stage = [](ResourceUsage u) -> rhi::ShaderStage {
+                    switch (u) {
+                        case ResourceUsage::ColorAttachment:
+                        case ResourceUsage::DepthAttachment:
+                            return rhi::ShaderStage::Fragment;
+                        case ResourceUsage::ShaderRead:
+                            return rhi::ShaderStage::Fragment;
+                        case ResourceUsage::ShaderWrite:
+                            return rhi::ShaderStage::Compute;
+                        case ResourceUsage::TransferSrc:
+                        case ResourceUsage::TransferDst:
+                            return rhi::ShaderStage::Compute;
+                        case ResourceUsage::Present:
+                            return rhi::ShaderStage::Fragment;
+                        default:
+                            return rhi::ShaderStage::Fragment;
+                    }
+                };
+
+                for (const auto& b : pb.barriers) {
                     rhi::BarrierDesc barrier_desc{};
-                    barrier_desc.src_stage = rhi::ShaderStage::Compute;
-                    barrier_desc.dst_stage = rhi::ShaderStage::Fragment;
+                    barrier_desc.src_stage = usage_to_stage(b.usage_before);
+                    barrier_desc.dst_stage = usage_to_stage(b.usage_after);
                     cmd->pipeline_barrier(barrier_desc);
                 }
                 break;
@@ -227,7 +248,15 @@ void RenderGraph::compile_and_execute(rhi::Device& device, ResourcePool& pool) {
     cmd->end();
 
     // Submit the command buffer.
-    device.submit(*cmd, {});
+    // When a swapchain is provided, use submit_for_present so that the
+    // image-available and render-finished semaphores are wired up correctly
+    // for synchronisation with the present call.  Without this the present
+    // call would wait on a semaphore that was never signaled.
+    if (swapchain != nullptr) {
+        device.submit_for_present(*cmd, *swapchain);
+    } else {
+        device.submit(*cmd, {});
+    }
 }
 
 // ---------------------------------------------------------------------------

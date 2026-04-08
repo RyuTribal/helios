@@ -107,7 +107,14 @@ public:
 
     // Compile the graph (cull, sort, insert barriers) and execute all
     // surviving passes. Allocates transient resources from the pool.
-    void compile_and_execute(rhi::Device& device, ResourcePool& pool);
+    //
+    // swapchain -- when non-null the final submit is done via
+    //              device.submit_for_present() so that the swapchain's
+    //              image-available / render-finished semaphores are
+    //              correctly wired up.  Pass nullptr when rendering
+    //              off-screen or in tests.
+    void compile_and_execute(rhi::Device& device, ResourcePool& pool,
+                             rhi::Swapchain* swapchain = nullptr);
 
     // Compile without execution -- for testing.
     void compile_only();
