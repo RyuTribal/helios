@@ -14,9 +14,14 @@ public:
 
     Column() = default;
 
+    // Components with alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__ are not
+    // supported.  std::vector<std::byte>::data() is guaranteed to be aligned
+    // to at least __STDCPP_DEFAULT_NEW_ALIGNMENT__ (>= 16 on all modern
+    // platforms), so rounding the stride up to element_align is sufficient
+    // for all standard-alignment types.
     Column(size_t element_size, size_t element_align,
            DestructorFn destructor, MoveConstructFn move_construct)
-        : m_element_size(element_size)
+        : m_element_size((element_size + element_align - 1) & ~(element_align - 1))
         , m_element_align(element_align)
         , m_destructor(std::move(destructor))
         , m_move_construct(std::move(move_construct)) {}
@@ -140,6 +145,8 @@ public:
 
     template <typename T>
     static Column create() {
+        static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__,
+            "Components with alignment greater than __STDCPP_DEFAULT_NEW_ALIGNMENT__ are not supported");
         return Column(
             sizeof(T), alignof(T),
             [](void* ptr) { reinterpret_cast<T*>(ptr)->~T(); },
