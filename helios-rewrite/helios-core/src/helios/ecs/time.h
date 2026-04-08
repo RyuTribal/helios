@@ -34,9 +34,10 @@ private:
 /// The App main loop accumulates frame delta into `remaining`, then ticks
 /// FixedUpdate once per `timestep` until the accumulator is drained.
 struct FixedTimeAccumulator {
-    float timestep  = 1.0f / 60.0f;  // 60 Hz default
-    float remaining = 0.0f;
-    float alpha     = 0.0f;           // interpolation fraction for rendering
+    float    timestep            = 1.0f / 60.0f;  // 60 Hz default
+    float    remaining           = 0.0f;
+    float    alpha               = 0.0f;           // interpolation fraction for rendering
+    uint32_t max_ticks_per_frame = 10;             // prevent spiral of death
 };
 
 } // namespace helios

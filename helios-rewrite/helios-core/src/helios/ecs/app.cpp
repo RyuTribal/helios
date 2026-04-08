@@ -42,15 +42,21 @@ void App::tick() {
 
     m_scheduler.run(m_world, Schedule::Update);
 
-    // ---- Fixed update loop ----
+    // ---- Fixed update loop (capped to prevent spiral of death) ----
     {
         float frame_delta = m_world.resource<Time>().delta();
         auto& acc = m_world.resource<FixedTimeAccumulator>();
         acc.remaining += frame_delta;
 
-        while (acc.remaining >= acc.timestep) {
+        uint32_t ticks = 0;
+        while (acc.remaining >= acc.timestep && ticks < acc.max_ticks_per_frame) {
             m_scheduler.run(m_world, Schedule::FixedUpdate);
             acc.remaining -= acc.timestep;
+            ticks++;
+        }
+        // If we hit the cap, discard excess to prevent accumulation.
+        if (ticks == acc.max_ticks_per_frame && acc.remaining >= acc.timestep) {
+            acc.remaining = 0.0f;
         }
 
         acc.alpha = (acc.timestep > 0.0f)
