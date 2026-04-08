@@ -29,6 +29,8 @@ add_executable(helios-tests
     app/test_state.cpp
     app/test_game_flow.cpp
     app/test_transitions.cpp
+    assets/test_asset_server.cpp
+    serialization/test_binary_serialization.cpp
 )
 
 target_link_libraries(helios-tests
