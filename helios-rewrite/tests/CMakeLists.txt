@@ -22,6 +22,10 @@ add_executable(helios-tests
     core/test_logging.cpp
     core/test_log_channel_registry.cpp
     core/test_assert.cpp
+    window/test_window.cpp
+    input/test_raw_input.cpp
+    input/test_input_map.cpp
+    input/test_input_integration.cpp
 )
 
 target_link_libraries(helios-tests
