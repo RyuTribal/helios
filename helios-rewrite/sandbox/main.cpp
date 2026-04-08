@@ -116,7 +116,7 @@ void orbit_camera_system(Res<RawInput> input,
     // Apply mouse delta while panning
     if (orbit->panning) {
         glm::vec2 delta = input->mouse_delta();
-        orbit->yaw   -= delta.x * orbit->sensitivity;
+        orbit->yaw   += delta.x * orbit->sensitivity;
         orbit->pitch -= delta.y * orbit->sensitivity;
 
         constexpr float max_pitch = glm::radians(89.0f);
@@ -196,7 +196,7 @@ struct ScenePlugin {
         // Helmet mesh entity
         world.spawn(
             Transform{ .position = glm::vec3{0.0f, 0.0f, 0.0f},
-                        .rotation = glm::quat(glm::vec3(glm::radians(-90.0f), glm::radians(180.0f), 0.0f)) },
+                        .rotation = glm::quat(glm::vec3(glm::radians(90.0f), glm::radians(180.0f), 0.0f)) },
             MeshRenderer{ .mesh = AssetHandle{1}, .material = AssetHandle{1} },
             Tag{ .name = "damaged_helmet" });
 
