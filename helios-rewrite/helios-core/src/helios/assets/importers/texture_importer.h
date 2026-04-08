@@ -34,13 +34,16 @@ struct HdrTextureData {
     bool is_valid() const { return !pixels.empty() && width > 0 && height > 0; }
 };
 
+// Forward declaration
+class AssetServer;
+
 class TextureImporter {
 public:
     // Load LDR texture (PNG, JPG, BMP, TGA). Returns TextureData in std::any.
-    static std::any import_ldr(const std::filesystem::path& path);
+    static std::any import_ldr(const std::filesystem::path& path, AssetServer& server);
 
     // Load HDR texture (HDR, EXR). Returns HdrTextureData in std::any.
-    static std::any import_hdr(const std::filesystem::path& path);
+    static std::any import_hdr(const std::filesystem::path& path, AssetServer& server);
 };
 
 } // namespace helios

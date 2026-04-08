@@ -1,6 +1,7 @@
 #include "helios/assets/asset_plugin.h"
 
 #include "helios/assets/asset_server.h"
+#include "helios/assets/mesh_asset.h"
 #include "helios/assets/importers/texture_importer.h"
 #include "helios/assets/importers/mesh_importer.h"
 #include "helios/assets/importers/audio_importer.h"
@@ -23,6 +24,7 @@ void AssetPlugin::build(App& app) {
     server.register_importer<TextureData>(TextureImporter::import_ldr);
     server.register_importer<HdrTextureData>(TextureImporter::import_hdr);
     server.register_importer<MeshData>(MeshImporter::import);
+    server.register_importer<MeshAsset>(MeshImporter::import_mesh_asset);
     server.register_importer<AudioData>(AudioImporter::import);
 
     // 3. Register AssetLoaded event type.

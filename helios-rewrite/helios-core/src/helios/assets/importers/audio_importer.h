@@ -26,10 +26,13 @@ struct AudioData {
     size_t byte_size() const { return file_bytes.size(); }
 };
 
+// Forward declaration
+class AssetServer;
+
 class AudioImporter {
 public:
     // Load audio file. Returns AudioData in std::any.
-    static std::any import(const std::filesystem::path& path);
+    static std::any import(const std::filesystem::path& path, AssetServer& server);
 
     // Determine format from file extension.
     static AudioFormat format_from_extension(const std::string& ext);

@@ -3,6 +3,7 @@
 #include "helios/assets/importers/texture_importer.h"
 #include "helios/assets/importers/mesh_importer.h"
 #include "helios/assets/importers/audio_importer.h"
+#include "helios/assets/asset_server.h"
 
 #include <any>
 #include <filesystem>
@@ -10,17 +11,26 @@
 
 namespace helios::test {
 
+// Helper: create a temporary AssetServer for importer tests
+static AssetServer make_test_server() {
+    auto tmp = std::filesystem::temp_directory_path() / "helios_import_test";
+    std::filesystem::create_directories(tmp);
+    return AssetServer(tmp, 0);
+}
+
 // ============================================================================
 // TextureImporter tests
 // ============================================================================
 
 TEST(TextureImporterTest, MissingFileThrows) {
-    EXPECT_THROW(TextureImporter::import_ldr("/nonexistent/texture.png"),
+    auto server = make_test_server();
+    EXPECT_THROW(TextureImporter::import_ldr("/nonexistent/texture.png", server),
                  std::runtime_error);
 }
 
 TEST(TextureImporterTest, MissingHdrFileThrows) {
-    EXPECT_THROW(TextureImporter::import_hdr("/nonexistent/env.hdr"),
+    auto server = make_test_server();
+    EXPECT_THROW(TextureImporter::import_hdr("/nonexistent/env.hdr", server),
                  std::runtime_error);
 }
 
@@ -31,7 +41,8 @@ TEST(TextureImporterTest, InvalidDataThrows) {
         f << "not a real image file";
     }
 
-    EXPECT_THROW(TextureImporter::import_ldr(tmp), std::runtime_error);
+    auto server = make_test_server();
+    EXPECT_THROW(TextureImporter::import_ldr(tmp, server), std::runtime_error);
 
     std::filesystem::remove(tmp);
 }
@@ -43,7 +54,8 @@ TEST(TextureImporterTest, InvalidHdrDataThrows) {
         f << "not a real HDR file";
     }
 
-    EXPECT_THROW(TextureImporter::import_hdr(tmp), std::runtime_error);
+    auto server = make_test_server();
+    EXPECT_THROW(TextureImporter::import_hdr(tmp, server), std::runtime_error);
 
     std::filesystem::remove(tmp);
 }
@@ -53,7 +65,8 @@ TEST(TextureImporterTest, InvalidHdrDataThrows) {
 // ============================================================================
 
 TEST(MeshImporterTest, MissingFileThrows) {
-    EXPECT_THROW(MeshImporter::import("/nonexistent/model.gltf"),
+    auto server = make_test_server();
+    EXPECT_THROW(MeshImporter::import("/nonexistent/model.gltf", server),
                  std::runtime_error);
 }
 
@@ -64,7 +77,8 @@ TEST(MeshImporterTest, InvalidDataThrows) {
         f << "{ this is not valid gltf }";
     }
 
-    EXPECT_THROW(MeshImporter::import(tmp), std::runtime_error);
+    auto server = make_test_server();
+    EXPECT_THROW(MeshImporter::import(tmp, server), std::runtime_error);
 
     std::filesystem::remove(tmp);
 }
@@ -74,7 +88,8 @@ TEST(MeshImporterTest, InvalidDataThrows) {
 // ============================================================================
 
 TEST(AudioImporterTest, MissingFileThrows) {
-    EXPECT_THROW(AudioImporter::import("/nonexistent/audio.wav"),
+    auto server = make_test_server();
+    EXPECT_THROW(AudioImporter::import("/nonexistent/audio.wav", server),
                  std::runtime_error);
 }
 
@@ -85,7 +100,8 @@ TEST(AudioImporterTest, EmptyFileThrows) {
         // write nothing
     }
 
-    EXPECT_THROW(AudioImporter::import(tmp), std::runtime_error);
+    auto server = make_test_server();
+    EXPECT_THROW(AudioImporter::import(tmp, server), std::runtime_error);
 
     std::filesystem::remove(tmp);
 }
@@ -99,7 +115,8 @@ TEST(AudioImporterTest, ValidFileReturnsAudioData) {
         f.write(data, sizeof(data) - 1);
     }
 
-    auto result = AudioImporter::import(tmp);
+    auto server = make_test_server();
+    auto result = AudioImporter::import(tmp, server);
     ASSERT_TRUE(result.has_value());
 
     auto& audio = std::any_cast<AudioData&>(result);

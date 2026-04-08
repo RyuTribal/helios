@@ -21,9 +21,13 @@ namespace helios {
 class LoadBatchBuilder;
 class LoadBatch;
 
-// Type-erased importer function: takes (asset_root / path) -> std::any
+// Forward declaration for importer context
+class AssetServer;
+
+// Type-erased importer function: takes (asset_root / path, server) -> std::any
 // Returns the loaded asset data or throws on failure.
-using ImporterFn = std::function<std::any(const std::filesystem::path&)>;
+// The server reference allows importers to create sub-assets (textures, materials).
+using ImporterFn = std::function<std::any(const std::filesystem::path&, AssetServer&)>;
 
 // Event emitted when an async load completes
 struct AssetLoaded {

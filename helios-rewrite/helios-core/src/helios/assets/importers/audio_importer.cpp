@@ -17,7 +17,7 @@ AudioFormat AudioImporter::format_from_extension(const std::string& ext) {
     return AudioFormat::Unknown;
 }
 
-std::any AudioImporter::import(const std::filesystem::path& path) {
+std::any AudioImporter::import(const std::filesystem::path& path, AssetServer& /*server*/) {
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("Audio file not found: " + path.string());
     }

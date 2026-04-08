@@ -384,7 +384,7 @@ struct AssetTracker {
     {
         // Register a trivial importer for tracking purposes
         server->register_importer<std::string>(
-            [](const std::filesystem::path& path) -> std::any {
+            [](const std::filesystem::path& path, AssetServer& /*server*/) -> std::any {
                 return std::any(path.string());
             });
     }

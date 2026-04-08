@@ -9,7 +9,7 @@
 
 namespace helios {
 
-std::any TextureImporter::import_ldr(const std::filesystem::path& path) {
+std::any TextureImporter::import_ldr(const std::filesystem::path& path, AssetServer& /*server*/) {
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("Texture file not found: " + path.string());
     }
@@ -41,7 +41,7 @@ std::any TextureImporter::import_ldr(const std::filesystem::path& path) {
     return std::any(std::move(data));
 }
 
-std::any TextureImporter::import_hdr(const std::filesystem::path& path) {
+std::any TextureImporter::import_hdr(const std::filesystem::path& path, AssetServer& /*server*/) {
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("HDR texture file not found: " + path.string());
     }

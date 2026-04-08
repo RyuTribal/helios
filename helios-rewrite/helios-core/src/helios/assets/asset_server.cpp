@@ -80,7 +80,7 @@ void AssetServer::execute_load(const LoadRequest& request) {
     std::any result;
     bool success = true;
     try {
-        result = importer(request.full_path);
+        result = importer(request.full_path, *this);
     } catch (const std::exception& /*e*/) {
         success = false;
     } catch (...) {

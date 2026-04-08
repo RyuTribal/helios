@@ -49,11 +49,19 @@ struct MeshData {
     bool is_valid() const { return !vertices.empty() && !indices.empty(); }
 };
 
+// Forward declaration
+class AssetServer;
+
 class MeshImporter {
 public:
     // Load GLTF/GLB mesh file. Returns MeshData in std::any.
     // Throws std::runtime_error on failure.
-    static std::any import(const std::filesystem::path& path);
+    static std::any import(const std::filesystem::path& path, AssetServer& server);
+
+    // Load GLTF/GLB mesh file as a MeshAsset with auto-loaded sub-assets.
+    // Creates TextureAsset, MaterialAsset sub-assets in the server.
+    // Returns MeshAsset in std::any.
+    static std::any import_mesh_asset(const std::filesystem::path& path, AssetServer& server);
 };
 
 } // namespace helios

@@ -40,7 +40,7 @@ protected:
 
     void register_test_importer(AssetServer& server) {
         server.register_importer<TestAsset>(
-            [](const std::filesystem::path& path) -> std::any {
+            [](const std::filesystem::path& path, AssetServer& /*server*/) -> std::any {
                 std::ifstream f(path);
                 if (!f.is_open()) {
                     throw std::runtime_error("Cannot open: " + path.string());
