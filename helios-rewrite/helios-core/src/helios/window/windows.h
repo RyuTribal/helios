@@ -91,11 +91,16 @@ public:
     // Number of open windows.
     size_t count() const { return m_windows.size(); }
 
+    // App quit request (set by poll_window_events based on close policy).
+    void request_quit() { m_quit_requested = true; }
+    bool quit_requested() const { return m_quit_requested; }
+
 private:
     std::unordered_map<WindowId, Window> m_windows;
     WindowId m_primary = InvalidWindowId;
     WindowId m_next_id = 1;
     WindowClosePolicy m_close_policy = WindowClosePolicy::PrimaryExitsApp;
+    bool m_quit_requested = false;
 };
 
 } // namespace helios

@@ -1,6 +1,7 @@
 // helios-core/src/helios/ecs/app.cpp
 #include "helios/ecs/app.h"
 #include "helios/ecs/time.h"
+#include "helios/window/windows.h"
 #include "helios/core/engine_log_channels.h"
 
 namespace helios {
@@ -26,6 +27,16 @@ void App::tick() {
     auto frame_start = std::chrono::high_resolution_clock::now();
 
     m_scheduler.run(m_world, Schedule::PreUpdate);
+
+    // Check if window system requested quit (close button pressed)
+    if (auto* windows = m_world.try_resource<Windows>()) {
+        if (windows->quit_requested()) {
+            HELIOS_LOG(Core, Info, "Window close requested — shutting down");
+            m_running = false;
+            return;
+        }
+    }
+
     m_scheduler.run(m_world, Schedule::Update);
 
     // ---- Fixed update loop ----

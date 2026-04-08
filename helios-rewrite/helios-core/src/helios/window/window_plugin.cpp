@@ -39,21 +39,31 @@ void poll_window_events(ResMut<Windows> windows,
     // Poll GLFW events for all windows.
     windows->poll_all();
 
-    // Iterate all windows and check callback data for events.
+    // Check for closing windows and emit events.
+    auto closing = windows->closing_windows();
+    for (auto id : closing) {
+        close_writer.send(WindowClosed{ .window_id = id });
+
+        if (windows->should_app_exit_on_close(id)) {
+            // Mark the window plugin's "should quit" flag.
+            // The app checks this after PreUpdate.
+            windows->request_quit();
+        }
+
+        // Destroy the window (unless it's the last and we're quitting)
+        if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
+            windows->destroy(id);
+        }
+    }
+
+    // Emit resize events.
     for (auto& [id, window] : *windows) {
         const auto& cb = window.callback_data();
-
         if (cb.resized) {
             resize_writer.send(WindowResized{
                 .window_id = id,
                 .width     = cb.new_width,
                 .height    = cb.new_height,
-            });
-        }
-
-        if (cb.close_requested) {
-            close_writer.send(WindowClosed{
-                .window_id = id,
             });
         }
     }
