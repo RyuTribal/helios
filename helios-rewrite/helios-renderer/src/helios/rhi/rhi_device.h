@@ -51,6 +51,16 @@ public:
     virtual void submit(const CommandBuffer& cmd, const SubmitInfo& info = {}) = 0;
     virtual void wait_idle() = 0;
 
+    // Surface management for multi-window rendering.
+    // native_window is a GLFWwindow* (or platform equivalent).
+    // Returns an opaque surface handle (VkSurfaceKHR for Vulkan, cast to void*).
+    virtual void* create_surface(void* native_window) = 0;
+    virtual void destroy_surface(void* surface) = 0;
+
+    // Submit a command buffer with sync objects from a swapchain frame.
+    // This is the convenience path: it wires up the swapchain's sync automatically.
+    virtual void submit_for_present(const CommandBuffer& cmd, const Swapchain& swapchain) = 0;
+
     // Native handle escape hatch.
     // Usage: device->native_handle<VkDevice>()
     template<typename T> T native_handle() const;

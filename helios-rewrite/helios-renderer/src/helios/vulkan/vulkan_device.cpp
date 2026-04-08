@@ -14,6 +14,7 @@
 
 #include <helios/core/assert.h>
 
+#include <GLFW/glfw3.h>
 #include <VkBootstrap.h>
 #include <memory>
 #include <utility>
@@ -424,6 +425,33 @@ void VulkanDevice::update_descriptor_set(rhi::DescriptorSet& set,
 
     vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(vk_writes.size()),
                            vk_writes.data(), 0, nullptr);
+}
+
+void* VulkanDevice::create_surface(void* native_window)
+{
+    HELIOS_ASSERT(m_context != nullptr, "Device not initialized");
+    HELIOS_ASSERT(native_window != nullptr, "Native window must not be null");
+
+    auto* glfw_window = static_cast<GLFWwindow*>(native_window);
+    VkSurfaceKHR surface = m_context->create_surface(glfw_window);
+    return surface;
+}
+
+void VulkanDevice::destroy_surface(void* surface)
+{
+    HELIOS_ASSERT(m_context != nullptr, "Device not initialized");
+    if (surface != nullptr) {
+        m_context->destroy_surface(static_cast<VkSurfaceKHR>(surface));
+    }
+}
+
+void VulkanDevice::submit_for_present(const rhi::CommandBuffer& cmd, const rhi::Swapchain& swapchain)
+{
+    SubmitInfo info{};
+    info.wait_semaphore   = swapchain.image_available_semaphore();
+    info.signal_semaphore = swapchain.render_finished_semaphore();
+    info.fence            = swapchain.in_flight_fence();
+    submit(cmd, info);
 }
 
 void VulkanDevice::submit(const rhi::CommandBuffer& cmd, const SubmitInfo& info)

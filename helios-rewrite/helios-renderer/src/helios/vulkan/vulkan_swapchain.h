@@ -1,6 +1,7 @@
 #pragma once
 
 #include "helios/rhi/rhi_swapchain.h"
+#include "helios/rhi/rhi_command_buffer.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -47,16 +48,20 @@ public:
     const std::vector<VkImage>& images() const { return m_images; }
     const std::vector<VkImageView>& image_views() const { return m_image_views; }
 
-    // Sync objects for the current frame-in-flight
-    VkSemaphore image_available_semaphore() const {
+    // Sync objects for the current frame-in-flight (abstract interface)
+    void* image_available_semaphore() const override {
         return m_image_available[m_current_frame];
     }
-    VkSemaphore render_finished_semaphore() const {
+    void* render_finished_semaphore() const override {
         return m_render_finished[m_current_frame];
     }
-    VkFence in_flight_fence() const {
+    void* in_flight_fence() const override {
         return m_in_flight_fences[m_current_frame];
     }
+
+    // Convenience rendering (abstract interface)
+    void begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear) override;
+    void end_rendering(rhi::CommandBuffer& cmd) override;
 
     explicit operator bool() const { return m_swapchain != VK_NULL_HANDLE; }
 

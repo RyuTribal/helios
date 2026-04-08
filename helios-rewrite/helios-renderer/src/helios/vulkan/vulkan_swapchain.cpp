@@ -1,5 +1,6 @@
 #include "helios/vulkan/vulkan_swapchain.h"
 #include "helios/vulkan/vulkan_device.h"
+#include "helios/vulkan/vulkan_command_buffer.h"
 #include "helios/vulkan/vulkan_context.h"
 #include "helios/vulkan/vulkan_utils.h"
 #include "helios/vulkan/renderer_log_channels.h"
@@ -231,6 +232,88 @@ void VulkanSwapchain::create_sync_objects()
         m_device->context().set_debug_name(device, VK_OBJECT_TYPE_FENCE,
             reinterpret_cast<uint64_t>(m_in_flight_fences[i]), fence_name.c_str());
     }
+}
+
+// =========================================================================
+//  Convenience rendering helpers
+// =========================================================================
+
+static void transition_image(VkCommandBuffer cmd, VkImage image,
+                             VkImageLayout old_layout, VkImageLayout new_layout,
+                             VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+                             VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
+{
+    VkImageMemoryBarrier2 barrier{};
+    barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    barrier.srcStageMask        = src_stage;
+    barrier.srcAccessMask       = src_access;
+    barrier.dstStageMask        = dst_stage;
+    barrier.dstAccessMask       = dst_access;
+    barrier.oldLayout           = old_layout;
+    barrier.newLayout           = new_layout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image               = image;
+    barrier.subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+    VkDependencyInfo dep{};
+    dep.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dep.imageMemoryBarrierCount  = 1;
+    dep.pImageMemoryBarriers     = &barrier;
+
+    vkCmdPipelineBarrier2(cmd, &dep);
+}
+
+void VulkanSwapchain::begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear)
+{
+    HELIOS_ASSERT(m_device != nullptr, "Swapchain not initialized");
+
+    const auto& vk_cmd = static_cast<const VulkanCommandBuffer&>(cmd);
+    VkCommandBuffer raw_cmd = vk_cmd.vk_command_buffer();
+    VkImage image = m_images[m_current_image_index];
+
+    // Transition UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL
+    transition_image(raw_cmd, image,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+
+    // Begin dynamic rendering with clear color
+    VkRenderingAttachmentInfo color_att{};
+    color_att.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    color_att.imageView   = m_image_views[m_current_image_index];
+    color_att.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    color_att.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_att.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+    color_att.clearValue.color = {{clear.color[0], clear.color[1], clear.color[2], clear.color[3]}};
+
+    VkRenderingInfo rendering{};
+    rendering.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    rendering.renderArea           = {{0, 0}, m_extent};
+    rendering.layerCount           = 1;
+    rendering.colorAttachmentCount = 1;
+    rendering.pColorAttachments    = &color_att;
+
+    vkCmdBeginRendering(raw_cmd, &rendering);
+}
+
+void VulkanSwapchain::end_rendering(rhi::CommandBuffer& cmd)
+{
+    HELIOS_ASSERT(m_device != nullptr, "Swapchain not initialized");
+
+    const auto& vk_cmd = static_cast<const VulkanCommandBuffer&>(cmd);
+    VkCommandBuffer raw_cmd = vk_cmd.vk_command_buffer();
+    VkImage image = m_images[m_current_image_index];
+
+    vkCmdEndRendering(raw_cmd);
+
+    // Transition COLOR_ATTACHMENT_OPTIMAL -> PRESENT_SRC_KHR
+    transition_image(raw_cmd, image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0);
 }
 
 // =========================================================================

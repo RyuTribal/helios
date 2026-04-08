@@ -1,6 +1,7 @@
 #pragma once
 
 #include "helios/rhi/rhi_device.h"
+#include "helios/rhi/rhi_swapchain.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -53,6 +54,13 @@ public:
     void submit(const rhi::CommandBuffer& cmd, const SubmitInfo& info = {}) override;
     void wait_idle() override;
 
+    // Surface management
+    void* create_surface(void* native_window) override;
+    void destroy_surface(void* surface) override;
+
+    // Submit with swapchain sync
+    void submit_for_present(const rhi::CommandBuffer& cmd, const rhi::Swapchain& swapchain) override;
+
     // One-shot command submission for transfers, layout transitions, etc.
     void immediate_submit(std::function<void(VkCommandBuffer)>&& fn);
 
@@ -70,7 +78,7 @@ public:
 
     explicit operator bool() const { return m_device != VK_NULL_HANDLE; }
 
-private:
+protected:
     void destroy();
 
     VulkanContext* m_context                  = nullptr;  // non-owning

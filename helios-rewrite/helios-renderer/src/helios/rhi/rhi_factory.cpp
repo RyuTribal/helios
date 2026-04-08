@@ -24,12 +24,34 @@ public:
         , m_owned_surface(surface)
     {}
 
-    ~VulkanDeviceWithContext() override = default;
+    ~VulkanDeviceWithContext() override {
+        // Correct destruction order: device first, then surface, then context.
+        // We must explicitly destroy the VkDevice before m_owned_context
+        // (which holds the VkInstance) is destroyed by member dtors.
+        destroy();  // VulkanDevice::destroy() -- idempotent, ~VulkanDevice will no-op
+
+        if (m_owned_surface != VK_NULL_HANDLE && m_owned_context) {
+            m_owned_context->destroy_surface(m_owned_surface);
+            m_owned_surface = VK_NULL_HANDLE;
+        }
+        // m_owned_context destroyed by unique_ptr member dtor (VkInstance last)
+    }
 
     VulkanDeviceWithContext(const VulkanDeviceWithContext&) = delete;
     VulkanDeviceWithContext& operator=(const VulkanDeviceWithContext&) = delete;
     VulkanDeviceWithContext(VulkanDeviceWithContext&&) = delete;
     VulkanDeviceWithContext& operator=(VulkanDeviceWithContext&&) = delete;
+
+    // Override create_swapchain: if desc.surface is null, use the primary surface
+    // that was created during device initialization.
+    std::unique_ptr<rhi::Swapchain> create_swapchain(const SwapchainDesc& desc) override {
+        if (desc.surface == nullptr) {
+            SwapchainDesc patched = desc;
+            patched.surface = m_owned_surface;
+            return vulkan::VulkanDevice::create_swapchain(patched);
+        }
+        return vulkan::VulkanDevice::create_swapchain(desc);
+    }
 
 private:
     std::unique_ptr<vulkan::VulkanContext> m_owned_context;
