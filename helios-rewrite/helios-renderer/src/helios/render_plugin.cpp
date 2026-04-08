@@ -19,7 +19,11 @@ namespace helios {
 void present_frame(ResMut<RenderContext> ctx) {
     if (!ctx->swapchain || !ctx->cmd || !ctx->device) return;
 
-    if (!ctx->swapchain->acquire_next_image()) return;
+    if (!ctx->swapchain->acquire_next_image()) {
+        // Swapchain out of date — will be recreated on next resize event
+        HELIOS_LOG(Render, Debug, "Swapchain acquire failed, skipping frame");
+        return;
+    }
 
     ctx->cmd->begin();
 
@@ -55,8 +59,13 @@ void handle_swapchain_resize(
         rhi::SwapchainDesc desc;
         desc.width = e.width;
         desc.height = e.height;
-        desc.surface = ctx->surface;
-        ctx->swapchain = ctx->device->create_swapchain(desc);
+        // surface = nullptr → VulkanDeviceWithContext auto-fills primary surface
+        auto new_swapchain = ctx->device->create_swapchain(desc);
+        if (new_swapchain) {
+            ctx->swapchain = std::move(new_swapchain);
+        } else {
+            HELIOS_LOG(Render, Warn, "Swapchain recreation failed for {}x{}, will retry", e.width, e.height);
+        }
     }
 }
 

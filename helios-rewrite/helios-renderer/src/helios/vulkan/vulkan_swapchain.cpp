@@ -89,8 +89,7 @@ VulkanSwapchain& VulkanSwapchain::operator=(VulkanSwapchain&& other) noexcept
 
 bool VulkanSwapchain::acquire_next_image()
 {
-    HELIOS_ASSERT(m_device != nullptr, "Swapchain not initialized");
-    HELIOS_ASSERT(m_swapchain != VK_NULL_HANDLE, "Swapchain not created");
+    if (!m_device || m_swapchain == VK_NULL_HANDLE) return false;
 
     VkDevice device = m_device->device();
 
