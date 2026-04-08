@@ -53,13 +53,19 @@ void handle_swapchain_resize(
         if (!windows->has_primary()) continue;
         if (e.window_id != windows->primary_id()) continue;
 
+        // Skip if size hasn't actually changed (Wayland sends duplicates)
+        if (ctx->swapchain &&
+            ctx->swapchain->width() == e.width &&
+            ctx->swapchain->height() == e.height) {
+            continue;
+        }
+
         HELIOS_LOG(Render, Info, "Swapchain resize: {}x{}", e.width, e.height);
         ctx->device->wait_idle();
 
         rhi::SwapchainDesc desc;
         desc.width = e.width;
         desc.height = e.height;
-        // surface = nullptr → VulkanDeviceWithContext auto-fills primary surface
         auto new_swapchain = ctx->device->create_swapchain(desc);
         if (new_swapchain) {
             ctx->swapchain = std::move(new_swapchain);
