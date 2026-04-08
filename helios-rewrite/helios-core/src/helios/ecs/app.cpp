@@ -47,6 +47,11 @@ void App::tick() {
     m_scheduler.run(m_world, Schedule::PostUpdate);
     m_scheduler.run(m_world, Schedule::PreRender);
 
+    // Submit render data to the render thread (if a render plugin installed the hook).
+    if (m_post_pre_render) {
+        m_post_pre_render(m_world);
+    }
+
     // Swap event buffers so next frame's readers see this frame's writes.
     m_world.swap_event_buffers();
 

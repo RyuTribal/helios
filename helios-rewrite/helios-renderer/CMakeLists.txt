@@ -42,6 +42,8 @@ add_library(helios-renderer STATIC
     src/helios/graph/render_graph_builder.cpp
     src/helios/graph/render_context.cpp
     src/helios/graph/resource_pool.cpp
+    # Render thread
+    src/helios/graph/render_thread.cpp
 )
 
 target_include_directories(helios-renderer

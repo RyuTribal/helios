@@ -9,6 +9,8 @@
 #include "helios/ecs/world.h"
 
 #include <chrono>
+#include <functional>
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <unordered_set>
@@ -75,6 +77,17 @@ public:
     /// Enable parallel system execution.
     void enable_parallel(uint32_t thread_count = 0);
 
+    // ---- Post-PreRender hook ----
+
+    /// Type-erased callback invoked after PreRender schedule each frame.
+    /// Used by the render plugin to submit FramePacket to RenderThread
+    /// without creating a circular dependency (helios-core -> helios-renderer).
+    using PostPreRenderFn = std::function<void(World&)>;
+
+    /// Install a callback that runs after the PreRender schedule.
+    /// Only one callback is supported; later calls overwrite the previous one.
+    void set_post_pre_render(PostPreRenderFn fn) { m_post_pre_render = std::move(fn); }
+
 private:
     World     m_world;
     Scheduler m_scheduler;
@@ -84,6 +97,9 @@ private:
 
     // Frame timing state
     std::chrono::high_resolution_clock::time_point m_frame_start;
+
+    // Optional callback run after PreRender schedule (e.g. FramePacket submission).
+    PostPreRenderFn m_post_pre_render;
 };
 
 // ============================================================================
