@@ -101,7 +101,11 @@ void RenderThread::thread_main() {
         m_graph_builder(packet, graph);
 
         // 3. Compile and execute the graph.
-        graph.compile_and_execute(m_device, pool);
+        // Pass the swapchain so that compile_and_execute uses
+        // submit_for_present, which wires up the image-available and
+        // render-finished semaphores.  Without this, present() would wait on
+        // render_finished_semaphore that was never signaled.
+        graph.compile_and_execute(m_device, pool, m_swapchain_ptr->get());
 
         // 4. Present.
         (*m_swapchain_ptr)->present();
