@@ -8,18 +8,28 @@
 #include "helios/ecs/query.h"
 #include "helios/ecs/resource_storage.h"
 
+#include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
 
 namespace helios {
 
+// Type trait: are all types in a parameter pack distinct?
+template <typename...> struct are_all_unique : std::true_type {};
+template <typename T, typename... Rest>
+struct are_all_unique<T, Rest...>
+    : std::bool_constant<!std::disjunction_v<std::is_same<T, Rest>...> && are_all_unique<Rest...>::value> {};
+template <typename... Ts>
+inline constexpr bool are_all_unique_v = are_all_unique<Ts...>::value;
+
 // Forward declaration to break circular dependency
 class Commands;
 
 class World {
 public:
-    World() = default;
+    World();
+    ~World();
 
     // -----------------------------------------------------------------
     // Entity spawning
@@ -33,6 +43,8 @@ public:
     template <typename... Ts>
         requires (Component<std::remove_cvref_t<Ts>> && ...)
     Entity spawn(Ts&&... components) {
+        static_assert(are_all_unique_v<std::remove_cvref_t<Ts>...>,
+            "spawn() requires all component types to be distinct");
         Entity e = m_allocator.allocate();
 
         // Ensure all component types are registered.
@@ -226,6 +238,13 @@ public:
 
     void apply_commands(Commands& commands);
 
+    /// Return a reference to the world-owned pending commands buffer.
+    /// Systems that take Commands as a parameter write into this buffer.
+    Commands& pending_commands();
+
+    /// Apply all pending deferred commands and clear the buffer.
+    void apply_and_clear_pending_commands();
+
     // -----------------------------------------------------------------
     // Internal access
     // -----------------------------------------------------------------
@@ -252,6 +271,11 @@ private:
     ResourceStorage m_resources;
     EventStorage m_events;
     std::unordered_set<ComponentId> m_registered_components;
+
+    // Lazily constructed pending commands buffer. Systems that take Commands
+    // as a parameter write into this; the scheduler applies and clears it
+    // after each stage.
+    std::unique_ptr<Commands> m_pending_commands;
 };
 
 } // namespace helios

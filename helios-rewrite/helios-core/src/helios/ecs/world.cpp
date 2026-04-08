@@ -4,6 +4,9 @@
 
 namespace helios {
 
+World::World() = default;
+World::~World() = default;
+
 Entity World::spawn() {
     Entity e = m_allocator.allocate();
     ArchetypeId empty_id;
@@ -30,6 +33,19 @@ void World::swap_event_buffers() {
 
 void World::apply_commands(Commands& commands) {
     commands.apply(*this);
+}
+
+Commands& World::pending_commands() {
+    if (!m_pending_commands) {
+        m_pending_commands = std::make_unique<Commands>(m_allocator);
+    }
+    return *m_pending_commands;
+}
+
+void World::apply_and_clear_pending_commands() {
+    if (m_pending_commands && m_pending_commands->pending_count() > 0) {
+        m_pending_commands->apply(*this);
+    }
 }
 
 } // namespace helios
