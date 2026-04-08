@@ -28,6 +28,12 @@ add_library(helios-renderer STATIC
     src/helios/vulkan/vulkan_shader.cpp
     src/helios/vulkan/vulkan_buffer.cpp
     src/helios/vulkan/vulkan_texture.cpp
+    src/helios/vulkan/vulkan_render_pass.cpp
+    src/helios/vulkan/vulkan_framebuffer.cpp
+    src/helios/vulkan/vulkan_descriptor.cpp
+    src/helios/vulkan/vulkan_pipeline.cpp
+    src/helios/vulkan/vulkan_command_buffer.cpp
+    src/helios/vulkan/vulkan_swapchain.cpp
     src/helios/vulkan/vulkan_vma.cpp
 )
 
