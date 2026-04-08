@@ -1,24 +1,21 @@
 // Helios Engine - User Sandbox
-// Demonstrates: ECS entity spawning AND multi-window rendering via abstract RHI.
-// Two windows are displayed: primary (dark blue) and secondary (dark red).
-// Uses ONLY abstract RHI interfaces -- no Vulkan-specific headers.
+// Demonstrates the full engine pipeline: ECS + App + Plugins + ForwardPlus rendering.
+// Uses ONLY abstract interfaces — no backend-specific headers.
 
 #include <helios/ecs/ecs.h>
 #include <helios/components/components.h>
 #include <helios/core/logging.h>
-#include <helios/window/window.h>
-#include <helios/window/window_types.h>
+#include <helios/window/window_plugin.h>
+#include <helios/window/window_events.h>
+#include <helios/input/input_plugin.h>
+#include <helios/input/input_map.h>
+#include <helios/input/raw_input.h>
+#include <helios/forward_plus/forward_plus_plugin.h>
+#include <helios/graph/frame_packet.h>
 
-// Abstract RHI interfaces only -- NO vulkan/ headers
-#include <helios/rhi/rhi.h>
-#include <helios/rhi/rhi_factory.h>
-
-#include <GLFW/glfw3.h>
 #include <cmath>
-#include <memory>
 
 using namespace helios;
-using namespace helios::rhi;
 
 // ============================================================
 // Log channels
@@ -28,216 +25,163 @@ HELIOS_DEFINE_LOG_CHANNEL(Game);
 HELIOS_DEFINE_LOG_CHANNEL(Scene);
 
 // ============================================================
-// Game components (ECS demo)
+// Game components
 // ============================================================
 
 struct Velocity { glm::vec3 value{0.0f}; };
-struct Health   { float current = 100.0f; float max = 100.0f; };
-struct Enemy    { float speed = 5.0f; };
-struct Player   {};
+struct Health { float current = 100.0f; float max = 100.0f; };
+struct Enemy { float speed = 5.0f; };
+struct Player {};
 
 // ============================================================
-// Render one frame for a single window
+// Systems
 // ============================================================
 
-static bool render_window(Device& device, Swapchain& swapchain,
-                          CommandBuffer& cmd, const ClearValues& clear)
-{
-    // 1. Acquire next swapchain image
-    if (!swapchain.acquire_next_image())
-        return false;  // swapchain out of date -- skip this frame
+void player_movement(Query<Transform, With<Player>> query, Res<InputMap> input, Res<Time> time) {
+    float move_x = input->axis_value("move_x");
+    float move_z = input->axis_value("move_z");
+    float speed = 10.0f;
 
-    // 2. Record command buffer
-    cmd.begin();
-    swapchain.begin_rendering(cmd, clear);
-    // (draw calls would go here)
-    swapchain.end_rendering(cmd);
-    cmd.end();
+    for (auto [transform] : query) {
+        transform.position.x += move_x * speed * time->delta();
+        transform.position.z += move_z * speed * time->delta();
+    }
+}
 
-    // 3. Submit with swapchain sync objects
-    device.submit_for_present(cmd, swapchain);
+void enemy_orbit(Query<Transform, const Enemy> query, Res<Time> time) {
+    for (auto [transform, enemy] : query) {
+        float t = time->elapsed() * enemy.speed * 0.1f;
+        transform.position.x += std::cos(t) * 0.01f;
+        transform.position.z += std::sin(t) * 0.01f;
+    }
+}
 
-    // 4. Present
-    swapchain.present();
+void log_frame_packet(Res<renderer::FramePacket> packet, Res<Time> time) {
+    // Log every 60 frames to show extraction is working
+    if (time->frame_count() % 60 == 0 && time->frame_count() > 0) {
+        HELIOS_LOG(Game, Debug, "Frame {} | FramePacket: {} meshes, {} point lights, {} dir lights | dt={:.3f}ms",
+            time->frame_count(),
+            packet->mesh_draws.size(),
+            packet->point_lights.size(),
+            packet->dir_lights.size(),
+            time->delta() * 1000.0f);
+    }
+}
 
-    return true;
+void handle_resize(EventReader<WindowResized> events) {
+    for (const auto& e : events) {
+        HELIOS_LOG(Game, Info, "Window resized: {}x{}", e.width, e.height);
+    }
 }
 
 // ============================================================
-// Main
+// Plugins
 // ============================================================
 
-int main()
-{
-    // --- Logging ---
+struct GamePlugin {
+    void build(App& app) {
+        auto& input_map = app.world().resource<InputMap>();
+        input_map.action("jump", KeyCode::Space);
+        input_map.action("fire", MouseButton::Left);
+        input_map.axis("move_x", KeyCode::D, KeyCode::A);
+        input_map.axis("move_z", KeyCode::W, KeyCode::S);
+
+        app.add_system(Schedule::Update, player_movement, "player_movement");
+        app.add_system(Schedule::Update, enemy_orbit, "enemy_orbit");
+        app.add_system(Schedule::PostUpdate, log_frame_packet, "log_frame_packet");
+        app.add_system(Schedule::PreUpdate, handle_resize, "handle_resize");
+
+        HELIOS_LOG(Game, Info, "GamePlugin: WASD movement, Space jump, LMB fire");
+    }
+};
+
+struct ScenePlugin {
+    void build(App& app) {
+        auto& world = app.world();
+
+        // Camera
+        world.spawn(
+            Transform{ .position = glm::vec3{0, 5, -10} },
+            Camera{ .fov_degrees = 60.0f },
+            ActiveCamera{},
+            Tag{ .name = "main_camera" });
+
+        // Player
+        world.spawn(
+            Transform{ .position = glm::vec3{0, 0, 0} },
+            MeshRenderer{ .mesh = AssetHandle{1}, .material = AssetHandle{1} },
+            Player{},
+            Tag{ .name = "player" });
+
+        // Directional light (sun)
+        world.spawn(
+            Transform{ .position = glm::vec3{0, 50, 0},
+                        .rotation = glm::quat(glm::vec3(glm::radians(-45.0f), 0, 0)) },
+            DirectionalLight{ .color = glm::vec3{1.0f, 0.95f, 0.8f}, .intensity = 1.5f },
+            Tag{ .name = "sun" });
+
+        // Point lights
+        for (int i = 0; i < 4; i++) {
+            float angle = (float)i / 4.0f * 6.28318f;
+            world.spawn(
+                Transform{ .position = glm::vec3{std::cos(angle) * 5.0f, 2, std::sin(angle) * 5.0f} },
+                PointLight{ .color = glm::vec3{1, 0.8f, 0.5f}, .intensity = 3.0f, .radius = 15.0f },
+                Tag{ .name = std::string("light_") + std::to_string(i) });
+        }
+
+        // Enemies with meshes
+        for (int i = 0; i < 10; i++) {
+            float angle = (float)i / 10.0f * 6.28318f;
+            world.spawn(
+                Transform{ .position = glm::vec3{std::cos(angle) * 12.0f, 0, std::sin(angle) * 12.0f} },
+                MeshRenderer{ .mesh = AssetHandle{2}, .material = AssetHandle{2} },
+                Enemy{ .speed = 1.0f + (float)i * 0.5f },
+                Tag{ .name = std::string("enemy_") + std::to_string(i) });
+        }
+
+        // Ground plane
+        world.spawn(
+            Transform{ .position = glm::vec3{0, -0.5f, 0}, .scale = glm::vec3{50, 0.1f, 50} },
+            MeshRenderer{ .mesh = AssetHandle{3}, .material = AssetHandle{3} },
+            Tag{ .name = "ground" });
+
+        HELIOS_LOG(Scene, Info, "Scene: camera + player + sun + 4 point lights + 10 enemies + ground");
+    }
+};
+
+// ============================================================
+// Main — clean plugin-based setup, engine handles everything
+// ============================================================
+
+int main() {
     LogSystem log(LogConfig{
         .enable_file_sink = false,
-        .default_level    = LogLevel::Debug,
+        .default_level = LogLevel::Debug,
     });
 
     HELIOS_LOG(Core, Info, "=== Helios Engine Sandbox ===");
 
-    // --- GLFW init (needed before creating windows) ---
-    if (!glfwInit()) {
-        HELIOS_LOG(Core, Error, "Failed to initialize GLFW");
-        return 1;
-    }
+    App app;
 
-    // --- Enumerate GPUs ---
-    auto gpus = enumerate_devices(Backend::Vulkan);
-    HELIOS_LOG(Core, Info, "Available GPUs:");
-    for (auto& gpu : gpus) {
-        const char* type_str = "Other";
-        switch (gpu.type) {
-            case GpuType::Discrete:   type_str = "Discrete"; break;
-            case GpuType::Integrated: type_str = "Integrated"; break;
-            case GpuType::Virtual:    type_str = "Virtual"; break;
-            default: break;
-        }
-        HELIOS_LOG(Core, Info, "  [{}] {} ({}) - VRAM: {} MB, API: {}",
-            gpu.index, gpu.name, type_str,
-            gpu.vram_bytes / (1024 * 1024), gpu.api_version);
-    }
-
-    // --- Create two windows (unique_ptr for explicit destruction order control) ---
-    auto primary_win = std::make_unique<Window>(WindowDesc{
-        .title  = "Helios Sandbox - Primary (Blue)",
-        .width  = 1280,
+    // Engine plugins
+    app.add_plugin(WindowPlugin{ .primary_window = WindowDesc{
+        .title = "Helios Sandbox",
+        .width = 1280,
         .height = 720,
-    });
-    auto secondary_win = std::make_unique<Window>(WindowDesc{
-        .title  = "Helios Sandbox - Secondary (Red)",
-        .width  = 640,
-        .height = 480,
-    });
+    }});
+    app.add_plugin(InputPlugin{});
+    app.add_plugin(ForwardPlusPlugin{});
 
-    HELIOS_LOG(Core, Info, "Primary window:   {}x{}", primary_win->width(), primary_win->height());
-    HELIOS_LOG(Core, Info, "Secondary window: {}x{}", secondary_win->width(), secondary_win->height());
+    // Game plugins
+    app.add_plugin(GamePlugin{});
+    app.add_plugin(ScenePlugin{});
 
-    // --- ECS demo: spawn some entities to show the ECS still works ---
-    {
-        World world;
-        world.spawn(
-            Transform{ .position = glm::vec3{0, 5, -10} },
-            Camera{}, ActiveCamera{}, Tag{ .name = "camera" });
-        world.spawn(
-            Transform{ .position = glm::vec3{0, 0, 0} },
-            Player{}, Tag{ .name = "player" });
-        for (int i = 0; i < 5; i++) {
-            float angle = static_cast<float>(i) / 5.0f * 6.28318f;
-            world.spawn(
-                Transform{ .position = glm::vec3{
-                    std::cos(angle) * 8.0f, 0, std::sin(angle) * 8.0f} },
-                Enemy{ .speed = 1.0f + static_cast<float>(i) },
-                Tag{ .name = std::string("enemy_") + std::to_string(i) });
-        }
-        HELIOS_LOG(Scene, Info, "ECS demo: spawned camera + player + 5 enemies");
-    }
+    HELIOS_LOG(Core, Info, "All plugins loaded. Starting engine...");
+    HELIOS_LOG(Core, Info, "ForwardPlus pipeline: extract → depth → shadow → light cull → forward → skybox → tonemap");
+    HELIOS_LOG(Core, Info, "(Render passes are stubs until pipeline initialization is complete)");
 
-    // --- Create device via RHI factory (uses primary window for initial surface) ---
-    auto device = create_device(Backend::Vulkan, "HeliosSandbox",
-        static_cast<GLFWwindow*>(primary_win->native_handle()));
-    if (!device) {
-        HELIOS_LOG(Core, Error, "Failed to create RHI device");
-        return 1;
-    }
-
-    // --- Create primary swapchain ---
-    auto primary_swapchain = device->create_swapchain(SwapchainDesc{
-        .width   = primary_win->width(),
-        .height  = primary_win->height(),
-    });
-
-    // --- Create secondary surface + swapchain ---
-    void* secondary_surface = device->create_surface(secondary_win->native_handle());
-    if (!secondary_surface) {
-        HELIOS_LOG(Core, Error, "Failed to create secondary surface");
-        return 1;
-    }
-
-    auto secondary_swapchain = device->create_swapchain(SwapchainDesc{
-        .width   = secondary_win->width(),
-        .height  = secondary_win->height(),
-        .surface = secondary_surface,
-    });
-
-    // --- Create command buffers ---
-    auto primary_cmd   = device->create_command_buffer();
-    auto secondary_cmd = device->create_command_buffer();
-
-    HELIOS_LOG(Core, Info, "RHI initialized: device + 2 swapchains + 2 command buffers");
-    HELIOS_LOG(Core, Info, "Starting render loop");
-    HELIOS_LOG(Core, Info, "  Primary  = dark blue (0.1, 0.1, 0.3)");
-    HELIOS_LOG(Core, Info, "  Secondary = dark red  (0.3, 0.1, 0.1)");
-    HELIOS_LOG(Core, Info, "  Close primary to quit. Secondary can close independently.");
-
-    // Clear colors
-    ClearValues blue_clear;
-    blue_clear.color[0] = 0.1f;
-    blue_clear.color[1] = 0.1f;
-    blue_clear.color[2] = 0.3f;
-    blue_clear.color[3] = 1.0f;
-
-    ClearValues red_clear;
-    red_clear.color[0] = 0.3f;
-    red_clear.color[1] = 0.1f;
-    red_clear.color[2] = 0.1f;
-    red_clear.color[3] = 1.0f;
-
-    bool secondary_alive = true;
-
-    // --- Main loop: runs until primary window closes ---
-    while (!primary_win->should_close()) {
-        glfwPollEvents();
-
-        // Always render to primary
-        render_window(*device, *primary_swapchain, *primary_cmd, blue_clear);
-
-        // Handle secondary window lifecycle
-        if (secondary_alive) {
-            if (secondary_win->should_close()) {
-                HELIOS_LOG(Core, Info, "Secondary window closed -- cleaning up");
-                device->wait_idle();
-                // Destroy GPU resources first (reference surface/device)
-                secondary_cmd.reset();
-                secondary_swapchain.reset();
-                // Destroy Vulkan surface (while GLFW + VkInstance still alive)
-                device->destroy_surface(secondary_surface);
-                secondary_surface = nullptr;
-                // Destroy GLFW window (safe: primary keeps GLFW ref count > 0)
-                secondary_win.reset();
-                secondary_alive = false;
-                HELIOS_LOG(Core, Info, "Secondary window destroyed");
-            } else {
-                render_window(*device, *secondary_swapchain, *secondary_cmd, red_clear);
-            }
-        }
-    }
-
-    // --- Cleanup: destroy resources in correct order (children before device) ---
-    HELIOS_LOG(Core, Info, "Primary window closed -- shutting down");
-    device->wait_idle();
-
-    // Destroy secondary resources if still alive
-    if (secondary_alive) {
-        secondary_cmd.reset();
-        secondary_swapchain.reset();
-        device->destroy_surface(secondary_surface);
-        secondary_surface = nullptr;
-    }
-
-    // Correct destruction order on Wayland:
-    // 1. GPU resources that reference swapchain/surfaces
-    primary_cmd.reset();
-    primary_swapchain.reset();
-
-    // 2. Device (destroys VkDevice → VkSurface → VkInstance)
-    //    Must happen WHILE GLFW is still initialized (Wayland display alive)
-    device.reset();
-
-    // 3. GLFW windows last (last one triggers glfwTerminate)
-    secondary_win.reset();
-    primary_win.reset();
+    // Run — engine handles everything: window events, input, ECS, rendering
+    app.run();
 
     HELIOS_LOG(Core, Info, "=== Sandbox shutdown ===");
     return 0;
