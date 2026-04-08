@@ -267,31 +267,52 @@ int main()
     secondary_ws.cmd = VulkanCommandBuffer(device);
 
     HELIOS_LOG(Core, Info, "Vulkan initialized: context + device + 2 swapchains");
-    HELIOS_LOG(Core, Info, "Starting render loop (close either window to quit)");
+    HELIOS_LOG(Core, Info, "Starting render loop");
     HELIOS_LOG(Core, Info, "  Primary  = dark blue (0.1, 0.1, 0.3)");
     HELIOS_LOG(Core, Info, "  Secondary = dark red  (0.3, 0.1, 0.1)");
+    HELIOS_LOG(Core, Info, "  Close primary to quit. Secondary can close independently.");
 
-    // --- Main loop ---
-    while (!primary_win.should_close() && !secondary_win.should_close()) {
+    bool secondary_alive = true;
+
+    // --- Main loop: runs until primary window closes ---
+    while (!primary_win.should_close()) {
         glfwPollEvents();
 
+        // Always render to primary
         render_window(device, primary_ws);
-        render_window(device, secondary_ws);
+
+        // Handle secondary window lifecycle
+        if (secondary_alive) {
+            if (secondary_win.should_close()) {
+                HELIOS_LOG(Core, Info, "Secondary window closed — cleaning up its Vulkan resources");
+                device.wait_idle();
+                secondary_ws.cmd       = VulkanCommandBuffer{};
+                secondary_ws.swapchain = VulkanSwapchain{};
+                context.destroy_surface(secondary_surface);
+                secondary_surface = VK_NULL_HANDLE;
+                secondary_alive = false;
+            } else {
+                render_window(device, secondary_ws);
+            }
+        }
     }
 
-    // --- Cleanup (reverse order) ---
+    // --- Cleanup (reverse order: GPU resources before windows/context) ---
+    HELIOS_LOG(Core, Info, "Primary window closed — shutting down");
     device.wait_idle();
 
-    // Destroy per-window state (cmd buffers, swapchains) before device
-    secondary_ws.cmd       = VulkanCommandBuffer{};
-    secondary_ws.swapchain = VulkanSwapchain{};
-    context.destroy_surface(secondary_surface);
+    // Destroy per-window Vulkan state before device
+    if (secondary_alive) {
+        secondary_ws.cmd       = VulkanCommandBuffer{};
+        secondary_ws.swapchain = VulkanSwapchain{};
+        context.destroy_surface(secondary_surface);
+    }
 
     primary_ws.cmd       = VulkanCommandBuffer{};
     primary_ws.swapchain = VulkanSwapchain{};
-    // primary_surface is destroyed with the device/context
+    // primary_surface lifetime managed by device/context
 
-    // device, context, windows destroyed by RAII in correct order
+    // device, context, windows destroyed by RAII in stack order
 
     HELIOS_LOG(Core, Info, "=== Sandbox shutdown ===");
     return 0;
