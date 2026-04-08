@@ -76,8 +76,9 @@ public:
             reg_fn(flow);
         }
 
-        // 3. Bind the scheduler so GameFlow can add/remove systems dynamically.
+        // 3. Bind the scheduler and world so GameFlow can add/remove systems dynamically.
         flow.bind_scheduler(app.scheduler());
+        flow.bind_world(app.world());
 
         // 4. Transfer transition definitions.
         flow.m_transitions = std::move(m_transitions);
@@ -93,8 +94,9 @@ public:
         // 7. Queue the initial state push if set.
         if (m_initial_push) {
             auto& flow_ref = app.world().resource<GameFlow<StateEnum>>();
-            // Re-bind scheduler on the moved-into resource.
+            // Re-bind scheduler and world on the moved-into resource.
             flow_ref.bind_scheduler(app.scheduler());
+            flow_ref.bind_world(app.world());
             m_initial_push(flow_ref);
         }
     }

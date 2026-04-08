@@ -193,12 +193,16 @@ public:
         return TransitionBuilder<StateEnum>(from, to, m_transitions);
     }
 
-    // -- Scheduler binding --
+    // -- Scheduler / World binding --
 
-    /// Called by GameFlowPlugin::build() to give GameFlow a reference
-    /// to the scheduler for dynamic system registration.
+    /// Called by GameFlowPlugin::build() to give GameFlow references
+    /// to the scheduler and world for dynamic system registration.
     void bind_scheduler(Scheduler& scheduler) {
         m_scheduler = &scheduler;
+    }
+
+    void bind_world(World& world) {
+        m_world = &world;
     }
 
     // -- Transition processing (called by the state management system) --
@@ -208,7 +212,14 @@ public:
         return !m_pending.empty();
     }
 
-    /// Apply all pending operations using the bound scheduler.
+    /// Apply all pending operations using the bound world and scheduler.
+    void apply_pending() {
+        assert(m_world && "GameFlow::apply_pending() called before bind_world()");
+        assert(m_scheduler && "GameFlow::apply_pending() called before bind_scheduler()");
+        apply_pending(*m_world, *m_scheduler);
+    }
+
+    /// Apply all pending operations using the provided world.
     void apply_pending(World& world) {
         assert(m_scheduler && "GameFlow::apply_pending() called before bind_scheduler()");
         apply_pending(world, *m_scheduler);
@@ -290,6 +301,7 @@ private:
     std::vector<detail::PendingOp<StateEnum>> m_pending;
     std::vector<TransitionDef<StateEnum>> m_transitions;
     Scheduler* m_scheduler = nullptr;
+    World* m_world = nullptr;
 
     /// Tracks which state entries currently have their systems registered
     /// in the scheduler, so we can diff on state changes.

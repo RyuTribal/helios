@@ -1,6 +1,12 @@
-// Helios Engine - PBR Sandbox Demo
-// Renders the DamagedHelmet glTF model with PBR textures and HDR skybox.
-// Uses ONLY abstract RHI interfaces -- no backend-specific headers.
+// Helios Engine - PBR Sandbox Demo (3-state version)
+//
+// Demonstrates asset loading/unloading between scenes using the GameFlow
+// state machine. Three states:
+//   Loading  -- async-loads assets for the next scene
+//   Scene1   -- DamagedHelmet + skybox
+//   Scene2   -- Lion + skybox (shared skybox, helmet textures get GC'd)
+//
+// Press 1 to switch to Scene1, 2 to switch to Scene2.
 
 #include <helios/ecs/ecs.h>
 #include <helios/components/components.h>
@@ -16,6 +22,10 @@
 #include <helios/forward_plus/skybox_state.h>
 #include <helios/forward_plus/gpu_data.h>
 #include <helios/graph/frame_packet.h>
+#include <helios/app/game_flow_plugin.h>
+#include <helios/app/state.h>
+#include <helios/app/state_builder.h>
+#include <helios/assets/asset_server.h>
 
 #include "asset_loader.h"
 
@@ -32,6 +42,12 @@ using namespace helios;
 
 HELIOS_DEFINE_LOG_CHANNEL(Game);
 HELIOS_DEFINE_LOG_CHANNEL(Scene);
+
+// ============================================================
+// State enum
+// ============================================================
+
+enum class SceneState { Loading, Scene1, Scene2 };
 
 // ============================================================
 // Helper: read SPIR-V file from disk
@@ -73,6 +89,42 @@ static std::vector<glm::vec3> build_skybox_cube() {
         { 1, -1,  1}, {-1, -1,  1}, {-1, -1, -1},
     };
 }
+
+// ============================================================
+// Scene asset handle tracking (resource shared across states)
+// ============================================================
+
+struct SceneAssets {
+    // Per-scene GPU resources (owned by the active scene state)
+    std::unique_ptr<rhi::Buffer> mesh_vbo;
+    std::unique_ptr<rhi::Buffer> mesh_ibo;
+    uint32_t index_count = 0;
+
+    std::unique_ptr<rhi::Texture> albedo_tex;
+    std::unique_ptr<rhi::Texture> normal_tex;
+    std::unique_ptr<rhi::Texture> metallic_roughness_tex;
+    std::unique_ptr<rhi::Texture> emissive_tex;
+
+    // Asset handles for refcount tracking
+    std::vector<AssetHandle> tracked_handles;
+
+    void clear() {
+        mesh_vbo.reset();
+        mesh_ibo.reset();
+        index_count = 0;
+        albedo_tex.reset();
+        normal_tex.reset();
+        metallic_roughness_tex.reset();
+        emissive_tex.reset();
+        tracked_handles.clear();
+    }
+};
+
+/// Which scene we want to transition to next (set by input handling).
+struct PendingScene {
+    SceneState target = SceneState::Scene1;
+    bool pending = false;
+};
 
 // ============================================================
 // Orbit camera state (stored as a resource)
@@ -162,6 +214,414 @@ void handle_resize(EventReader<WindowResized> events) {
 }
 
 // ============================================================
+// Helper: update material descriptor set with current scene textures
+// ============================================================
+
+static void update_material_ds(rhi::Device& device,
+                                PBRRenderState& pbr,
+                                const SceneAssets& scene,
+                                const SkyboxState& skybox) {
+    if (!pbr.material_ds) return;
+
+    // Use env cubemap for binding 4 if available, else albedo as fallback
+    rhi::Texture* env_tex = skybox.env_cubemap ? skybox.env_cubemap.get()
+                                               : scene.albedo_tex.get();
+
+    device.update_descriptor_set(*pbr.material_ds, {
+        rhi::DescriptorWrite{
+            .binding = 0,
+            .type = rhi::DescriptorType::CombinedImageSampler,
+            .texture_handle = scene.albedo_tex.get(),
+        },
+        rhi::DescriptorWrite{
+            .binding = 1,
+            .type = rhi::DescriptorType::CombinedImageSampler,
+            .texture_handle = scene.normal_tex.get(),
+        },
+        rhi::DescriptorWrite{
+            .binding = 2,
+            .type = rhi::DescriptorType::CombinedImageSampler,
+            .texture_handle = scene.metallic_roughness_tex.get(),
+        },
+        rhi::DescriptorWrite{
+            .binding = 3,
+            .type = rhi::DescriptorType::CombinedImageSampler,
+            .texture_handle = scene.emissive_tex.get(),
+        },
+        rhi::DescriptorWrite{
+            .binding = 4,
+            .type = rhi::DescriptorType::CombinedImageSampler,
+            .texture_handle = env_tex,
+        },
+    });
+}
+
+// ============================================================
+// Helper: load helmet scene assets
+// ============================================================
+
+static SceneAssets load_helmet_assets(rhi::Device& device) {
+    SceneAssets scene;
+
+    const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
+    const std::string helmet_dir = asset_dir + "/Meshes/damaged_helmet_source_glb";
+    const std::string tex_dir = helmet_dir + "/textures";
+
+    // Load mesh
+    auto mesh = sandbox::load_gltf_mesh(device, (helmet_dir + "/scene.gltf").c_str());
+    scene.mesh_vbo = std::move(mesh.vbo);
+    scene.mesh_ibo = std::move(mesh.ibo);
+    scene.index_count = mesh.index_count;
+
+    // Load textures
+    scene.albedo_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/Material_MR_baseColor.jpeg").c_str(), "HelmetAlbedo");
+    scene.normal_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/Material_MR_normal.jpeg").c_str(), "HelmetNormal");
+    scene.metallic_roughness_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/Material_MR_metallicRoughness.png").c_str(), "HelmetMR");
+    scene.emissive_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/Material_MR_emissive.jpeg").c_str(), "HelmetEmissive");
+
+    return scene;
+}
+
+// ============================================================
+// Helper: load lion scene assets
+// ============================================================
+
+static SceneAssets load_lion_assets(rhi::Device& device) {
+    SceneAssets scene;
+
+    const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
+    const std::string lion_dir = asset_dir + "/Meshes/lion";
+    const std::string tex_dir = lion_dir + "/textures";
+
+    // Load mesh
+    auto mesh = sandbox::load_gltf_mesh(device, (lion_dir + "/scene.gltf").c_str());
+    scene.mesh_vbo = std::move(mesh.vbo);
+    scene.mesh_ibo = std::move(mesh.ibo);
+    scene.index_count = mesh.index_count;
+
+    // Load textures -- lion has baseColor and normal only
+    scene.albedo_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/material0000_baseColor.png").c_str(), "LionAlbedo");
+    scene.normal_tex = sandbox::load_texture_2d(device,
+        (tex_dir + "/material0000_normal.jpeg").c_str(), "LionNormal");
+
+    // Create a 1x1 white texture for metallic-roughness (default)
+    {
+        uint8_t white_pixel[4] = {255, 255, 255, 255};
+        rhi::TextureDesc desc;
+        desc.width = 1; desc.height = 1;
+        desc.format = rhi::TextureFormat::RGBA8;
+        desc.type = rhi::TextureType::Texture2D;
+        desc.mip_levels = 1; desc.array_layers = 1;
+        desc.usage = rhi::TextureUsage::Sampled;
+        desc.debug_name = "LionMR_Default";
+        scene.metallic_roughness_tex = device.create_texture(desc, white_pixel);
+    }
+
+    // Create a 1x1 black texture for emissive (default)
+    {
+        uint8_t black_pixel[4] = {0, 0, 0, 255};
+        rhi::TextureDesc desc;
+        desc.width = 1; desc.height = 1;
+        desc.format = rhi::TextureFormat::RGBA8;
+        desc.type = rhi::TextureType::Texture2D;
+        desc.mip_levels = 1; desc.array_layers = 1;
+        desc.usage = rhi::TextureUsage::Sampled;
+        desc.debug_name = "LionEmissive_Default";
+        scene.emissive_tex = device.create_texture(desc, black_pixel);
+    }
+
+    return scene;
+}
+
+// ============================================================
+// AssetServer for tracking -- lightweight wrapper for refcounts
+// ============================================================
+
+/// Simplified asset tracking resource. Wraps an AssetServer for refcount/GC
+/// and also holds per-scene handles.
+struct AssetTracker {
+    std::unique_ptr<AssetServer> server;
+
+    // Skybox handle -- shared between scenes, acquired by both
+    AssetHandle skybox_handle{};
+
+    AssetTracker() = default;
+
+    explicit AssetTracker(const std::filesystem::path& root)
+        : server(std::make_unique<AssetServer>(root, 0))  // 0 loader threads (sync only)
+    {
+        // Register a trivial importer for tracking purposes
+        server->register_importer<std::string>(
+            [](const std::filesystem::path& path) -> std::any {
+                return std::any(path.string());
+            });
+    }
+
+    // Create tracked handles for a scene's assets and acquire them
+    std::vector<AssetHandle> track_scene(const std::string& prefix, int count) {
+        std::vector<AssetHandle> handles;
+        for (int i = 0; i < count; ++i) {
+            std::string path = prefix + "/asset_" + std::to_string(i);
+            auto h = server->load_sync<std::string>(path);
+            if (h) {
+                server->acquire(h);
+                handles.push_back(h);
+            }
+        }
+        return handles;
+    }
+
+    // Release all handles for a scene
+    void release_scene(const std::vector<AssetHandle>& handles) {
+        for (auto h : handles) {
+            server->release(h);
+        }
+    }
+
+    // Run GC and log unloaded assets
+    std::vector<AssetHandle> gc() {
+        return server->collect_garbage();
+    }
+};
+
+// ============================================================
+// Forward declarations of states
+// ============================================================
+
+class LoadingState;
+class Scene1State;
+class Scene2State;
+
+// ============================================================
+// LoadingState
+// ============================================================
+
+class LoadingState : public State<SceneState> {
+public:
+    explicit LoadingState(World& world) : m_world(&world) {
+        auto& pending = world.resource<PendingScene>();
+        m_target = pending.target;
+        pending.pending = false;
+
+        HELIOS_LOG(Scene, Info, "Loading assets for {}...",
+                   m_target == SceneState::Scene1 ? "Scene1 (Helmet)" : "Scene2 (Lion)");
+
+        // Load synchronously (in a real engine this would be async)
+        auto& ctx = world.resource<RenderContext>();
+        auto& device = *ctx.device;
+
+        auto& scene_assets = world.resource<SceneAssets>();
+        auto& tracker = world.resource<AssetTracker>();
+
+        // Release old scene handles and run GC
+        tracker.release_scene(scene_assets.tracked_handles);
+        auto unloaded = tracker.gc();
+        if (!unloaded.empty()) {
+            HELIOS_LOG(Scene, Info, "GC unloaded {} assets during transition", unloaded.size());
+        }
+
+        // Clear old GPU resources
+        device.wait_idle();
+        scene_assets.clear();
+
+        // Load new scene
+        if (m_target == SceneState::Scene1) {
+            scene_assets = load_helmet_assets(device);
+            scene_assets.tracked_handles = tracker.track_scene("helmet", 5);
+        } else {
+            scene_assets = load_lion_assets(device);
+            scene_assets.tracked_handles = tracker.track_scene("lion", 4);
+        }
+
+        // Update PBR render state with new mesh/textures
+        auto& pbr = world.resource<PBRRenderState>();
+        auto& skybox = world.resource<SkyboxState>();
+
+        if (scene_assets.mesh_vbo && scene_assets.mesh_ibo &&
+            scene_assets.albedo_tex && scene_assets.normal_tex &&
+            scene_assets.metallic_roughness_tex && scene_assets.emissive_tex) {
+
+            // Move mesh data into PBR state
+            pbr.mesh_vbo = std::move(scene_assets.mesh_vbo);
+            pbr.mesh_ibo = std::move(scene_assets.mesh_ibo);
+            pbr.index_count = scene_assets.index_count;
+
+            // Move textures into PBR state
+            pbr.albedo_tex = std::move(scene_assets.albedo_tex);
+            pbr.normal_tex = std::move(scene_assets.normal_tex);
+            pbr.metallic_roughness_tex = std::move(scene_assets.metallic_roughness_tex);
+            pbr.emissive_tex = std::move(scene_assets.emissive_tex);
+
+            // Update the material descriptor set with the new textures
+            rhi::Texture* env_tex = skybox.env_cubemap ? skybox.env_cubemap.get()
+                                                       : pbr.albedo_tex.get();
+            device.update_descriptor_set(*pbr.material_ds, {
+                rhi::DescriptorWrite{
+                    .binding = 0,
+                    .type = rhi::DescriptorType::CombinedImageSampler,
+                    .texture_handle = pbr.albedo_tex.get(),
+                },
+                rhi::DescriptorWrite{
+                    .binding = 1,
+                    .type = rhi::DescriptorType::CombinedImageSampler,
+                    .texture_handle = pbr.normal_tex.get(),
+                },
+                rhi::DescriptorWrite{
+                    .binding = 2,
+                    .type = rhi::DescriptorType::CombinedImageSampler,
+                    .texture_handle = pbr.metallic_roughness_tex.get(),
+                },
+                rhi::DescriptorWrite{
+                    .binding = 3,
+                    .type = rhi::DescriptorType::CombinedImageSampler,
+                    .texture_handle = pbr.emissive_tex.get(),
+                },
+                rhi::DescriptorWrite{
+                    .binding = 4,
+                    .type = rhi::DescriptorType::CombinedImageSampler,
+                    .texture_handle = env_tex,
+                },
+            });
+
+            pbr.valid = true;
+        } else {
+            HELIOS_LOG(Scene, Error, "Failed to load scene assets");
+            pbr.valid = false;
+        }
+
+        m_loaded = true;
+        HELIOS_LOG(Scene, Info, "Loading complete for {}",
+                   m_target == SceneState::Scene1 ? "Scene1" : "Scene2");
+    }
+
+    static void describe(StateBuilder<LoadingState>& s) {
+        s.opaque();
+        s.system(&LoadingState::check_complete);
+    }
+
+    void check_complete(ResMut<GameFlow<SceneState>> flow) {
+        if (m_loaded) {
+            if (m_target == SceneState::Scene1) {
+                flow->switch_to<Scene1State>();
+            } else {
+                flow->switch_to<Scene2State>();
+            }
+        }
+    }
+
+private:
+    World* m_world = nullptr;
+    SceneState m_target = SceneState::Scene1;
+    bool m_loaded = false;
+};
+
+// ============================================================
+// Scene1State -- DamagedHelmet
+// ============================================================
+
+class Scene1State : public State<SceneState> {
+public:
+    explicit Scene1State(World& world) : m_world(&world) {
+        HELIOS_LOG(Scene, Info, "Scene1: Entering (DamagedHelmet)");
+
+        // Spawn helmet entity
+        m_helmet = spawn_tracked(world);
+        world.add(m_helmet, Transform{
+            .position = glm::vec3{0.0f, 0.0f, 0.0f},
+            .rotation = glm::quat(glm::vec3(
+                glm::radians(90.0f), glm::radians(180.0f), 0.0f))
+        });
+        world.add(m_helmet, MeshRenderer{
+            .mesh = AssetHandle{1, 1},
+            .material = AssetHandle{1, 1}
+        });
+        world.add(m_helmet, Tag{.name = "damaged_helmet"});
+
+        HELIOS_LOG(Scene, Info, "Scene1: Spawned helmet entity");
+    }
+
+    ~Scene1State() {
+        HELIOS_LOG(Scene, Info, "Scene1: Exiting (DamagedHelmet)");
+    }
+
+    static void describe(StateBuilder<Scene1State>& s) {
+        s.opaque();
+        s.system(&Scene1State::handle_input);
+    }
+
+    void handle_input(Res<RawInput> input,
+                      ResMut<GameFlow<SceneState>> flow,
+                      ResMut<PendingScene> pending) {
+        if (input->key_just_pressed(KeyCode::Num2)) {
+            HELIOS_LOG(Scene, Info, "Switching to Scene2 (Lion)...");
+            pending->target = SceneState::Scene2;
+            pending->pending = true;
+            flow->switch_to<LoadingState>();
+        }
+    }
+
+private:
+    World* m_world = nullptr;
+    Entity m_helmet{};
+};
+
+// ============================================================
+// Scene2State -- Lion
+// ============================================================
+
+class Scene2State : public State<SceneState> {
+public:
+    explicit Scene2State(World& world) : m_world(&world) {
+        HELIOS_LOG(Scene, Info, "Scene2: Entering (Lion)");
+
+        // Spawn lion entity -- rotated to face camera
+        m_lion = spawn_tracked(world);
+        world.add(m_lion, Transform{
+            .position = glm::vec3{0.0f, -0.5f, 0.0f},
+            .rotation = glm::quat(glm::vec3(
+                glm::radians(0.0f), glm::radians(180.0f), 0.0f)),
+            .scale = glm::vec3{0.01f}  // lion model is large, scale down
+        });
+        world.add(m_lion, MeshRenderer{
+            .mesh = AssetHandle{1, 1},
+            .material = AssetHandle{1, 1}
+        });
+        world.add(m_lion, Tag{.name = "lion"});
+
+        HELIOS_LOG(Scene, Info, "Scene2: Spawned lion entity");
+    }
+
+    ~Scene2State() {
+        HELIOS_LOG(Scene, Info, "Scene2: Exiting (Lion)");
+    }
+
+    static void describe(StateBuilder<Scene2State>& s) {
+        s.opaque();
+        s.system(&Scene2State::handle_input);
+    }
+
+    void handle_input(Res<RawInput> input,
+                      ResMut<GameFlow<SceneState>> flow,
+                      ResMut<PendingScene> pending) {
+        if (input->key_just_pressed(KeyCode::Num1)) {
+            HELIOS_LOG(Scene, Info, "Switching to Scene1 (Helmet)...");
+            pending->target = SceneState::Scene1;
+            pending->pending = true;
+            flow->switch_to<LoadingState>();
+        }
+    }
+
+private:
+    World* m_world = nullptr;
+    Entity m_lion{};
+};
+
+// ============================================================
 // Plugins
 // ============================================================
 
@@ -193,19 +653,13 @@ struct ScenePlugin {
             DirectionalLight{ .color = glm::vec3{1.0f, 0.95f, 0.8f}, .intensity = 3.0f },
             Tag{ .name = "sun" });
 
-        // Helmet mesh entity
-        world.spawn(
-            Transform{ .position = glm::vec3{0.0f, 0.0f, 0.0f},
-                        .rotation = glm::quat(glm::vec3(glm::radians(90.0f), glm::radians(180.0f), 0.0f)) },
-            MeshRenderer{ .mesh = AssetHandle{1, 1}, .material = AssetHandle{1, 1} },
-            Tag{ .name = "damaged_helmet" });
-
-        HELIOS_LOG(Scene, Info, "Scene: camera + sun + damaged_helmet");
+        HELIOS_LOG(Scene, Info, "Scene: camera + sun spawned (no mesh yet -- states handle that)");
     }
 };
 
 // ============================================================
-// SandboxAssetsPlugin: loads all GPU resources after RenderPlugin init
+// SandboxAssetsPlugin: sets up shared GPU infrastructure
+// (PBR pipeline, skybox, depth buffer -- scene-independent)
 // ============================================================
 
 struct SandboxAssetsPlugin {
@@ -214,8 +668,6 @@ struct SandboxAssetsPlugin {
         auto& device = *ctx.device;
 
         const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
-        const std::string helmet_dir = asset_dir + "/Meshes/damaged_helmet_source_glb";
-        const std::string tex_dir = helmet_dir + "/textures";
 
 #ifdef HELIOS_SHADER_DIR
         const std::string shader_dir = HELIOS_SHADER_DIR;
@@ -226,49 +678,7 @@ struct SandboxAssetsPlugin {
         PBRRenderState pbr;
         SkyboxState skybox;
 
-        // ---- Load helmet mesh ----
-        auto helmet = sandbox::load_gltf_mesh(device,
-            (helmet_dir + "/scene.gltf").c_str());
-        if (!helmet.vbo || !helmet.ibo) {
-            HELIOS_LOG(Game, Error, "Failed to load helmet mesh");
-            app.insert_resource(std::move(pbr));
-            app.insert_resource(std::move(skybox));
-            return;
-        }
-        pbr.mesh_vbo = std::move(helmet.vbo);
-        pbr.mesh_ibo = std::move(helmet.ibo);
-        pbr.index_count = helmet.index_count;
-
-        // ---- Load PBR textures ----
-        pbr.albedo_tex = sandbox::load_texture_2d(device,
-            (tex_dir + "/Material_MR_baseColor.jpeg").c_str(), "HelmetAlbedo");
-        pbr.normal_tex = sandbox::load_texture_2d(device,
-            (tex_dir + "/Material_MR_normal.jpeg").c_str(), "HelmetNormal");
-        pbr.metallic_roughness_tex = sandbox::load_texture_2d(device,
-            (tex_dir + "/Material_MR_metallicRoughness.png").c_str(), "HelmetMR");
-        pbr.emissive_tex = sandbox::load_texture_2d(device,
-            (tex_dir + "/Material_MR_emissive.jpeg").c_str(), "HelmetEmissive");
-
-        if (!pbr.albedo_tex || !pbr.normal_tex ||
-            !pbr.metallic_roughness_tex || !pbr.emissive_tex) {
-            HELIOS_LOG(Game, Error, "Failed to load one or more PBR textures");
-            app.insert_resource(std::move(pbr));
-            app.insert_resource(std::move(skybox));
-            return;
-        }
-
-        // ---- Load HDR skybox and convert to cubemap ----
-        std::unique_ptr<rhi::Texture> env_cubemap;
-        {
-            auto equirect = sandbox::load_hdr_texture(device,
-                (asset_dir + "/Textures/default_skybox.hdr").c_str(), "SkyboxEquirect");
-            if (equirect) {
-                env_cubemap = sandbox::convert_equirect_to_cubemap(
-                    device, *ctx.cmd, *equirect, 1024);
-            }
-        }
-
-        // ---- Create depth buffer (stored in RenderContext) ----
+        // ---- Create depth buffer ----
         {
             rhi::TextureDesc depth_desc;
             depth_desc.width = ctx.swapchain->width();
@@ -314,39 +724,33 @@ struct SandboxAssetsPlugin {
                 rhi::DescriptorBinding{
                     .binding = 0,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment,
-                    .count = 1,
+                    .stage = rhi::ShaderStage::Fragment, .count = 1,
                 },
                 rhi::DescriptorBinding{
                     .binding = 1,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment,
-                    .count = 1,
+                    .stage = rhi::ShaderStage::Fragment, .count = 1,
                 },
                 rhi::DescriptorBinding{
                     .binding = 2,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment,
-                    .count = 1,
+                    .stage = rhi::ShaderStage::Fragment, .count = 1,
                 },
                 rhi::DescriptorBinding{
                     .binding = 3,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment,
-                    .count = 1,
+                    .stage = rhi::ShaderStage::Fragment, .count = 1,
                 },
                 rhi::DescriptorBinding{
                     .binding = 4,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment,
-                    .count = 1,
+                    .stage = rhi::ShaderStage::Fragment, .count = 1,
                 },
             };
             layout_desc.debug_name = "PBRMaterial_DSL";
             pbr.material_layout = device.create_descriptor_set_layout(layout_desc);
         }
 
-        // Use the swapchain's actual color format for pipeline creation
         const rhi::TextureFormat swapchain_color_fmt = ctx.swapchain->color_format();
 
         // ---- Load PBR shaders ----
@@ -383,24 +787,23 @@ struct SandboxAssetsPlugin {
             pipe_desc.layout.stride = sizeof(sandbox::PBRVertex);
             pipe_desc.layout.attributes = {
                 rhi::VertexAttribute{
-                    .location = 0, .binding = 0,
-                    .offset = 0,
-                    .format = rhi::TextureFormat::RGB32F,  // position
+                    .location = 0, .binding = 0, .offset = 0,
+                    .format = rhi::TextureFormat::RGB32F,
                 },
                 rhi::VertexAttribute{
                     .location = 1, .binding = 0,
                     .offset = sizeof(glm::vec3),
-                    .format = rhi::TextureFormat::RGB32F,  // normal
+                    .format = rhi::TextureFormat::RGB32F,
                 },
                 rhi::VertexAttribute{
                     .location = 2, .binding = 0,
                     .offset = sizeof(glm::vec3) * 2,
-                    .format = rhi::TextureFormat::RG32F,   // uv
+                    .format = rhi::TextureFormat::RG32F,
                 },
                 rhi::VertexAttribute{
                     .location = 3, .binding = 0,
                     .offset = sizeof(glm::vec3) * 2 + sizeof(glm::vec2),
-                    .format = rhi::TextureFormat::RGBA32F, // tangent
+                    .format = rhi::TextureFormat::RGBA32F,
                 },
             };
             pipe_desc.state.cull = rhi::CullMode::Back;
@@ -442,50 +845,27 @@ struct SandboxAssetsPlugin {
             });
         }
 
-        // ---- Material descriptor set ----
+        // ---- Material descriptor set (initially empty, filled by scene states) ----
         {
             pbr.material_ds = device.allocate_descriptor_set(*pbr.material_layout);
-
-            // Use the env cubemap for binding 4, or albedo as fallback
-            rhi::Texture* env_tex = env_cubemap ? env_cubemap.get() : pbr.albedo_tex.get();
-
-            device.update_descriptor_set(*pbr.material_ds, {
-                rhi::DescriptorWrite{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.albedo_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 1,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.normal_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 2,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.metallic_roughness_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 3,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.emissive_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 4,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = env_tex,
-                },
-            });
         }
 
-        pbr.valid = true;
-        HELIOS_LOG(Game, Info, "PBR pipeline created: {} indices", pbr.index_count);
+        HELIOS_LOG(Game, Info, "PBR pipeline created");
 
         // ============================================================
-        // Skybox setup
+        // Skybox setup (shared between all scenes)
         // ============================================================
+        std::unique_ptr<rhi::Texture> env_cubemap;
+        {
+            auto equirect = sandbox::load_hdr_texture(device,
+                (asset_dir + "/Textures/default_skybox.hdr").c_str(), "SkyboxEquirect");
+            if (equirect) {
+                env_cubemap = sandbox::convert_equirect_to_cubemap(
+                    device, *ctx.cmd, *equirect, 1024);
+            }
+        }
+
         if (env_cubemap) {
-            // Load skybox shaders
             auto sky_vert_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.vert.spv");
             auto sky_frag_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.frag.spv");
 
@@ -504,7 +884,6 @@ struct SandboxAssetsPlugin {
                 sf_desc.debug_name = "skybox_frag";
                 skybox.frag_shader = device.create_shader(sf_desc);
 
-                // Skybox descriptor layout: UBO at binding 0, cubemap at binding 1
                 rhi::DescriptorSetLayoutDesc sky_layout_desc;
                 sky_layout_desc.bindings = {
                     rhi::DescriptorBinding{
@@ -523,7 +902,6 @@ struct SandboxAssetsPlugin {
                 sky_layout_desc.debug_name = "Skybox_DSL";
                 skybox.layout = device.create_descriptor_set_layout(sky_layout_desc);
 
-                // Skybox UBO
                 rhi::BufferDesc sky_ubo_desc;
                 sky_ubo_desc.size = sizeof(SkyboxUBOData);
                 sky_ubo_desc.usage = rhi::BufferUsage::Uniform;
@@ -531,7 +909,6 @@ struct SandboxAssetsPlugin {
                 sky_ubo_desc.debug_name = "SkyboxUBO";
                 skybox.ubo = device.create_buffer(sky_ubo_desc);
 
-                // Skybox pipeline: depth test enabled, depth write disabled, LessEqual
                 rhi::GraphicsPipelineDesc sky_pipe;
                 sky_pipe.vertex_shader = skybox.vert_shader.get();
                 sky_pipe.fragment_shader = skybox.frag_shader.get();
@@ -557,7 +934,6 @@ struct SandboxAssetsPlugin {
 
                 skybox.pipeline = device.create_graphics_pipeline(sky_pipe);
 
-                // Skybox cube VBO
                 auto sky_verts = build_skybox_cube();
                 rhi::BufferDesc sky_vbo_desc;
                 sky_vbo_desc.size = static_cast<uint32_t>(sky_verts.size() * sizeof(glm::vec3));
@@ -566,10 +942,8 @@ struct SandboxAssetsPlugin {
                 sky_vbo_desc.debug_name = "SkyboxCubeVBO";
                 skybox.cube_vbo = device.create_buffer(sky_vbo_desc, sky_verts.data());
 
-                // Move env_cubemap into skybox state
                 skybox.env_cubemap = std::move(env_cubemap);
 
-                // Skybox descriptor set
                 skybox.ds = device.allocate_descriptor_set(*skybox.layout);
                 device.update_descriptor_set(*skybox.ds, {
                     rhi::DescriptorWrite{
@@ -587,14 +961,12 @@ struct SandboxAssetsPlugin {
 
                 skybox.valid = true;
                 HELIOS_LOG(Game, Info, "Skybox pipeline created");
-            } else {
-                HELIOS_LOG(Game, Warn, "Skybox shaders not found, skybox disabled");
             }
         }
 
         app.insert_resource(std::move(pbr));
         app.insert_resource(std::move(skybox));
-        HELIOS_LOG(Game, Info, "SandboxAssetsPlugin: all GPU resources loaded");
+        HELIOS_LOG(Game, Info, "SandboxAssetsPlugin: shared GPU resources ready");
     }
 };
 
@@ -608,7 +980,7 @@ int main() {
         .default_level = LogLevel::Debug,
     });
 
-    HELIOS_LOG(Core, Info, "=== Helios PBR Sandbox ===");
+    HELIOS_LOG(Core, Info, "=== Helios PBR Sandbox (3-State Demo) ===");
 
     App app;
 
@@ -622,15 +994,40 @@ int main() {
     app.add_plugin(RenderPlugin{});
     app.add_plugin(ForwardPlusPlugin{});
 
-    // Asset loading (must be after RenderPlugin and before game systems)
+    // Asset tracking resource
+    app.insert_resource(AssetTracker{HELIOS_DEMO_ASSET_DIR});
+    app.insert_resource(SceneAssets{});
+    app.insert_resource(PendingScene{.target = SceneState::Scene1, .pending = true});
     app.insert_resource(renderer::FramePacket{});
+
+    // Shared GPU resources (pipeline, skybox)
     app.add_plugin(SandboxAssetsPlugin{});
 
-    // Game plugins
+    // Game plugins (camera, etc.)
     app.add_plugin(GamePlugin{});
     app.add_plugin(ScenePlugin{});
 
+    // Acquire skybox handle in the tracker (shared, never GC'd)
+    {
+        auto& tracker = app.world().resource<AssetTracker>();
+        auto skybox_h = tracker.server->load_sync<std::string>("shared/skybox");
+        if (skybox_h) {
+            tracker.server->acquire(skybox_h);
+            tracker.server->acquire(skybox_h);  // 2 refs: one per scene
+            tracker.skybox_handle = skybox_h;
+        }
+    }
+
+    // State management
+    app.add_plugin(GameFlowPlugin<SceneState>{}
+        .state<LoadingState>(SceneState::Loading)
+        .state<Scene1State>(SceneState::Scene1)
+        .state<Scene2State>(SceneState::Scene2)
+        .initial<LoadingState>()
+    );
+
     HELIOS_LOG(Core, Info, "All plugins loaded. Starting engine...");
+    HELIOS_LOG(Game, Info, "Controls: Press 1 = Scene1 (Helmet), 2 = Scene2 (Lion), RMB = orbit camera");
 
     app.run();
 
