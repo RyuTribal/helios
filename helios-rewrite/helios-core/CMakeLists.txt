@@ -35,6 +35,8 @@ target_sources(helios-core
         src/helios/assets/importers/texture_importer.cpp
         src/helios/assets/importers/mesh_importer.cpp
         src/helios/assets/importers/audio_importer.cpp
+        src/helios/serialization/yaml_serializer.cpp
+        src/helios/serialization/scene_serializer.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
@@ -49,6 +51,7 @@ target_link_libraries(helios-core
     PUBLIC
         glm::glm
         spdlog::spdlog
+        yaml-cpp::yaml-cpp
     PRIVATE
         glfw
 )
