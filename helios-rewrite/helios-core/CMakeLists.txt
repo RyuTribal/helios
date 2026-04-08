@@ -14,6 +14,7 @@ target_sources(helios-core
         src/helios/ecs/dag_builder.cpp
         src/helios/ecs/scheduler.cpp
         src/helios/ecs/app.cpp
+        src/helios/app/state.cpp
         src/helios/core/uuid.cpp
         src/helios/core/log_entry.cpp
         src/helios/core/log_channel_registry.cpp
