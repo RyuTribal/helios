@@ -29,12 +29,20 @@ target_sources(helios-core
         src/helios/input/input_map.cpp
         src/helios/input/input_systems.cpp
         src/helios/input/input_plugin.cpp
+        src/helios/assets/asset_server.cpp
+        src/helios/assets/load_batch.cpp
+        src/helios/assets/asset_plugin.cpp
+        src/helios/assets/importers/texture_importer.cpp
+        src/helios/assets/importers/mesh_importer.cpp
+        src/helios/assets/importers/audio_importer.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
 target_include_directories(helios-core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
 target_link_libraries(helios-core
@@ -64,4 +72,14 @@ if(MSVC)
     target_compile_options(helios-core PRIVATE /W4)
 else()
     target_compile_options(helios-core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# Suppress vendor-header warnings in importer TUs that include stb/cgltf
+if(NOT MSVC)
+    set_source_files_properties(
+        src/helios/assets/importers/texture_importer.cpp
+        src/helios/assets/importers/mesh_importer.cpp
+        PROPERTIES COMPILE_OPTIONS
+        "-Wno-missing-field-initializers;-Wno-unused-parameter;-Wno-unused-variable;-Wno-unused-function;-Wno-sign-compare;-Wno-unused-but-set-variable;-Wno-missing-braces"
+    )
 endif()
