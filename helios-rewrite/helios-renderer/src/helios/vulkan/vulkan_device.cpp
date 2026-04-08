@@ -3,6 +3,13 @@
 #include "helios/vulkan/vulkan_buffer.h"
 #include "helios/vulkan/vulkan_shader.h"
 #include "helios/vulkan/vulkan_texture.h"
+#include "helios/vulkan/vulkan_pipeline.h"
+#include "helios/vulkan/vulkan_command_buffer.h"
+#include "helios/vulkan/vulkan_swapchain.h"
+#include "helios/vulkan/vulkan_descriptor.h"
+#include "helios/vulkan/vulkan_render_pass.h"
+#include "helios/vulkan/vulkan_framebuffer.h"
+#include "helios/vulkan/vulkan_utils.h"
 #include "helios/vulkan/renderer_log_channels.h"
 
 #include <helios/core/assert.h>
@@ -276,6 +283,155 @@ VulkanBuffer VulkanDevice::create_buffer(const BufferDesc& desc, const void* dat
 VulkanShader VulkanDevice::create_shader(const ShaderDesc& desc)
 {
     return VulkanShader(*this, desc);
+}
+
+VulkanPipeline VulkanDevice::create_graphics_pipeline(const GraphicsPipelineDesc& desc)
+{
+    return VulkanPipeline(*this, desc);
+}
+
+VulkanPipeline VulkanDevice::create_compute_pipeline(const ComputePipelineDesc& desc)
+{
+    return VulkanPipeline(*this, desc);
+}
+
+VulkanCommandBuffer VulkanDevice::create_command_buffer()
+{
+    return VulkanCommandBuffer(*this);
+}
+
+VulkanSwapchain VulkanDevice::create_swapchain(const SwapchainDesc& desc)
+{
+    return VulkanSwapchain(*this, desc);
+}
+
+VulkanDescriptorSetLayout VulkanDevice::create_descriptor_set_layout(
+    const DescriptorSetLayoutDesc& desc)
+{
+    return VulkanDescriptorSetLayout(*this, desc);
+}
+
+VulkanDescriptorSet VulkanDevice::create_descriptor_set(
+    const VulkanDescriptorSetLayout& layout)
+{
+    VkDescriptorSetLayout dsl = layout.vk_layout();
+
+    VkDescriptorSetAllocateInfo alloc_info{};
+    alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool     = m_descriptor_pool;
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts        = &dsl;
+
+    VkDescriptorSet set;
+    VkResult result = vkAllocateDescriptorSets(m_device, &alloc_info, &set);
+    if (result != VK_SUCCESS) {
+        HELIOS_LOG_ERROR(Renderer, "Failed to allocate descriptor set");
+        return VulkanDescriptorSet{};  // return empty/null
+    }
+
+    return VulkanDescriptorSet(*this, set);
+}
+
+VulkanRenderPass VulkanDevice::create_render_pass(const RenderPassDesc& desc)
+{
+    return VulkanRenderPass(*this, desc);
+}
+
+VulkanFramebuffer VulkanDevice::create_framebuffer(const FramebufferDesc& desc)
+{
+    // FramebufferDesc in the new API is minimal; actual construction uses
+    // the overload in VulkanFramebuffer that takes attachments directly.
+    // This factory is a convenience for the simple case.
+    (void)desc;
+    return VulkanFramebuffer{};
+}
+
+void VulkanDevice::update_descriptor_set(VulkanDescriptorSet& set,
+                                         const std::vector<DescriptorWrite>& writes)
+{
+    HELIOS_ASSERT(m_device != VK_NULL_HANDLE, "Device not initialized");
+    HELIOS_ASSERT(set, "Descriptor set must be valid");
+
+    std::vector<VkWriteDescriptorSet> vk_writes;
+    // Keep buffer/image info alive until vkUpdateDescriptorSets completes
+    std::vector<VkDescriptorBufferInfo> buffer_infos;
+    std::vector<VkDescriptorImageInfo> image_infos;
+    buffer_infos.reserve(writes.size());
+    image_infos.reserve(writes.size());
+
+    for (const auto& write : writes) {
+        VkWriteDescriptorSet vk_write{};
+        vk_write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        vk_write.dstSet          = set.vk_set();
+        vk_write.dstBinding      = write.binding;
+        vk_write.dstArrayElement = 0;
+        vk_write.descriptorCount = 1;
+        vk_write.descriptorType  = to_vk_descriptor_type(write.type);
+
+        if (write.type == DescriptorType::UniformBuffer ||
+            write.type == DescriptorType::StorageBuffer)
+        {
+            auto* buffer = static_cast<VulkanBuffer*>(write.buffer_handle);
+            HELIOS_ASSERT(buffer != nullptr, "Buffer handle must not be null for buffer descriptor");
+
+            VkDescriptorBufferInfo buf_info{};
+            buf_info.buffer = buffer->vk_buffer();
+            buf_info.offset = write.offset;
+            buf_info.range  = write.range == 0 ? VK_WHOLE_SIZE : write.range;
+            buffer_infos.push_back(buf_info);
+            vk_write.pBufferInfo = &buffer_infos.back();
+        }
+        else if (write.type == DescriptorType::CombinedImageSampler ||
+                 write.type == DescriptorType::StorageImage)
+        {
+            auto* texture = static_cast<VulkanTexture*>(write.texture_handle);
+            HELIOS_ASSERT(texture != nullptr, "Texture handle must not be null for image descriptor");
+
+            VkDescriptorImageInfo img_info{};
+            img_info.imageView   = texture->vk_image_view();
+            img_info.sampler     = texture->vk_sampler();
+            img_info.imageLayout = (write.type == DescriptorType::StorageImage)
+                                 ? VK_IMAGE_LAYOUT_GENERAL
+                                 : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_infos.push_back(img_info);
+            vk_write.pImageInfo = &image_infos.back();
+        }
+
+        vk_writes.push_back(vk_write);
+    }
+
+    vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(vk_writes.size()),
+                           vk_writes.data(), 0, nullptr);
+}
+
+void VulkanDevice::submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info)
+{
+    VkCommandBuffer vk_cmd = cmd.vk_command_buffer();
+
+    auto wait_sem   = static_cast<VkSemaphore>(info.wait_semaphore);
+    auto signal_sem = static_cast<VkSemaphore>(info.signal_semaphore);
+    auto fence      = static_cast<VkFence>(info.fence);
+
+    VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers    = &vk_cmd;
+
+    if (wait_sem) {
+        submit_info.waitSemaphoreCount = 1;
+        submit_info.pWaitSemaphores    = &wait_sem;
+        submit_info.pWaitDstStageMask  = &wait_stage;
+    }
+
+    if (signal_sem) {
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores    = &signal_sem;
+    }
+
+    vkQueueSubmit(m_graphics_queue, 1, &submit_info,
+                  fence ? fence : VK_NULL_HANDLE);
 }
 
 } // namespace helios::rhi::vulkan

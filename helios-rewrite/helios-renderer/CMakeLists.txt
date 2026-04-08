@@ -35,6 +35,7 @@ add_library(helios-renderer STATIC
     src/helios/vulkan/vulkan_command_buffer.cpp
     src/helios/vulkan/vulkan_swapchain.cpp
     src/helios/vulkan/vulkan_vma.cpp
+    src/helios/pipeline_cache.cpp
 )
 
 target_include_directories(helios-renderer
@@ -45,10 +46,10 @@ target_include_directories(helios-renderer
 target_link_libraries(helios-renderer
     PUBLIC
         helios-core
-    PRIVATE
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         vk-bootstrap::vk-bootstrap
+    PRIVATE
         glfw
 )
 
@@ -78,4 +79,9 @@ if(NOT MSVC)
         src/helios/vulkan/vulkan_vma.cpp
         PROPERTIES COMPILE_OPTIONS "-Wno-missing-field-initializers;-Wno-unused-parameter;-Wno-unused-variable;-Wno-unused-function"
     )
+endif()
+
+# Tests
+if(HELIOS_BUILD_TESTS)
+    add_subdirectory(tests)
 endif()

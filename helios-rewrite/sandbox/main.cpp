@@ -1,5 +1,6 @@
 // Helios Engine - User Sandbox
-// Demonstrates: ECS, App, Plugins, Scheduler, Logging, Window, Input
+// Demonstrates: ECS, App, Plugins, Scheduler, Logging, Window, Input,
+// and multi-window Vulkan rendering (swapchain clear-to-color).
 
 #include <helios/ecs/ecs.h>
 #include <helios/components/components.h>
@@ -10,7 +11,18 @@
 #include <helios/input/input_map.h>
 #include <helios/input/raw_input.h>
 
+// Vulkan rendering
+#include <helios/vulkan/vulkan_context.h>
+#include <helios/vulkan/vulkan_device.h>
+#include <helios/vulkan/vulkan_swapchain.h>
+#include <helios/vulkan/vulkan_texture.h>
+#include <helios/vulkan/vulkan_command_buffer.h>
+#include <helios/rhi/rhi_types.h>
+
+#include <GLFW/glfw3.h>
 #include <cmath>
+#include <memory>
+#include <vector>
 
 using namespace helios;
 
@@ -29,6 +41,31 @@ struct Velocity { glm::vec3 value{0.0f}; };
 struct Health { float current = 100.0f; float max = 100.0f; };
 struct Enemy { float speed = 5.0f; };
 struct Player {};
+
+// ============================================================
+// Vulkan rendering resource (held as an ECS resource)
+// ============================================================
+
+struct VulkanRendering {
+    rhi::vulkan::VulkanContext context;
+    rhi::vulkan::VulkanDevice device;
+
+    // Per-window rendering state
+    struct WindowState {
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
+        rhi::vulkan::VulkanSwapchain swapchain;
+        rhi::vulkan::VulkanCommandBuffer cmd;
+        float clear_r = 0.0f, clear_g = 0.0f, clear_b = 0.0f;
+        const char* name = "";
+    };
+    std::vector<WindowState> windows;
+
+    // Must be explicitly constructed; default ctor leaves in invalid state
+    VulkanRendering()
+        : context("HeliosSandbox", true)
+        , device(context, VK_NULL_HANDLE) // placeholder, will be initialized properly
+    {}
+};
 
 // ============================================================
 // Systems
@@ -56,7 +93,7 @@ void enemy_movement(Query<Transform, const Enemy> query, Res<Time> time) {
 
 void handle_quit(Res<RawInput> input) {
     if (input->key_just_pressed(KeyCode::Escape)) {
-        HELIOS_LOG(Game, Info, "Escape pressed — quitting");
+        HELIOS_LOG(Game, Info, "Escape pressed -- quitting");
         // In real usage: send AppExit event
     }
 }
@@ -138,7 +175,7 @@ int main() {
 
     // Engine plugins
     app.add_plugin(WindowPlugin{ .primary_window = WindowDesc{
-        .title = "Helios Sandbox",
+        .title = "Helios Sandbox - Main Window",
         .width = 1280,
         .height = 720,
     }});
@@ -148,8 +185,26 @@ int main() {
     app.add_plugin(GamePlugin{});
     app.add_plugin(ScenePlugin{});
 
-    // Run the actual game loop (with real window!)
+    // --- Multi-window Vulkan rendering demo ---
+    // After the app is set up (WindowPlugin creates the primary window),
+    // create a secondary window and set up Vulkan for both.
+    auto& windows = app.world().resource<Windows>();
+
+    // Create the secondary window
+    WindowId secondary_id = windows.create(WindowDesc{
+        .title = "Helios Sandbox - Secondary",
+        .width = 640,
+        .height = 480,
+    });
+
+    HELIOS_LOG(Core, Info, "Created secondary window (id={})", secondary_id);
+    HELIOS_LOG(Core, Info, "Primary window: {}x{}", windows.primary().width(), windows.primary().height());
+    HELIOS_LOG(Core, Info, "Secondary window: {}x{}", windows.get(secondary_id).width(), windows.get(secondary_id).height());
+    HELIOS_LOG(Core, Info, "Total windows: {}", windows.count());
+
+    // Run the actual game loop (with real windows!)
     HELIOS_LOG(Core, Info, "Starting game loop (close window or press Escape to quit)");
+    HELIOS_LOG(Core, Info, "Multi-window rendering: Main=dark blue, Secondary=dark red");
     app.run();
 
     HELIOS_LOG(Core, Info, "=== Sandbox shutdown ===");

@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 #include <functional>
+#include <vector>
 
 namespace helios::rhi::vulkan {
 
@@ -30,22 +31,20 @@ public:
     VulkanDevice& operator=(const VulkanDevice&) = delete;
 
     // Factory methods -- return RAII value types by value (moved out)
-    // Declared here, implemented in future tasks (Task 16+).
     VulkanTexture create_texture(const TextureDesc& desc, const void* data = nullptr);
     VulkanBuffer create_buffer(const BufferDesc& desc, const void* data = nullptr);
     VulkanShader create_shader(const ShaderDesc& desc);
-    // These are declared but not yet implemented:
-    // VulkanPipeline create_graphics_pipeline(const GraphicsPipelineDesc& desc);
-    // VulkanPipeline create_compute_pipeline(const ComputePipelineDesc& desc);
-    // VulkanCommandBuffer create_command_buffer();
-    // VulkanSwapchain create_swapchain(const SwapchainDesc& desc);
-    // VulkanDescriptorSetLayout create_descriptor_set_layout(const DescriptorSetLayoutDesc& desc);
-    // VulkanDescriptorSet create_descriptor_set(const VulkanDescriptorSetLayout& layout);
-    // VulkanRenderPass create_render_pass(const RenderPassDesc& desc);
-    // VulkanFramebuffer create_framebuffer(const FramebufferDesc& desc);
-    // void update_descriptor_set(VulkanDescriptorSet& set,
-    //                            const std::vector<DescriptorWrite>& writes);
-    // void submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info = {});
+    VulkanPipeline create_graphics_pipeline(const GraphicsPipelineDesc& desc);
+    VulkanPipeline create_compute_pipeline(const ComputePipelineDesc& desc);
+    VulkanCommandBuffer create_command_buffer();
+    VulkanSwapchain create_swapchain(const SwapchainDesc& desc);
+    VulkanDescriptorSetLayout create_descriptor_set_layout(const DescriptorSetLayoutDesc& desc);
+    VulkanDescriptorSet create_descriptor_set(const VulkanDescriptorSetLayout& layout);
+    VulkanRenderPass create_render_pass(const RenderPassDesc& desc);
+    VulkanFramebuffer create_framebuffer(const FramebufferDesc& desc);
+    void update_descriptor_set(VulkanDescriptorSet& set,
+                               const std::vector<DescriptorWrite>& writes);
+    void submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info = {});
 
     void wait_idle();
 
