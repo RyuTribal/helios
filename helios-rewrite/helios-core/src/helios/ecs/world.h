@@ -8,10 +8,12 @@
 #include "helios/ecs/query.h"
 #include "helios/ecs/resource_storage.h"
 
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
+#include <vector>
 
 namespace helios {
 
@@ -61,7 +63,19 @@ public:
     }
 
     /// Despawn an entity, removing it from its archetype and deallocating it.
+    /// Registered despawn hooks are called before removal.
     void despawn(Entity entity);
+
+    // -----------------------------------------------------------------
+    // Despawn hooks
+    // -----------------------------------------------------------------
+
+    using DespawnHook = std::function<void(World&, Entity)>;
+
+    /// Register a callback that runs before an entity is despawned.
+    /// Used by plugins to release handles, clean up physics bodies, etc.
+    void register_despawn_hook(DespawnHook hook);
+
 
     /// Check whether an entity is still alive.
     bool is_alive(Entity entity) const;
@@ -271,6 +285,7 @@ private:
     ResourceStorage m_resources;
     EventStorage m_events;
     std::unordered_set<ComponentId> m_registered_components;
+    std::vector<DespawnHook> m_despawn_hooks;
 
     // Lazily constructed pending commands buffer. Systems that take Commands
     // as a parameter write into this; the scheduler applies and clears it
