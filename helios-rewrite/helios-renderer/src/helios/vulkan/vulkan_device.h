@@ -23,7 +23,8 @@ class VulkanShader;
 
 class VulkanDevice : public rhi::Device {
 public:
-    VulkanDevice(VulkanContext& context, VkSurfaceKHR surface);
+    // gpu_index: UINT32_MAX = auto-select best, otherwise index from rhi::enumerate_devices()
+    VulkanDevice(VulkanContext& context, VkSurfaceKHR surface, uint32_t gpu_index = UINT32_MAX);
     ~VulkanDevice() override;
 
     VulkanDevice(VulkanDevice&& other) noexcept;

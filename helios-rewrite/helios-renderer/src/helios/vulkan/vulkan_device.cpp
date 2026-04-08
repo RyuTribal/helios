@@ -21,7 +21,7 @@
 
 namespace helios::rhi::vulkan {
 
-VulkanDevice::VulkanDevice(VulkanContext& context, VkSurfaceKHR surface)
+VulkanDevice::VulkanDevice(VulkanContext& context, VkSurfaceKHR surface, uint32_t gpu_index)
     : m_context(&context)
 {
     HELIOS_ASSERT(context, "VulkanContext must be initialized");
@@ -39,21 +39,39 @@ VulkanDevice::VulkanDevice(VulkanContext& context, VkSurfaceKHR surface)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .set_required_features_13(features13);
 
-    auto phys_result = selector.select();
-    if (!phys_result) {
-        HELIOS_LOG_ERROR(Renderer, "Failed to select physical device: {}",
-                         phys_result.error().message());
-        return;
-    }
+    vkb::PhysicalDevice physical_device;
 
-    vkb::PhysicalDevice physical_device = phys_result.value();
+    if (gpu_index != UINT32_MAX) {
+        // User requested a specific GPU by index
+        auto all_result = selector.select_devices();
+        if (!all_result || all_result.value().empty()) {
+            HELIOS_LOG(Renderer, Error, "No suitable physical devices found");
+            return;
+        }
+        auto& all = all_result.value();
+        if (gpu_index >= all.size()) {
+            HELIOS_LOG(Renderer, Error, "GPU index {} out of range (available: {})", gpu_index, all.size());
+            return;
+        }
+        physical_device = all[gpu_index];
+        HELIOS_LOG(Renderer, Info, "User selected GPU index {}: {}", gpu_index, physical_device.name);
+    } else {
+        // Auto-select best GPU
+        auto phys_result = selector.select();
+        if (!phys_result) {
+            HELIOS_LOG(Renderer, Error, "Failed to select physical device: {}",
+                             phys_result.error().message());
+            return;
+        }
+        physical_device = phys_result.value();
+    }
 
     // Log all available GPUs
     auto all_devices = selector.select_device_names();
     if (all_devices) {
-        HELIOS_LOG_INFO(Renderer, "Available GPUs:");
+        HELIOS_LOG(Renderer, Info, "Available GPUs:");
         for (const auto& name : all_devices.value())
-            HELIOS_LOG_INFO(Renderer, "  - {}", name);
+            HELIOS_LOG(Renderer, Info, "  - {}", name);
     }
 
     // Log selected device properties
