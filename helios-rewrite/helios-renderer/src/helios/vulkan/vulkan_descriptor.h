@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_descriptor.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 
@@ -8,11 +9,11 @@ namespace helios::rhi::vulkan {
 class VulkanDevice;
 
 // RAII wrapper around VkDescriptorSetLayout.
-class VulkanDescriptorSetLayout {
+class VulkanDescriptorSetLayout : public rhi::DescriptorSetLayout {
 public:
     VulkanDescriptorSetLayout() = default;
     VulkanDescriptorSetLayout(VulkanDevice& device, const DescriptorSetLayoutDesc& desc);
-    ~VulkanDescriptorSetLayout();
+    ~VulkanDescriptorSetLayout() override;
 
     VulkanDescriptorSetLayout(VulkanDescriptorSetLayout&& other) noexcept;
     VulkanDescriptorSetLayout& operator=(VulkanDescriptorSetLayout&& other) noexcept;
@@ -33,11 +34,11 @@ private:
 // Allocated from the device's descriptor pool.
 // Freed when the pool is reset (or explicitly via vkFreeDescriptorSets
 // since the pool uses VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).
-class VulkanDescriptorSet {
+class VulkanDescriptorSet : public rhi::DescriptorSet {
 public:
     VulkanDescriptorSet() = default;
     VulkanDescriptorSet(VulkanDevice& device, VkDescriptorSet set);
-    ~VulkanDescriptorSet();
+    ~VulkanDescriptorSet() override;
 
     VulkanDescriptorSet(VulkanDescriptorSet&& other) noexcept;
     VulkanDescriptorSet& operator=(VulkanDescriptorSet&& other) noexcept;

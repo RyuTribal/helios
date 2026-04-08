@@ -15,6 +15,7 @@
 #include <helios/core/assert.h>
 
 #include <VkBootstrap.h>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -270,51 +271,52 @@ void VulkanDevice::immediate_submit(std::function<void(VkCommandBuffer)>&& fn)
 
 // --- Factory methods ---
 
-VulkanTexture VulkanDevice::create_texture(const TextureDesc& desc, const void* data)
+std::unique_ptr<rhi::Texture> VulkanDevice::create_texture(const TextureDesc& desc, const void* data)
 {
-    return VulkanTexture(*this, desc, data);
+    return std::make_unique<VulkanTexture>(*this, desc, data);
 }
 
-VulkanBuffer VulkanDevice::create_buffer(const BufferDesc& desc, const void* data)
+std::unique_ptr<rhi::Buffer> VulkanDevice::create_buffer(const BufferDesc& desc, const void* data)
 {
-    return VulkanBuffer(*this, desc, data);
+    return std::make_unique<VulkanBuffer>(*this, desc, data);
 }
 
-VulkanShader VulkanDevice::create_shader(const ShaderDesc& desc)
+std::unique_ptr<rhi::Shader> VulkanDevice::create_shader(const ShaderDesc& desc)
 {
-    return VulkanShader(*this, desc);
+    return std::make_unique<VulkanShader>(*this, desc);
 }
 
-VulkanPipeline VulkanDevice::create_graphics_pipeline(const GraphicsPipelineDesc& desc)
+std::unique_ptr<rhi::Pipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipelineDesc& desc)
 {
-    return VulkanPipeline(*this, desc);
+    return std::make_unique<VulkanPipeline>(*this, desc);
 }
 
-VulkanPipeline VulkanDevice::create_compute_pipeline(const ComputePipelineDesc& desc)
+std::unique_ptr<rhi::Pipeline> VulkanDevice::create_compute_pipeline(const ComputePipelineDesc& desc)
 {
-    return VulkanPipeline(*this, desc);
+    return std::make_unique<VulkanPipeline>(*this, desc);
 }
 
-VulkanCommandBuffer VulkanDevice::create_command_buffer()
+std::unique_ptr<rhi::CommandBuffer> VulkanDevice::create_command_buffer()
 {
-    return VulkanCommandBuffer(*this);
+    return std::make_unique<VulkanCommandBuffer>(*this);
 }
 
-VulkanSwapchain VulkanDevice::create_swapchain(const SwapchainDesc& desc)
+std::unique_ptr<rhi::Swapchain> VulkanDevice::create_swapchain(const SwapchainDesc& desc)
 {
-    return VulkanSwapchain(*this, desc);
+    return std::make_unique<VulkanSwapchain>(*this, desc);
 }
 
-VulkanDescriptorSetLayout VulkanDevice::create_descriptor_set_layout(
+std::unique_ptr<rhi::DescriptorSetLayout> VulkanDevice::create_descriptor_set_layout(
     const DescriptorSetLayoutDesc& desc)
 {
-    return VulkanDescriptorSetLayout(*this, desc);
+    return std::make_unique<VulkanDescriptorSetLayout>(*this, desc);
 }
 
-VulkanDescriptorSet VulkanDevice::create_descriptor_set(
-    const VulkanDescriptorSetLayout& layout)
+std::unique_ptr<rhi::DescriptorSet> VulkanDevice::allocate_descriptor_set(
+    const rhi::DescriptorSetLayout& layout)
 {
-    VkDescriptorSetLayout dsl = layout.vk_layout();
+    const auto& vk_layout = static_cast<const VulkanDescriptorSetLayout&>(layout);
+    VkDescriptorSetLayout dsl = vk_layout.vk_layout();
 
     VkDescriptorSetAllocateInfo alloc_info{};
     alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -326,31 +328,33 @@ VulkanDescriptorSet VulkanDevice::create_descriptor_set(
     VkResult result = vkAllocateDescriptorSets(m_device, &alloc_info, &set);
     if (result != VK_SUCCESS) {
         HELIOS_LOG_ERROR(Renderer, "Failed to allocate descriptor set");
-        return VulkanDescriptorSet{};  // return empty/null
+        return std::make_unique<VulkanDescriptorSet>();  // return empty/null
     }
 
-    return VulkanDescriptorSet(*this, set);
+    return std::make_unique<VulkanDescriptorSet>(*this, set);
 }
 
-VulkanRenderPass VulkanDevice::create_render_pass(const RenderPassDesc& desc)
+std::unique_ptr<rhi::RenderPass> VulkanDevice::create_render_pass(const RenderPassDesc& desc)
 {
-    return VulkanRenderPass(*this, desc);
+    return std::make_unique<VulkanRenderPass>(*this, desc);
 }
 
-VulkanFramebuffer VulkanDevice::create_framebuffer(const FramebufferDesc& desc)
+std::unique_ptr<rhi::Framebuffer> VulkanDevice::create_framebuffer(const FramebufferDesc& desc)
 {
     // FramebufferDesc in the new API is minimal; actual construction uses
     // the overload in VulkanFramebuffer that takes attachments directly.
     // This factory is a convenience for the simple case.
     (void)desc;
-    return VulkanFramebuffer{};
+    return std::make_unique<VulkanFramebuffer>();
 }
 
-void VulkanDevice::update_descriptor_set(VulkanDescriptorSet& set,
+void VulkanDevice::update_descriptor_set(rhi::DescriptorSet& set,
                                          const std::vector<DescriptorWrite>& writes)
 {
     HELIOS_ASSERT(m_device != VK_NULL_HANDLE, "Device not initialized");
-    HELIOS_ASSERT(set, "Descriptor set must be valid");
+
+    auto& vk_set = static_cast<VulkanDescriptorSet&>(set);
+    HELIOS_ASSERT(vk_set, "Descriptor set must be valid");
 
     std::vector<VkWriteDescriptorSet> vk_writes;
     // Keep buffer/image info alive until vkUpdateDescriptorSets completes
@@ -362,7 +366,7 @@ void VulkanDevice::update_descriptor_set(VulkanDescriptorSet& set,
     for (const auto& write : writes) {
         VkWriteDescriptorSet vk_write{};
         vk_write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        vk_write.dstSet          = set.vk_set();
+        vk_write.dstSet          = vk_set.vk_set();
         vk_write.dstBinding      = write.binding;
         vk_write.dstArrayElement = 0;
         vk_write.descriptorCount = 1;
@@ -404,9 +408,10 @@ void VulkanDevice::update_descriptor_set(VulkanDescriptorSet& set,
                            vk_writes.data(), 0, nullptr);
 }
 
-void VulkanDevice::submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info)
+void VulkanDevice::submit(const rhi::CommandBuffer& cmd, const SubmitInfo& info)
 {
-    VkCommandBuffer vk_cmd = cmd.vk_command_buffer();
+    const auto& vk_cmd = static_cast<const VulkanCommandBuffer&>(cmd);
+    VkCommandBuffer vk_cmd_buf = vk_cmd.vk_command_buffer();
 
     auto wait_sem   = static_cast<VkSemaphore>(info.wait_semaphore);
     auto signal_sem = static_cast<VkSemaphore>(info.signal_semaphore);
@@ -417,7 +422,7 @@ void VulkanDevice::submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info
     VkSubmitInfo submit_info{};
     submit_info.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers    = &vk_cmd;
+    submit_info.pCommandBuffers    = &vk_cmd_buf;
 
     if (wait_sem) {
         submit_info.waitSemaphoreCount = 1;

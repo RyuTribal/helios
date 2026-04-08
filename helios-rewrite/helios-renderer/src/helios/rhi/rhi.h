@@ -1,46 +1,22 @@
 #pragma once
 
-// Compile-time backend selection.
-// Only one backend is compiled at a time. The using-declarations below
-// make backend types available as helios::rhi::Device, helios::rhi::Texture, etc.
-// No virtual dispatch overhead -- callers use concrete types directly.
+// rhi.h -- Includes all abstract RHI interface headers.
+//
+// Callers include this single header to get access to the abstract types:
+//   helios::rhi::Device, Texture, Buffer, Shader, Pipeline, etc.
+//
+// Backend selection is done at runtime via rhi::create_device().
+// See rhi_factory.h for the factory function.
 
 #include "helios/rhi/rhi_types.h"
-
-#if defined(HELIOS_BACKEND_VULKAN)
-
-    // Forward-declare Vulkan backend types.
-    // Full definitions live in helios/vulkan/ headers; include those where needed.
-    namespace helios::rhi::vulkan {
-        class VulkanContext;
-        class VulkanDevice;
-        class VulkanTexture;
-        class VulkanBuffer;
-        class VulkanPipeline;
-        class VulkanCommandBuffer;
-        class VulkanSwapchain;
-        class VulkanDescriptorSet;
-        class VulkanDescriptorSetLayout;
-        class VulkanRenderPass;
-        class VulkanFramebuffer;
-        class VulkanShader;
-    }
-
-    namespace helios::rhi {
-        using Context             = vulkan::VulkanContext;
-        using Device              = vulkan::VulkanDevice;
-        using Texture             = vulkan::VulkanTexture;
-        using Buffer              = vulkan::VulkanBuffer;
-        using Pipeline            = vulkan::VulkanPipeline;
-        using CommandBuffer       = vulkan::VulkanCommandBuffer;
-        using Swapchain           = vulkan::VulkanSwapchain;
-        using DescriptorSet       = vulkan::VulkanDescriptorSet;
-        using DescriptorSetLayout = vulkan::VulkanDescriptorSetLayout;
-        using RenderPass          = vulkan::VulkanRenderPass;
-        using Framebuffer         = vulkan::VulkanFramebuffer;
-        using Shader              = vulkan::VulkanShader;
-    }
-
-#else
-    #error "No rendering backend selected. Define HELIOS_BACKEND_VULKAN."
-#endif
+#include "helios/rhi/rhi_device.h"
+#include "helios/rhi/rhi_texture.h"
+#include "helios/rhi/rhi_buffer.h"
+#include "helios/rhi/rhi_shader.h"
+#include "helios/rhi/rhi_pipeline.h"
+#include "helios/rhi/rhi_command_buffer.h"
+#include "helios/rhi/rhi_swapchain.h"
+#include "helios/rhi/rhi_descriptor.h"
+#include "helios/rhi/rhi_render_pass.h"
+#include "helios/rhi/rhi_framebuffer.h"
+#include "helios/rhi/rhi_factory.h"

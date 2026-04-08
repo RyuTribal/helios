@@ -110,9 +110,10 @@ TEST_F(VulkanResourceTest, BufferCreateDestroy) {
     desc.debug_name = "TestBuffer";
 
     auto buffer = m_device->create_buffer(desc);
-    EXPECT_TRUE(static_cast<bool>(buffer));
-    EXPECT_NE(buffer.vk_buffer(), VK_NULL_HANDLE);
-    EXPECT_EQ(buffer.size(), 1024u);
+    ASSERT_NE(buffer, nullptr);
+    auto* vk_buffer = static_cast<VulkanBuffer*>(buffer.get());
+    EXPECT_NE(vk_buffer->vk_buffer(), VK_NULL_HANDLE);
+    EXPECT_EQ(buffer->size(), 1024u);
     // RAII: buffer destroyed when it goes out of scope
 }
 
@@ -124,10 +125,10 @@ TEST_F(VulkanResourceTest, BufferSetData) {
     desc.debug_name = "SetDataBuffer";
 
     auto buffer = m_device->create_buffer(desc);
-    ASSERT_TRUE(static_cast<bool>(buffer));
+    ASSERT_NE(buffer, nullptr);
 
     float data[16] = {1.0f, 2.0f, 3.0f};
-    EXPECT_NO_THROW(buffer.set_data(data, sizeof(data)));
+    EXPECT_NO_THROW(buffer->set_data(data, sizeof(data)));
 }
 
 TEST_F(VulkanResourceTest, BufferMoveOnly) {
@@ -137,11 +138,15 @@ TEST_F(VulkanResourceTest, BufferMoveOnly) {
     desc.access = MemoryAccess::CPU_to_GPU;
 
     auto buf1 = m_device->create_buffer(desc);
-    VkBuffer original = buf1.vk_buffer();
+    ASSERT_NE(buf1, nullptr);
+    auto* vk_buf1 = static_cast<VulkanBuffer*>(buf1.get());
+    VkBuffer original = vk_buf1->vk_buffer();
 
-    VulkanBuffer buf2 = std::move(buf1);
-    EXPECT_EQ(buf2.vk_buffer(), original);
-    EXPECT_EQ(buf1.vk_buffer(), VK_NULL_HANDLE);  // source nulled
+    // unique_ptr is move-only; moving it transfers ownership
+    auto buf2 = std::move(buf1);
+    EXPECT_EQ(buf1, nullptr);
+    auto* vk_buf2 = static_cast<VulkanBuffer*>(buf2.get());
+    EXPECT_EQ(vk_buf2->vk_buffer(), original);
 }
 
 // --- Texture tests ---
@@ -155,12 +160,13 @@ TEST_F(VulkanResourceTest, TextureCreateDestroy) {
     desc.debug_name = "TestTexture";
 
     auto texture = m_device->create_texture(desc);
-    EXPECT_TRUE(static_cast<bool>(texture));
-    EXPECT_NE(texture.vk_image(), VK_NULL_HANDLE);
-    EXPECT_NE(texture.vk_image_view(), VK_NULL_HANDLE);
-    EXPECT_NE(texture.vk_sampler(), VK_NULL_HANDLE);
-    EXPECT_EQ(texture.width(), 64u);
-    EXPECT_EQ(texture.height(), 64u);
+    ASSERT_NE(texture, nullptr);
+    auto* vk_tex = static_cast<VulkanTexture*>(texture.get());
+    EXPECT_NE(vk_tex->vk_image(), VK_NULL_HANDLE);
+    EXPECT_NE(vk_tex->vk_image_view(), VK_NULL_HANDLE);
+    EXPECT_NE(vk_tex->vk_sampler(), VK_NULL_HANDLE);
+    EXPECT_EQ(texture->width(), 64u);
+    EXPECT_EQ(texture->height(), 64u);
 }
 
 TEST_F(VulkanResourceTest, TextureWithInitialData) {
@@ -173,7 +179,7 @@ TEST_F(VulkanResourceTest, TextureWithInitialData) {
 
     std::vector<uint8_t> pixels(4 * 4 * 4, 255);  // 4x4 RGBA white
     auto texture = m_device->create_texture(desc, pixels.data());
-    EXPECT_TRUE(static_cast<bool>(texture));
+    EXPECT_NE(texture, nullptr);
 }
 
 TEST_F(VulkanResourceTest, TextureNativeHandles) {
@@ -184,10 +190,11 @@ TEST_F(VulkanResourceTest, TextureNativeHandles) {
     desc.usage  = TextureUsage::Sampled;
 
     auto texture = m_device->create_texture(desc);
-    ASSERT_TRUE(static_cast<bool>(texture));
+    ASSERT_NE(texture, nullptr);
 
-    EXPECT_EQ(texture.native_handle<VkImage>(), texture.vk_image());
-    EXPECT_EQ(texture.native_handle<VkImageView>(), texture.vk_image_view());
+    auto* vk_tex = static_cast<VulkanTexture*>(texture.get());
+    EXPECT_EQ(vk_tex->native_handle<VkImage>(), vk_tex->vk_image());
+    EXPECT_EQ(vk_tex->native_handle<VkImageView>(), vk_tex->vk_image_view());
 }
 
 TEST_F(VulkanResourceTest, TextureMoveOnly) {
@@ -198,11 +205,14 @@ TEST_F(VulkanResourceTest, TextureMoveOnly) {
     desc.usage  = TextureUsage::Sampled;
 
     auto tex1 = m_device->create_texture(desc);
-    VkImage original = tex1.vk_image();
+    ASSERT_NE(tex1, nullptr);
+    auto* vk_tex1 = static_cast<VulkanTexture*>(tex1.get());
+    VkImage original = vk_tex1->vk_image();
 
-    VulkanTexture tex2 = std::move(tex1);
-    EXPECT_EQ(tex2.vk_image(), original);
-    EXPECT_EQ(tex1.vk_image(), VK_NULL_HANDLE);
+    auto tex2 = std::move(tex1);
+    EXPECT_EQ(tex1, nullptr);
+    auto* vk_tex2 = static_cast<VulkanTexture*>(tex2.get());
+    EXPECT_EQ(vk_tex2->vk_image(), original);
 }
 
 // --- Descriptor set layout tests ---
@@ -216,24 +226,26 @@ TEST_F(VulkanResourceTest, DescriptorSetLayoutCreateDestroy) {
     desc.debug_name = "TestLayout";
 
     auto layout = m_device->create_descriptor_set_layout(desc);
-    EXPECT_TRUE(static_cast<bool>(layout));
-    EXPECT_NE(layout.vk_layout(), VK_NULL_HANDLE);
+    ASSERT_NE(layout, nullptr);
+    auto* vk_layout = static_cast<VulkanDescriptorSetLayout*>(layout.get());
+    EXPECT_NE(vk_layout->vk_layout(), VK_NULL_HANDLE);
 }
 
 // --- Command buffer tests ---
 
 TEST_F(VulkanResourceTest, CommandBufferCreateDestroy) {
     auto cmd = m_device->create_command_buffer();
-    EXPECT_TRUE(static_cast<bool>(cmd));
-    EXPECT_NE(cmd.vk_command_buffer(), VK_NULL_HANDLE);
+    ASSERT_NE(cmd, nullptr);
+    auto* vk_cmd = static_cast<VulkanCommandBuffer*>(cmd.get());
+    EXPECT_NE(vk_cmd->vk_command_buffer(), VK_NULL_HANDLE);
 }
 
 TEST_F(VulkanResourceTest, CommandBufferBeginEnd) {
     auto cmd = m_device->create_command_buffer();
-    ASSERT_TRUE(static_cast<bool>(cmd));
+    ASSERT_NE(cmd, nullptr);
 
-    EXPECT_NO_THROW(cmd.begin());
-    EXPECT_NO_THROW(cmd.end());
+    EXPECT_NO_THROW(cmd->begin());
+    EXPECT_NO_THROW(cmd->end());
 }
 
 // --- Swapchain tests ---

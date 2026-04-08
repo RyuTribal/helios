@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_texture.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -14,7 +15,7 @@ class VulkanDevice;
 // Two construction modes:
 //   1. Owned: allocates image via VMA (normal textures)
 //   2. Wrapped: wraps an existing VkImage without ownership (swapchain images)
-class VulkanTexture {
+class VulkanTexture : public rhi::Texture {
 public:
     VulkanTexture() = default;  // null/empty state
 
@@ -27,17 +28,17 @@ public:
     VulkanTexture(VulkanDevice& device, VkImage image, VkFormat format,
                   uint32_t width, uint32_t height, const char* debug_name);
 
-    ~VulkanTexture();
+    ~VulkanTexture() override;
 
     VulkanTexture(VulkanTexture&& other) noexcept;
     VulkanTexture& operator=(VulkanTexture&& other) noexcept;
     VulkanTexture(const VulkanTexture&) = delete;
     VulkanTexture& operator=(const VulkanTexture&) = delete;
 
-    uint32_t width() const { return m_desc.width; }
-    uint32_t height() const { return m_desc.height; }
-    TextureFormat format() const { return m_desc.format; }
-    const TextureDesc& desc() const { return m_desc; }
+    uint32_t width() const override { return m_desc.width; }
+    uint32_t height() const override { return m_desc.height; }
+    TextureFormat format() const override { return m_desc.format; }
+    const TextureDesc& desc() const override { return m_desc; }
 
     VkImage vk_image() const { return m_image; }
     VkImageView vk_image_view() const { return m_image_view; }

@@ -121,14 +121,17 @@ void VulkanCommandBuffer::end()
 //  Render pass (Vulkan 1.3 dynamic rendering)
 // =========================================================================
 
-void VulkanCommandBuffer::begin_render_pass(const VulkanRenderPass& render_pass,
-                                            const VulkanFramebuffer& framebuffer,
+void VulkanCommandBuffer::begin_render_pass(const rhi::RenderPass& render_pass,
+                                            const rhi::Framebuffer& framebuffer,
                                             const ClearValues& clear)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
 
-    const auto& views = framebuffer.attachment_views();
-    const auto& rp_desc = render_pass.desc();
+    const auto& vk_rp = static_cast<const VulkanRenderPass&>(render_pass);
+    const auto& vk_fb = static_cast<const VulkanFramebuffer&>(framebuffer);
+
+    const auto& views = vk_fb.attachment_views();
+    const auto& rp_desc = vk_rp.desc();
 
     // Build color attachments for dynamic rendering
     std::vector<VkRenderingAttachmentInfo> color_attachments;
@@ -157,7 +160,7 @@ void VulkanCommandBuffer::begin_render_pass(const VulkanRenderPass& render_pass,
 
     VkRenderingInfo rendering_info{};
     rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    rendering_info.renderArea           = {{0, 0}, {framebuffer.width(), framebuffer.height()}};
+    rendering_info.renderArea           = {{0, 0}, {vk_fb.width(), vk_fb.height()}};
     rendering_info.layerCount           = 1;
     rendering_info.colorAttachmentCount = static_cast<uint32_t>(color_attachments.size());
     rendering_info.pColorAttachments    = color_attachments.data();
@@ -177,14 +180,16 @@ void VulkanCommandBuffer::end_render_pass()
 //  Pipeline & state
 // =========================================================================
 
-void VulkanCommandBuffer::bind_pipeline(const VulkanPipeline& pipeline)
+void VulkanCommandBuffer::bind_pipeline(const rhi::Pipeline& pipeline)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
-    HELIOS_ASSERT(pipeline, "Pipeline must be valid");
 
-    vkCmdBindPipeline(m_command_buffer, pipeline.bind_point(), pipeline.vk_pipeline());
-    m_current_pipeline_layout = pipeline.vk_layout();
-    m_current_bind_point      = pipeline.bind_point();
+    const auto& vk_pipeline = static_cast<const VulkanPipeline&>(pipeline);
+    HELIOS_ASSERT(vk_pipeline, "Pipeline must be valid");
+
+    vkCmdBindPipeline(m_command_buffer, vk_pipeline.bind_point(), vk_pipeline.vk_pipeline());
+    m_current_pipeline_layout = vk_pipeline.vk_layout();
+    m_current_bind_point      = vk_pipeline.bind_point();
 }
 
 void VulkanCommandBuffer::set_viewport(float x, float y, float width, float height)
@@ -218,35 +223,38 @@ void VulkanCommandBuffer::set_scissor(int32_t x, int32_t y, uint32_t width, uint
 //  Resources
 // =========================================================================
 
-void VulkanCommandBuffer::bind_vertex_buffer(const VulkanBuffer& buffer, uint32_t binding)
+void VulkanCommandBuffer::bind_vertex_buffer(const rhi::Buffer& buffer, uint32_t binding)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
 
-    VkBuffer buffers[] = { buffer.vk_buffer() };
+    const auto& vk_buf = static_cast<const VulkanBuffer&>(buffer);
+    VkBuffer buffers[] = { vk_buf.vk_buffer() };
     VkDeviceSize offsets[] = { 0 };
 
     vkCmdBindVertexBuffers(m_command_buffer, binding, 1, buffers, offsets);
 }
 
-void VulkanCommandBuffer::bind_index_buffer(const VulkanBuffer& buffer, IndexType type)
+void VulkanCommandBuffer::bind_index_buffer(const rhi::Buffer& buffer, IndexType type)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
 
+    const auto& vk_buf = static_cast<const VulkanBuffer&>(buffer);
     VkIndexType vk_type = VK_INDEX_TYPE_UINT32;
     if (type == IndexType::Uint16)
         vk_type = VK_INDEX_TYPE_UINT16;
 
-    vkCmdBindIndexBuffer(m_command_buffer, buffer.vk_buffer(), 0, vk_type);
+    vkCmdBindIndexBuffer(m_command_buffer, vk_buf.vk_buffer(), 0, vk_type);
 }
 
-void VulkanCommandBuffer::bind_descriptor_set(uint32_t set, const VulkanDescriptorSet& descriptor_set)
+void VulkanCommandBuffer::bind_descriptor_set(uint32_t set, const rhi::DescriptorSet& ds)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
     HELIOS_ASSERT(m_current_pipeline_layout != VK_NULL_HANDLE, "Must bind a pipeline before descriptor sets");
 
-    VkDescriptorSet ds = descriptor_set.vk_set();
+    const auto& vk_ds = static_cast<const VulkanDescriptorSet&>(ds);
+    VkDescriptorSet vk_set = vk_ds.vk_set();
     vkCmdBindDescriptorSets(m_command_buffer, m_current_bind_point,
-                            m_current_pipeline_layout, set, 1, &ds, 0, nullptr);
+                            m_current_pipeline_layout, set, 1, &vk_set, 0, nullptr);
 }
 
 void VulkanCommandBuffer::push_constants(ShaderStage stage, uint32_t offset,
@@ -314,15 +322,18 @@ void VulkanCommandBuffer::pipeline_barrier(const BarrierDesc& barrier)
 //  Transfer
 // =========================================================================
 
-void VulkanCommandBuffer::copy_buffer(const VulkanBuffer& src, const VulkanBuffer& dst,
+void VulkanCommandBuffer::copy_buffer(const rhi::Buffer& src, const rhi::Buffer& dst,
                                       uint32_t size)
 {
     HELIOS_ASSERT(m_command_buffer != VK_NULL_HANDLE, "Command buffer not initialized");
 
+    const auto& vk_src = static_cast<const VulkanBuffer&>(src);
+    const auto& vk_dst = static_cast<const VulkanBuffer&>(dst);
+
     VkBufferCopy copy_region{};
     copy_region.size = size;
 
-    vkCmdCopyBuffer(m_command_buffer, src.vk_buffer(), dst.vk_buffer(), 1, &copy_region);
+    vkCmdCopyBuffer(m_command_buffer, vk_src.vk_buffer(), vk_dst.vk_buffer(), 1, &copy_region);
 }
 
 // =========================================================================

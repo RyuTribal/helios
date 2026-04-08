@@ -1,19 +1,17 @@
 #include "helios/pipeline_cache.h"
-#include "helios/vulkan/vulkan_device.h"
-#include "helios/vulkan/vulkan_pipeline.h"
-#include "helios/vulkan/vulkan_shader.h"
+#include "helios/rhi/rhi_device.h"
 #include "helios/vulkan/renderer_log_channels.h"
 
 #include <fstream>
 
 namespace helios::rhi {
 
-PipelineCache::PipelineCache(vulkan::VulkanDevice& device)
+PipelineCache::PipelineCache(Device& device)
     : m_device(&device)
 {
 }
 
-vulkan::VulkanShader* PipelineCache::load_shader(
+Shader* PipelineCache::load_shader(
     const std::string& name,
     const std::filesystem::path& spirv_path,
     ShaderStage stage)
@@ -21,7 +19,7 @@ vulkan::VulkanShader* PipelineCache::load_shader(
     // Return cached if exists
     auto it = m_shaders.find(name);
     if (it != m_shaders.end()) {
-        return &it->second;
+        return it->second.get();
     }
 
     // Read SPIR-V file
@@ -43,70 +41,79 @@ vulkan::VulkanShader* PipelineCache::load_shader(
     desc.entry_point = "main";
     desc.debug_name  = name;
 
-    auto [inserted_it, success] = m_shaders.emplace(
-        name, m_device->create_shader(desc));
-
-    if (!success || !inserted_it->second) {
+    auto shader = m_device->create_shader(desc);
+    if (!shader) {
         HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to create shader '{}'", name);
-        m_shaders.erase(name);
         return nullptr;
     }
 
-    return &inserted_it->second;
+    auto [inserted_it, success] = m_shaders.emplace(name, std::move(shader));
+    if (!success) {
+        HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to cache shader '{}'", name);
+        return nullptr;
+    }
+
+    return inserted_it->second.get();
 }
 
-vulkan::VulkanPipeline* PipelineCache::get_or_create_graphics_pipeline(
+Pipeline* PipelineCache::get_or_create_graphics_pipeline(
     const std::string& name,
     const GraphicsPipelineDesc& desc)
 {
     auto it = m_pipelines.find(name);
     if (it != m_pipelines.end()) {
-        return &it->second;
+        return it->second.get();
     }
 
-    auto [inserted_it, success] = m_pipelines.emplace(
-        name, m_device->create_graphics_pipeline(desc));
-
-    if (!success || !inserted_it->second) {
+    auto pipeline = m_device->create_graphics_pipeline(desc);
+    if (!pipeline) {
         HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to create graphics pipeline '{}'", name);
-        m_pipelines.erase(name);
         return nullptr;
     }
 
-    return &inserted_it->second;
+    auto [inserted_it, success] = m_pipelines.emplace(name, std::move(pipeline));
+    if (!success) {
+        HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to cache graphics pipeline '{}'", name);
+        return nullptr;
+    }
+
+    return inserted_it->second.get();
 }
 
-vulkan::VulkanPipeline* PipelineCache::get_or_create_compute_pipeline(
+Pipeline* PipelineCache::get_or_create_compute_pipeline(
     const std::string& name,
     const ComputePipelineDesc& desc)
 {
     auto it = m_pipelines.find(name);
     if (it != m_pipelines.end()) {
-        return &it->second;
+        return it->second.get();
     }
 
-    auto [inserted_it, success] = m_pipelines.emplace(
-        name, m_device->create_compute_pipeline(desc));
-
-    if (!success || !inserted_it->second) {
+    auto pipeline = m_device->create_compute_pipeline(desc);
+    if (!pipeline) {
         HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to create compute pipeline '{}'", name);
-        m_pipelines.erase(name);
         return nullptr;
     }
 
-    return &inserted_it->second;
+    auto [inserted_it, success] = m_pipelines.emplace(name, std::move(pipeline));
+    if (!success) {
+        HELIOS_LOG_ERROR(Renderer, "[PipelineCache] Failed to cache compute pipeline '{}'", name);
+        return nullptr;
+    }
+
+    return inserted_it->second.get();
 }
 
-vulkan::VulkanShader* PipelineCache::get_shader(const std::string& name)
+Shader* PipelineCache::get_shader(const std::string& name)
 {
     auto it = m_shaders.find(name);
-    return it != m_shaders.end() ? &it->second : nullptr;
+    return it != m_shaders.end() ? it->second.get() : nullptr;
 }
 
-vulkan::VulkanPipeline* PipelineCache::get_pipeline(const std::string& name)
+Pipeline* PipelineCache::get_pipeline(const std::string& name)
 {
     auto it = m_pipelines.find(name);
-    return it != m_pipelines.end() ? &it->second : nullptr;
+    return it != m_pipelines.end() ? it->second.get() : nullptr;
 }
 
 void PipelineCache::clear()

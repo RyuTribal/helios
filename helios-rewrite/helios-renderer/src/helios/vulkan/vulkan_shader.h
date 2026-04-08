@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_shader.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <string>
@@ -11,11 +12,11 @@ class VulkanDevice;
 // RAII wrapper around VkShaderModule.
 // Loads SPIR-V bytecode and creates the module in the constructor.
 // Destructor destroys the module. Move-only.
-class VulkanShader {
+class VulkanShader : public rhi::Shader {
 public:
     VulkanShader() = default;  // null/empty state
     VulkanShader(VulkanDevice& device, const ShaderDesc& desc);
-    ~VulkanShader();
+    ~VulkanShader() override;
 
     VulkanShader(VulkanShader&& other) noexcept;
     VulkanShader& operator=(VulkanShader&& other) noexcept;
@@ -24,8 +25,8 @@ public:
 
     VkShaderModule module() const { return m_module; }
     VkShaderStageFlagBits vk_stage() const;
-    const char* entry_point() const { return m_entry_point.c_str(); }
-    ShaderStage stage() const { return m_stage; }
+    const char* entry_point() const override { return m_entry_point.c_str(); }
+    ShaderStage stage() const override { return m_stage; }
 
     explicit operator bool() const { return m_module != VK_NULL_HANDLE; }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_buffer.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -10,11 +11,11 @@ class VulkanDevice;
 
 // RAII Vulkan buffer. Constructor allocates VkBuffer + VmaAllocation.
 // Destructor frees both. Move-only.
-class VulkanBuffer {
+class VulkanBuffer : public rhi::Buffer {
 public:
     VulkanBuffer() = default;  // null/empty state
     VulkanBuffer(VulkanDevice& device, const BufferDesc& desc, const void* initial_data = nullptr);
-    ~VulkanBuffer();
+    ~VulkanBuffer() override;
 
     VulkanBuffer(VulkanBuffer&& other) noexcept;
     VulkanBuffer& operator=(VulkanBuffer&& other) noexcept;
@@ -23,12 +24,12 @@ public:
 
     // Update buffer contents. For CPU-visible buffers: direct memcpy.
     // For GPU-only buffers: staging buffer + ImmediateSubmit.
-    void set_data(const void* data, uint32_t size, uint32_t offset = 0);
+    void set_data(const void* data, uint32_t size, uint32_t offset = 0) override;
 
-    void* map();
-    void unmap();
-    uint32_t size() const { return m_desc.size; }
-    const BufferDesc& desc() const { return m_desc; }
+    void* map() override;
+    void unmap() override;
+    uint32_t size() const override { return m_desc.size; }
+    const BufferDesc& desc() const override { return m_desc; }
 
     VkBuffer vk_buffer() const { return m_buffer; }
 

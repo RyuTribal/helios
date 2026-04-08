@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_device.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -20,33 +21,36 @@ class VulkanRenderPass;
 class VulkanFramebuffer;
 class VulkanShader;
 
-class VulkanDevice {
+class VulkanDevice : public rhi::Device {
 public:
     VulkanDevice(VulkanContext& context, VkSurfaceKHR surface);
-    ~VulkanDevice();
+    ~VulkanDevice() override;
 
     VulkanDevice(VulkanDevice&& other) noexcept;
     VulkanDevice& operator=(VulkanDevice&& other) noexcept;
     VulkanDevice(const VulkanDevice&) = delete;
     VulkanDevice& operator=(const VulkanDevice&) = delete;
 
-    // Factory methods -- return RAII value types by value (moved out)
-    VulkanTexture create_texture(const TextureDesc& desc, const void* data = nullptr);
-    VulkanBuffer create_buffer(const BufferDesc& desc, const void* data = nullptr);
-    VulkanShader create_shader(const ShaderDesc& desc);
-    VulkanPipeline create_graphics_pipeline(const GraphicsPipelineDesc& desc);
-    VulkanPipeline create_compute_pipeline(const ComputePipelineDesc& desc);
-    VulkanCommandBuffer create_command_buffer();
-    VulkanSwapchain create_swapchain(const SwapchainDesc& desc);
-    VulkanDescriptorSetLayout create_descriptor_set_layout(const DescriptorSetLayoutDesc& desc);
-    VulkanDescriptorSet create_descriptor_set(const VulkanDescriptorSetLayout& layout);
-    VulkanRenderPass create_render_pass(const RenderPassDesc& desc);
-    VulkanFramebuffer create_framebuffer(const FramebufferDesc& desc);
-    void update_descriptor_set(VulkanDescriptorSet& set,
-                               const std::vector<DescriptorWrite>& writes);
-    void submit(const VulkanCommandBuffer& cmd, const SubmitInfo& info = {});
-
-    void wait_idle();
+    // rhi::Device interface -- factory methods returning unique_ptr to abstract types
+    std::unique_ptr<rhi::Texture> create_texture(const TextureDesc& desc,
+                                                 const void* data = nullptr) override;
+    std::unique_ptr<rhi::Buffer> create_buffer(const BufferDesc& desc,
+                                               const void* data = nullptr) override;
+    std::unique_ptr<rhi::Shader> create_shader(const ShaderDesc& desc) override;
+    std::unique_ptr<rhi::Pipeline> create_graphics_pipeline(const GraphicsPipelineDesc& desc) override;
+    std::unique_ptr<rhi::Pipeline> create_compute_pipeline(const ComputePipelineDesc& desc) override;
+    std::unique_ptr<rhi::CommandBuffer> create_command_buffer() override;
+    std::unique_ptr<rhi::Swapchain> create_swapchain(const SwapchainDesc& desc) override;
+    std::unique_ptr<rhi::RenderPass> create_render_pass(const RenderPassDesc& desc) override;
+    std::unique_ptr<rhi::Framebuffer> create_framebuffer(const FramebufferDesc& desc) override;
+    std::unique_ptr<rhi::DescriptorSetLayout> create_descriptor_set_layout(
+        const DescriptorSetLayoutDesc& desc) override;
+    std::unique_ptr<rhi::DescriptorSet> allocate_descriptor_set(
+        const rhi::DescriptorSetLayout& layout) override;
+    void update_descriptor_set(rhi::DescriptorSet& set,
+                               const std::vector<DescriptorWrite>& writes) override;
+    void submit(const rhi::CommandBuffer& cmd, const SubmitInfo& info = {}) override;
+    void wait_idle() override;
 
     // One-shot command submission for transfers, layout transitions, etc.
     void immediate_submit(std::function<void(VkCommandBuffer)>&& fn);

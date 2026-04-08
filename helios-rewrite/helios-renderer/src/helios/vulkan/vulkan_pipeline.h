@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_pipeline.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 
@@ -9,7 +10,7 @@ class VulkanDevice;
 
 // RAII Vulkan pipeline. Supports both graphics and compute.
 // Stores VkPipeline + VkPipelineLayout. Destructor destroys both.
-class VulkanPipeline {
+class VulkanPipeline : public rhi::Pipeline {
 public:
     VulkanPipeline() = default;
 
@@ -18,7 +19,7 @@ public:
     // Compute pipeline
     VulkanPipeline(VulkanDevice& device, const ComputePipelineDesc& desc);
 
-    ~VulkanPipeline();
+    ~VulkanPipeline() override;
 
     VulkanPipeline(VulkanPipeline&& other) noexcept;
     VulkanPipeline& operator=(VulkanPipeline&& other) noexcept;

@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
 
-option(HELIOS_BACKEND_VULKAN "Use Vulkan backend" ON)
-
 # --- Vulkan SDK ---
 find_package(Vulkan REQUIRED)
 
@@ -23,6 +21,9 @@ FetchContent_MakeAvailable(vk-bootstrap)
 
 # --- helios-renderer library ---
 add_library(helios-renderer STATIC
+    # RHI factory (runtime backend selection)
+    src/helios/rhi/rhi_factory.cpp
+    # Vulkan backend
     src/helios/vulkan/vulkan_context.cpp
     src/helios/vulkan/vulkan_device.cpp
     src/helios/vulkan/vulkan_shader.cpp
@@ -51,11 +52,6 @@ target_link_libraries(helios-renderer
         vk-bootstrap::vk-bootstrap
     PRIVATE
         glfw
-)
-
-target_compile_definitions(helios-renderer
-    PUBLIC
-        $<$<BOOL:${HELIOS_BACKEND_VULKAN}>:HELIOS_BACKEND_VULKAN>
 )
 
 target_compile_features(helios-renderer PUBLIC cxx_std_20)

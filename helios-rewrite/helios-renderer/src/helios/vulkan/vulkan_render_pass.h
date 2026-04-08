@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_render_pass.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 
@@ -9,11 +10,11 @@ class VulkanDevice;
 
 // RAII wrapper around VkRenderPass. Used for pipeline creation compatibility
 // and ImGui. Primary rendering uses dynamic rendering (vkCmdBeginRendering).
-class VulkanRenderPass {
+class VulkanRenderPass : public rhi::RenderPass {
 public:
     VulkanRenderPass() = default;
     VulkanRenderPass(VulkanDevice& device, const RenderPassDesc& desc);
-    ~VulkanRenderPass();
+    ~VulkanRenderPass() override;
 
     VulkanRenderPass(VulkanRenderPass&& other) noexcept;
     VulkanRenderPass& operator=(VulkanRenderPass&& other) noexcept;
@@ -21,7 +22,7 @@ public:
     VulkanRenderPass& operator=(const VulkanRenderPass&) = delete;
 
     VkRenderPass vk_render_pass() const { return m_render_pass; }
-    const RenderPassDesc& desc() const { return m_desc; }
+    const RenderPassDesc& desc() const override { return m_desc; }
 
     explicit operator bool() const { return m_render_pass != VK_NULL_HANDLE; }
 

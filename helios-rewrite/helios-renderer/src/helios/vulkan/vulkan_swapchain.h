@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helios/rhi/rhi_swapchain.h"
 #include "helios/rhi/rhi_types.h"
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -15,13 +16,13 @@ class VulkanDevice;
 //   device.wait_idle();
 //   swapchain = device.create_swapchain(SwapchainDesc{.width=new_w, .height=new_h, ...});
 // The move-assignment destroys the old swapchain first.
-class VulkanSwapchain {
+class VulkanSwapchain : public rhi::Swapchain {
 public:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
     VulkanSwapchain() = default;
     VulkanSwapchain(VulkanDevice& device, const SwapchainDesc& desc);
-    ~VulkanSwapchain();
+    ~VulkanSwapchain() override;
 
     VulkanSwapchain(VulkanSwapchain&& other) noexcept;
     VulkanSwapchain& operator=(VulkanSwapchain&& other) noexcept;
@@ -29,15 +30,15 @@ public:
     VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
 
     // Frame operations
-    bool acquire_next_image();
-    void present();
+    bool acquire_next_image() override;
+    void present() override;
 
     // Accessors
-    uint32_t image_count() const { return static_cast<uint32_t>(m_images.size()); }
-    uint32_t current_image_index() const { return m_current_image_index; }
-    uint32_t current_frame() const { return m_current_frame; }
-    uint32_t width() const { return m_extent.width; }
-    uint32_t height() const { return m_extent.height; }
+    uint32_t image_count() const override { return static_cast<uint32_t>(m_images.size()); }
+    uint32_t current_image_index() const override { return m_current_image_index; }
+    uint32_t current_frame() const override { return m_current_frame; }
+    uint32_t width() const override { return m_extent.width; }
+    uint32_t height() const override { return m_extent.height; }
     VkFormat vk_format() const { return m_image_format; }
 
     VkSwapchainKHR vk_swapchain() const { return m_swapchain; }
