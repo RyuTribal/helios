@@ -19,6 +19,7 @@
 
 #include "asset_loader.h"
 
+#include <GLFW/glfw3.h>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -75,8 +76,85 @@ static std::vector<glm::vec3> build_skybox_cube() {
 }
 
 // ============================================================
+// Orbit camera state (stored as a resource)
+// ============================================================
+
+struct OrbitCamera {
+    float yaw   = 0.0f;       // radians
+    float pitch = 0.0f;       // radians
+    float distance = 3.0f;
+    glm::vec3 target = {0.0f, 0.0f, 0.0f};
+    float sensitivity = 0.003f;
+    float zoom_speed  = 0.3f;
+    bool panning = false;
+};
+
+// ============================================================
 // Systems
 // ============================================================
+
+void orbit_camera_system(Res<RawInput> input,
+                         Res<Windows> windows,
+                         Res<Time> time,
+                         ResMut<OrbitCamera> orbit,
+                         Query<Transform, With<ActiveCamera>> cameras)
+{
+    (void)time;
+    if (!windows->has_primary()) return;
+    auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+
+    bool rmb = input->mouse_button_pressed(MouseButton::Right);
+
+    // Transition: start panning
+    if (rmb && !orbit->panning) {
+        orbit->panning = true;
+        glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(glfw_win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    }
+    // Transition: stop panning
+    if (!rmb && orbit->panning) {
+        orbit->panning = false;
+        glfwSetInputMode(glfw_win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(glfw_win, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+    }
+
+    // Apply mouse delta while panning
+    if (orbit->panning) {
+        glm::vec2 delta = input->mouse_delta();
+        orbit->yaw   -= delta.x * orbit->sensitivity;
+        orbit->pitch -= delta.y * orbit->sensitivity;
+
+        // Clamp pitch to avoid gimbal lock
+        constexpr float max_pitch = glm::radians(89.0f);
+        orbit->pitch = glm::clamp(orbit->pitch, -max_pitch, max_pitch);
+    }
+
+    // Scroll zoom (always active)
+    float scroll = input->scroll_delta();
+    if (scroll != 0.0f) {
+        orbit->distance -= scroll * orbit->zoom_speed;
+        orbit->distance = glm::clamp(orbit->distance, 0.5f, 20.0f);
+    }
+
+    // Compute camera position from spherical coordinates
+    glm::vec3 offset;
+    offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw);
+    offset.y = orbit->distance * std::sin(orbit->pitch);
+    offset.z = orbit->distance * std::cos(orbit->pitch) * std::cos(orbit->yaw);
+
+    glm::vec3 cam_pos = orbit->target + offset;
+
+    // Update the camera entity's Transform
+    for (auto [t] : cameras) {
+        t.position = cam_pos;
+        // Look-at rotation: compute quaternion from direction
+        glm::vec3 forward = glm::normalize(orbit->target - cam_pos);
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::mat4 look = glm::lookAt(cam_pos, orbit->target, up);
+        t.rotation = glm::conjugate(glm::quat_cast(look));
+    }
+}
 
 void log_frame_packet(Res<renderer::FramePacket> packet, Res<Time> time) {
     if (time->frame_count() % 300 == 0 && time->frame_count() > 0) {
@@ -100,6 +178,8 @@ void handle_resize(EventReader<WindowResized> events) {
 
 struct GamePlugin {
     void build(App& app) {
+        app.insert_resource(OrbitCamera{});
+        app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
         app.add_system(Schedule::PostUpdate, log_frame_packet, "log_frame_packet");
         app.add_system(Schedule::PreUpdate, handle_resize, "handle_resize");
         HELIOS_LOG(Game, Info, "GamePlugin initialized");
