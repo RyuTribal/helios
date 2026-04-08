@@ -40,6 +40,7 @@ public:
     uint32_t current_frame() const override { return m_current_frame; }
     uint32_t width() const override { return m_extent.width; }
     uint32_t height() const override { return m_extent.height; }
+    rhi::TextureFormat color_format() const override;
     VkFormat vk_format() const { return m_image_format; }
 
     VkSwapchainKHR vk_swapchain() const { return m_swapchain; }

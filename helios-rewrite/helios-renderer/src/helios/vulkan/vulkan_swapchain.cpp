@@ -264,6 +264,11 @@ static void transition_image(VkCommandBuffer cmd, VkImage image,
     vkCmdPipelineBarrier2(cmd, &dep);
 }
 
+TextureFormat VulkanSwapchain::color_format() const
+{
+    return from_vk_format(m_image_format);
+}
+
 void VulkanSwapchain::begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear,
                                       rhi::Texture* depth_attachment)
 {

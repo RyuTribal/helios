@@ -24,6 +24,25 @@ inline VkFormat to_vk_format(TextureFormat format)
     return VK_FORMAT_UNDEFINED;
 }
 
+inline TextureFormat from_vk_format(VkFormat format)
+{
+    switch (format) {
+        case VK_FORMAT_R8_UNORM:                  return TextureFormat::R8;
+        case VK_FORMAT_R8G8_UNORM:                return TextureFormat::RG8;
+        case VK_FORMAT_R8G8B8A8_UNORM:            return TextureFormat::RGBA8;
+        case VK_FORMAT_B8G8R8A8_UNORM:            return TextureFormat::BGRA8;
+        case VK_FORMAT_R16G16_SFLOAT:             return TextureFormat::RG16F;
+        case VK_FORMAT_R16G16B16A16_SFLOAT:       return TextureFormat::RGBA16F;
+        case VK_FORMAT_R32_SFLOAT:                return TextureFormat::R32F;
+        case VK_FORMAT_R32G32_SFLOAT:             return TextureFormat::RG32F;
+        case VK_FORMAT_R32G32B32_SFLOAT:          return TextureFormat::RGB32F;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:       return TextureFormat::RGBA32F;
+        case VK_FORMAT_D32_SFLOAT:                return TextureFormat::Depth32F;
+        case VK_FORMAT_D24_UNORM_S8_UINT:         return TextureFormat::Depth24Stencil8;
+        default:                                  return TextureFormat::RGBA8;
+    }
+}
+
 inline VkAttachmentLoadOp to_vk_load_op(LoadOp op)
 {
     switch (op) {

@@ -25,6 +25,7 @@ public:
     virtual uint32_t current_frame() const = 0;
     virtual uint32_t width() const = 0;
     virtual uint32_t height() const = 0;
+    virtual TextureFormat color_format() const = 0;
 
     // Sync objects for the current frame-in-flight (opaque handles).
     // Vulkan: these are VkSemaphore / VkFence cast to void*.
