@@ -161,6 +161,16 @@ void AssetServer::release(AssetHandle handle) {
     }
 }
 
+void AssetServer::add_dependency(AssetHandle parent, AssetHandle child) {
+    std::lock_guard lock(m_mutex);
+    uint64_t key = parent.packed();
+    m_dependencies[key].push_back(child);
+}
+
+AssetHandle AssetServer::allocate_handle() {
+    return next_handle();
+}
+
 uint32_t AssetServer::refcount(AssetHandle handle) const {
     std::lock_guard lock(m_mutex);
     uint64_t key = handle.packed();
@@ -173,28 +183,47 @@ std::vector<AssetHandle> AssetServer::collect_garbage() {
     std::lock_guard lock(m_mutex);
     std::vector<AssetHandle> unloaded;
 
-    // Find all assets with zero refcount
-    for (auto it = m_refcounts.begin(); it != m_refcounts.end(); ) {
-        if (it->second == 0) {
-            uint64_t key = it->first;
-            AssetHandle handle = AssetHandle::from_packed(key);
+    // Iterate until no more zero-refcount assets are found.
+    // Cascading: releasing children may create new zero-refcount entries.
+    bool found_any = true;
+    while (found_any) {
+        found_any = false;
+        for (auto it = m_refcounts.begin(); it != m_refcounts.end(); ) {
+            if (it->second == 0) {
+                found_any = true;
+                uint64_t key = it->first;
+                AssetHandle handle = AssetHandle::from_packed(key);
 
-            // Get path for logging before removing
-            auto asset_it = m_assets.find(key);
-            if (asset_it != m_assets.end()) {
-                std::string path_str = asset_it->second.path.string();
-                HELIOS_LOG(Assets, Info, "Unloaded asset '{}' (handle {}/{})",
-                           path_str, handle.index, handle.generation);
-                m_assets.erase(asset_it);
+                // Get path for logging before removing
+                auto asset_it = m_assets.find(key);
+                if (asset_it != m_assets.end()) {
+                    std::string path_str = asset_it->second.path.string();
+                    HELIOS_LOG(Assets, Info, "Unloaded asset '{}' (handle {}/{})",
+                               path_str, handle.index, handle.generation);
+                    m_assets.erase(asset_it);
+                }
+
+                // Remove from path cache
+                remove_from_path_cache(key);
+
+                // Cascade-release dependencies: decrement children refcounts
+                auto dep_it = m_dependencies.find(key);
+                if (dep_it != m_dependencies.end()) {
+                    for (auto& child : dep_it->second) {
+                        uint64_t child_key = child.packed();
+                        auto child_rc = m_refcounts.find(child_key);
+                        if (child_rc != m_refcounts.end() && child_rc->second > 0) {
+                            child_rc->second--;
+                        }
+                    }
+                    m_dependencies.erase(dep_it);
+                }
+
+                unloaded.push_back(handle);
+                it = m_refcounts.erase(it);
+            } else {
+                ++it;
             }
-
-            // Remove from path cache
-            remove_from_path_cache(key);
-
-            unloaded.push_back(handle);
-            it = m_refcounts.erase(it);
-        } else {
-            ++it;
         }
     }
 
@@ -211,6 +240,19 @@ void AssetServer::unload(AssetHandle handle) {
         HELIOS_LOG(Assets, Info, "Unloaded asset '{}' (handle {}/{})",
                    path_str, handle.index, handle.generation);
         m_assets.erase(asset_it);
+    }
+
+    // Cascade-release dependencies
+    auto dep_it = m_dependencies.find(key);
+    if (dep_it != m_dependencies.end()) {
+        for (auto& child : dep_it->second) {
+            uint64_t child_key = child.packed();
+            auto child_rc = m_refcounts.find(child_key);
+            if (child_rc != m_refcounts.end() && child_rc->second > 0) {
+                child_rc->second--;
+            }
+        }
+        m_dependencies.erase(dep_it);
     }
 
     // Remove from path cache and refcounts

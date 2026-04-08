@@ -96,6 +96,23 @@ public:
     /// Explicitly unload a single asset by handle.
     void unload(AssetHandle handle);
 
+    // --- Dependency tracking ---
+
+    /// Register that `parent` depends on `child`. When parent's refcount
+    /// reaches zero, child is automatically released. Multiple parents may
+    /// depend on the same child (shared sub-assets).
+    void add_dependency(AssetHandle parent, AssetHandle child);
+
+    // --- Sub-asset creation ---
+
+    /// Store an already-constructed asset and return a handle for it.
+    /// Used by importers to create sub-assets (textures, materials).
+    template<typename T>
+    AssetHandle store(const std::string& path, T asset);
+
+    /// Allocate a fresh handle without loading -- for manual construction.
+    AssetHandle allocate_handle();
+
     // --- Hot reload ---
     void watch_for_changes(bool enable);
 
@@ -144,6 +161,10 @@ private:
 
     // Refcount tracking: keyed by handle.packed()
     std::unordered_map<uint64_t, uint32_t> m_refcounts;
+
+    // Dependency tracking: parent -> list of children.
+    // When parent refcount hits 0, all children are released.
+    std::unordered_map<uint64_t, std::vector<AssetHandle>> m_dependencies;
 
     // Background loading
     std::queue<LoadRequest> m_load_queue;
@@ -271,6 +292,38 @@ T* AssetServer::get_mut(AssetHandle handle) {
     if (it == m_assets.end()) return nullptr;
     if (it->second.status != AssetStatus::Loaded) return nullptr;
     return std::any_cast<T>(&it->second.data);
+}
+
+template<typename T>
+AssetHandle AssetServer::store(const std::string& path, T asset) {
+    auto type = std::type_index(typeid(T));
+
+    // Check cache first
+    {
+        std::lock_guard lock(m_mutex);
+        auto cached = find_cached(type, path);
+        if (cached) return cached;
+    }
+
+    auto handle = next_handle();
+    auto full_path = m_root / path;
+    uint64_t key = handle.packed();
+
+    {
+        std::lock_guard lock(m_mutex);
+        auto [it, inserted] = m_assets.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(key),
+            std::forward_as_tuple(full_path, type)
+        );
+        it->second.data = std::any(std::move(asset));
+        it->second.status = AssetStatus::Loaded;
+
+        std::string cache_key = std::string(type.name()) + ":" + path;
+        m_path_cache[cache_key] = handle;
+    }
+
+    return handle;
 }
 
 } // namespace helios
