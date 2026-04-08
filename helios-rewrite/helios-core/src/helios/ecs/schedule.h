@@ -12,6 +12,7 @@ enum class Schedule : uint8_t {
     FixedUpdate, // physics (fixed timestep, ticks N times per frame)
     PostUpdate,  // transform propagation, hierarchy, cleanup
     PreRender,   // render extraction, editor UI
+    Shutdown,    // runs once after main loop exits, before resource destruction
     COUNT        // sentinel -- always last
 };
 

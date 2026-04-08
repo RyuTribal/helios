@@ -162,6 +162,14 @@ void handle_swapchain_resize(
     }
 }
 
+// --- System: flush GPU on shutdown ---
+void gpu_shutdown(ResMut<RenderContext> ctx) {
+    if (ctx->device) {
+        HELIOS_LOG(Render, Info, "Flushing GPU before shutdown");
+        ctx->device->wait_idle();
+    }
+}
+
 // --- Plugin build ---
 void RenderPlugin::build(App& app) {
     HELIOS_LOG(Render, Info, "Initializing RenderPlugin");
@@ -196,6 +204,7 @@ void RenderPlugin::build(App& app) {
 
     app.add_system(Schedule::PreRender, present_frame, "present_frame");
     app.add_system(Schedule::PreUpdate, handle_swapchain_resize, "handle_swapchain_resize");
+    app.add_system(Schedule::Shutdown, gpu_shutdown, "gpu_shutdown");
 
     HELIOS_LOG(Render, Info, "RenderPlugin ready");
 }

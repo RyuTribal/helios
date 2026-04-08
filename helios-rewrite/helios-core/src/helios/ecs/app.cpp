@@ -93,6 +93,9 @@ void App::run() {
         tick();
     }
 
+    // Run shutdown systems (e.g. GPU flush) before resource destructors fire.
+    m_scheduler.run(m_world, Schedule::Shutdown);
+
     HELIOS_LOG(Core, Info, "App shutting down");
 }
 
