@@ -41,6 +41,13 @@ add_library(helios-renderer STATIC
     src/helios/forward_plus/forward_plus_plugin.cpp
     src/helios/forward_plus/extract_render_data.cpp
     src/helios/forward_plus/default_textures.cpp
+    # Forward+ pass nodes
+    src/helios/forward_plus/passes/depth_prepass.cpp
+    src/helios/forward_plus/passes/shadow_pass.cpp
+    src/helios/forward_plus/passes/light_culling_pass.cpp
+    src/helios/forward_plus/passes/forward_pass.cpp
+    src/helios/forward_plus/passes/skybox_pass.cpp
+    src/helios/forward_plus/passes/tonemap_pass.cpp
     # Render graph
     src/helios/graph/render_graph.cpp
     src/helios/graph/render_graph_builder.cpp
