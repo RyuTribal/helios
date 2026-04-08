@@ -58,10 +58,20 @@ public:
     /// Remove cached GPU resources for handles no longer in the AssetServer.
     void evict_unused(const AssetServer& server);
 
+    /// Lazily-created 1x1 default textures for fallback.
+    rhi::Texture* get_or_create_default_white(rhi::Device& device);
+    rhi::Texture* get_or_create_default_blue(rhi::Device& device);
+    rhi::Texture* get_or_create_default_black(rhi::Device& device);
+
 private:
     std::unordered_map<uint64_t, GPUMesh> m_meshes;
     std::unordered_map<uint64_t, std::unique_ptr<rhi::Texture>> m_textures;
     std::unordered_map<uint64_t, GPUMaterial> m_materials;
+
+    // Cached default textures
+    std::unique_ptr<rhi::Texture> m_default_white;
+    std::unique_ptr<rhi::Texture> m_default_blue;
+    std::unique_ptr<rhi::Texture> m_default_black;
 };
 
 } // namespace helios

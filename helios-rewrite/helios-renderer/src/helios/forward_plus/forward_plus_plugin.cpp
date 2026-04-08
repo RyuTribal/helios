@@ -5,6 +5,8 @@
 #include "helios/forward_plus/forward_plus_draw.h"
 #include "helios/forward_plus/pbr_render_state.h"
 #include "helios/forward_plus/skybox_state.h"
+#include "helios/forward_plus/gpu_cache.h"
+#include "helios/assets/asset_server.h"
 #include "helios/forward_plus/passes/depth_prepass.h"
 #include "helios/forward_plus/passes/shadow_pass.h"
 #include "helios/forward_plus/passes/light_culling_pass.h"
@@ -77,6 +79,15 @@ void ForwardPlusPlugin::build(App& app) {
 
     // Insert an empty RenderGraph resource.
     app.insert_resource(graph::RenderGraph{});
+
+    // Insert GPUResourceCache for automatic CPU->GPU upload
+    app.insert_resource(GPUResourceCache{});
+
+    // Insert a null AssetServer resource if one wasn't already registered
+    // (e.g., if AssetPlugin wasn't used). The draw system checks for null.
+    if (!app.world().has_resource<std::shared_ptr<AssetServer>>()) {
+        app.insert_resource(std::shared_ptr<AssetServer>{});
+    }
 
     // Insert default empty PBRRenderState and SkyboxState as fallbacks;
     // the sandbox (or any consuming app) will overwrite with populated versions.

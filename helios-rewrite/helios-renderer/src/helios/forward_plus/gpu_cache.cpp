@@ -152,6 +152,54 @@ const GPUMaterial* GPUResourceCache::get_or_upload_material(
     return &inserted->second;
 }
 
+rhi::Texture* GPUResourceCache::get_or_create_default_white(rhi::Device& device) {
+    if (!m_default_white) {
+        uint32_t data = 0xFFFFFFFF;
+        rhi::TextureDesc desc{
+            .width = 1, .height = 1,
+            .format = rhi::TextureFormat::RGBA8,
+            .type = rhi::TextureType::Texture2D,
+            .mip_levels = 1,
+            .usage = rhi::TextureUsage::Sampled,
+            .debug_name = "GPUCache_DefaultWhite",
+        };
+        m_default_white = device.create_texture(desc, &data);
+    }
+    return m_default_white.get();
+}
+
+rhi::Texture* GPUResourceCache::get_or_create_default_blue(rhi::Device& device) {
+    if (!m_default_blue) {
+        uint32_t data = 0xFFFF8080; // ABGR: flat normal (128,128,255,255)
+        rhi::TextureDesc desc{
+            .width = 1, .height = 1,
+            .format = rhi::TextureFormat::RGBA8,
+            .type = rhi::TextureType::Texture2D,
+            .mip_levels = 1,
+            .usage = rhi::TextureUsage::Sampled,
+            .debug_name = "GPUCache_DefaultBlue",
+        };
+        m_default_blue = device.create_texture(desc, &data);
+    }
+    return m_default_blue.get();
+}
+
+rhi::Texture* GPUResourceCache::get_or_create_default_black(rhi::Device& device) {
+    if (!m_default_black) {
+        uint32_t data = 0xFF000000; // ABGR: black (0,0,0,255)
+        rhi::TextureDesc desc{
+            .width = 1, .height = 1,
+            .format = rhi::TextureFormat::RGBA8,
+            .type = rhi::TextureType::Texture2D,
+            .mip_levels = 1,
+            .usage = rhi::TextureUsage::Sampled,
+            .debug_name = "GPUCache_DefaultBlack",
+        };
+        m_default_black = device.create_texture(desc, &data);
+    }
+    return m_default_black.get();
+}
+
 void GPUResourceCache::evict_unused(const AssetServer& server) {
     // Evict meshes
     for (auto it = m_meshes.begin(); it != m_meshes.end(); ) {
