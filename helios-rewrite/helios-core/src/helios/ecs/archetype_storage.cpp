@@ -57,7 +57,7 @@ void ArchetypeStorage::move_entity(Entity entity, Archetype& from, Archetype& to
     // We use a stack buffer large enough for typical components;
     // heap-allocate for anything larger.
     static constexpr size_t STACK_BUF_SIZE = 256;
-    alignas(std::max_align_t) std::byte stack_buf[STACK_BUF_SIZE];
+    alignas(64) std::byte stack_buf[STACK_BUF_SIZE];
 
     // Move shared component data from source columns to destination columns.
     for (auto& [comp_id, dst_col_idx] : to.column_index) {
