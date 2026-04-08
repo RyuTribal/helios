@@ -10,6 +10,7 @@ using namespace helios;
 struct CompA {};
 struct CompB {};
 struct CompC {};
+struct MyEvent {};
 
 // Helper: build a minimal SystemDescriptor with given accesses
 static SystemDescriptor make_system(SystemId id, std::vector<AccessDescriptor> accesses,
@@ -156,4 +157,39 @@ TEST(DAGBuilder, RegistrationOrderTiebreak) {
     ASSERT_EQ(plan.stages.size(), 2u);
     EXPECT_EQ(plan.stages[0].system_indices[0], 0u); // registered first -> runs first
     EXPECT_EQ(plan.stages[1].system_indices[0], 1u);
+}
+
+// ---- Event conflict tests (regression for typeid(T) fix) ----
+
+// Two EventWriter<MyEvent> systems both declare Write on typeid(MyEvent).
+// They must be sequenced (write-write conflict).
+TEST(DAGBuilder, EventWriterWriterConflict) {
+    std::vector<SystemDescriptor> systems = {
+        make_system({1}, { { std::type_index(typeid(MyEvent)), AccessMode::Write } }),
+        make_system({2}, { { std::type_index(typeid(MyEvent)), AccessMode::Write } }),
+    };
+    auto plan = build_execution_plan(systems);
+    ASSERT_EQ(plan.stages.size(), 2u) << "Two EventWriter<T> systems must not run in parallel";
+}
+
+// EventReader<MyEvent> (Read on typeid(MyEvent)) vs EventWriter<MyEvent>
+// (Write on typeid(MyEvent)) must also conflict (read-write).
+TEST(DAGBuilder, EventReaderWriterConflict) {
+    std::vector<SystemDescriptor> systems = {
+        make_system({1}, { { std::type_index(typeid(MyEvent)), AccessMode::Read } }),
+        make_system({2}, { { std::type_index(typeid(MyEvent)), AccessMode::Write } }),
+    };
+    auto plan = build_execution_plan(systems);
+    ASSERT_EQ(plan.stages.size(), 2u) << "EventReader<T> and EventWriter<T> must not run in parallel";
+}
+
+// Two EventReader<MyEvent> systems both declare Read on typeid(MyEvent).
+// Readers never conflict -- they must be placed in the same stage.
+TEST(DAGBuilder, EventReaderReaderNoConflict) {
+    std::vector<SystemDescriptor> systems = {
+        make_system({1}, { { std::type_index(typeid(MyEvent)), AccessMode::Read } }),
+        make_system({2}, { { std::type_index(typeid(MyEvent)), AccessMode::Read } }),
+    };
+    auto plan = build_execution_plan(systems);
+    ASSERT_EQ(plan.stages.size(), 1u) << "Two EventReader<T> systems must be allowed to run in parallel";
 }

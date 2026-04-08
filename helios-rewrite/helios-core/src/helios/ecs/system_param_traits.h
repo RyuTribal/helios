@@ -195,11 +195,13 @@ struct SystemParam<Commands> {
 // When systems take Commands& the decay_t gives Commands, which is handled above.
 
 // --- EventReader<T> (shared read on event channel T) ---
+// Uses typeid(T) so the scheduler can detect conflicts with EventWriter<T>
+// on the same event type T (read-write conflict detection requires a shared key).
 template <typename T>
 struct SystemParam<EventReader<T>> {
     static std::vector<AccessDescriptor> accesses() {
         return { AccessDescriptor{
-            .type = std::type_index(typeid(EventReader<T>)),
+            .type = std::type_index(typeid(T)),
             .mode = AccessMode::Read,
         } };
     }
@@ -210,11 +212,14 @@ struct SystemParam<EventReader<T>> {
 };
 
 // --- EventWriter<T> (exclusive write on event channel T) ---
+// Uses typeid(T) so that two EventWriter<T> systems (write-write) and any
+// EventReader<T> + EventWriter<T> pair (read-write) are correctly detected
+// as conflicting by the DAG scheduler.
 template <typename T>
 struct SystemParam<EventWriter<T>> {
     static std::vector<AccessDescriptor> accesses() {
         return { AccessDescriptor{
-            .type = std::type_index(typeid(EventWriter<T>)),
+            .type = std::type_index(typeid(T)),
             .mode = AccessMode::Write,
         } };
     }

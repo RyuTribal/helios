@@ -69,10 +69,14 @@ TEST(SystemParamTraits, CommandsNoAccess) {
 
 TEST(SystemParamTraits, EventReaderWriter) {
     auto accesses = SystemParamExtractor<decltype(&system_events)>::accesses();
-    // EventReader<MyEvent> -> Read on EventReader<MyEvent>
-    EXPECT_TRUE(has_access(accesses, typeid(EventReader<MyEvent>), AccessMode::Read));
-    // EventWriter<MyEvent> -> Write on EventWriter<MyEvent>
-    EXPECT_TRUE(has_access(accesses, typeid(EventWriter<MyEvent>), AccessMode::Write));
+    // Both EventReader<MyEvent> and EventWriter<MyEvent> report using typeid(MyEvent)
+    // so the DAG scheduler can detect reader-writer and writer-writer conflicts on
+    // the same event type T.
+    EXPECT_TRUE(has_access(accesses, typeid(MyEvent), AccessMode::Read));
+    EXPECT_TRUE(has_access(accesses, typeid(MyEvent), AccessMode::Write));
+    // Must NOT use the wrapper types as the conflict key
+    EXPECT_FALSE(has_access(accesses, typeid(EventReader<MyEvent>), AccessMode::Read));
+    EXPECT_FALSE(has_access(accesses, typeid(EventWriter<MyEvent>), AccessMode::Write));
 }
 
 TEST(SystemParamTraits, Lambda) {
