@@ -37,7 +37,6 @@ struct RenderContext {
     std::unique_ptr<rhi::Swapchain> swapchain;
     std::unique_ptr<rhi::CommandBuffer> cmd;
     std::unique_ptr<rhi::Texture> depth_texture;  // recreated on resize
-    void* surface = nullptr;  // owned, destroyed with device
     float clear_color[4] = {0.1f, 0.1f, 0.1f, 1.0f};
     bool frame_active = false;  // true between successful acquire and present
 };
