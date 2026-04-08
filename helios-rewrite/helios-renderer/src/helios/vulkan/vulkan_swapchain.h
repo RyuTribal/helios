@@ -60,7 +60,8 @@ public:
     }
 
     // Convenience rendering (abstract interface)
-    void begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear) override;
+    void begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear,
+                         rhi::Texture* depth_attachment = nullptr) override;
     void end_rendering(rhi::CommandBuffer& cmd) override;
 
     explicit operator bool() const { return m_swapchain != VK_NULL_HANDLE; }

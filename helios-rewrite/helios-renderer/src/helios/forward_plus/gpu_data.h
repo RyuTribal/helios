@@ -82,6 +82,20 @@ struct CameraUBOData {
 };
 
 // -------------------------------------------------------------------------
+// PBRCameraUBO -- set 0, binding 0 in pbr_simple.vert/frag
+// -------------------------------------------------------------------------
+struct alignas(16) PBRCameraUBO {
+    glm::mat4 view;
+    glm::mat4 projection;
+    glm::vec3 camera_pos;
+    float _pad0;
+    glm::vec3 light_dir;
+    float _pad1;
+    glm::vec3 light_color;
+    float light_intensity;
+};
+
+// -------------------------------------------------------------------------
 // SkyboxUBO -- set 0, binding 0 in skybox.vert
 // -------------------------------------------------------------------------
 struct SkyboxUBOData {

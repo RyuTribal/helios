@@ -76,21 +76,10 @@ void ForwardPlusPlugin::build(App& app) {
     // Insert an empty RenderGraph resource.
     app.insert_resource(graph::RenderGraph{});
 
-    // Create the simple flat-color rendering state for MVP rendering.
-    // This is the "get something on screen" path that will be replaced
-    // by the full Forward+ pipeline when the pass execute bodies are done.
-    auto& render_ctx = app.world().resource<RenderContext>();
-    if (render_ctx.device) {
-#ifdef HELIOS_SHADER_DIR
-        const char* shader_dir = HELIOS_SHADER_DIR;
-#else
-        const char* shader_dir = "shaders";
-#endif
-        auto simple_state = create_simple_render_state(*render_ctx.device, shader_dir);
-        app.insert_resource(std::move(simple_state));
-    } else {
-        HELIOS_LOG_WARN(ForwardPlus, "RenderContext::device is null, "
-                        "skipping SimpleRenderState creation");
+    // SimpleRenderState is now populated by the sandbox (or any consuming app)
+    // with full PBR pipeline setup. Insert a default empty state here as
+    // fallback; the sandbox will overwrite it with the populated version.
+    if (!app.world().has_resource<SimpleRenderState>()) {
         app.insert_resource(SimpleRenderState{});
     }
 

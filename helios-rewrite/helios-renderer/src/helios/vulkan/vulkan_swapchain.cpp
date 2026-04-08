@@ -1,6 +1,7 @@
 #include "helios/vulkan/vulkan_swapchain.h"
 #include "helios/vulkan/vulkan_device.h"
 #include "helios/vulkan/vulkan_command_buffer.h"
+#include "helios/vulkan/vulkan_texture.h"
 #include "helios/vulkan/vulkan_context.h"
 #include "helios/vulkan/vulkan_utils.h"
 #include "helios/vulkan/renderer_log_channels.h"
@@ -263,7 +264,8 @@ static void transition_image(VkCommandBuffer cmd, VkImage image,
     vkCmdPipelineBarrier2(cmd, &dep);
 }
 
-void VulkanSwapchain::begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear)
+void VulkanSwapchain::begin_rendering(rhi::CommandBuffer& cmd, const ClearValues& clear,
+                                      rhi::Texture* depth_attachment)
 {
     HELIOS_ASSERT(m_device != nullptr, "Swapchain not initialized");
 
@@ -287,12 +289,34 @@ void VulkanSwapchain::begin_rendering(rhi::CommandBuffer& cmd, const ClearValues
     color_att.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
     color_att.clearValue.color = {{clear.color[0], clear.color[1], clear.color[2], clear.color[3]}};
 
+    // Optional depth attachment
+    VkRenderingAttachmentInfo depth_att{};
+    if (depth_attachment) {
+        auto* vk_depth = static_cast<VulkanTexture*>(depth_attachment);
+
+        // Transition depth image from UNDEFINED to DEPTH_ATTACHMENT_OPTIMAL
+        VulkanTexture::transition_layout(raw_cmd, vk_depth->vk_image(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+        vk_depth->set_current_layout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+        depth_att.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        depth_att.imageView   = vk_depth->vk_image_view();
+        depth_att.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        depth_att.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_att.storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_att.clearValue.depthStencil = {clear.depth, clear.stencil};
+    }
+
     VkRenderingInfo rendering{};
     rendering.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
     rendering.renderArea           = {{0, 0}, m_extent};
     rendering.layerCount           = 1;
     rendering.colorAttachmentCount = 1;
     rendering.pColorAttachments    = &color_att;
+    if (depth_attachment) {
+        rendering.pDepthAttachment = &depth_att;
+    }
 
     vkCmdBeginRendering(raw_cmd, &rendering);
 }

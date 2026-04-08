@@ -34,43 +34,78 @@ void present_frame(ResMut<RenderContext> ctx,
     ctx->cmd->begin();
 
     rhi::ClearValues clear;
-    clear.color[0] = 0.12f;
-    clear.color[1] = 0.14f;
-    clear.color[2] = 0.18f;
+    clear.color[0] = 0.02f;
+    clear.color[1] = 0.02f;
+    clear.color[2] = 0.02f;
     clear.color[3] = 1.0f;
-    ctx->swapchain->begin_rendering(*ctx->cmd, clear);
+    clear.depth = 1.0f;
 
-    // --- Simple flat-color mesh rendering ---
+    // Begin rendering with depth attachment if available
+    rhi::Texture* depth_ptr = simple->depth_texture ? simple->depth_texture.get() : nullptr;
+    ctx->swapchain->begin_rendering(*ctx->cmd, clear, depth_ptr);
+
+    const float w = static_cast<float>(ctx->swapchain->width());
+    const float h = static_cast<float>(ctx->swapchain->height());
+
+    // --- Skybox ---
+    if (simple->has_skybox && simple->skybox_pipeline && simple->skybox_ds) {
+        auto& cmd = *ctx->cmd;
+
+        // Update skybox UBO (rotation-only view matrix)
+        SkyboxUBOData skybox_data;
+        skybox_data.camera_view = packet->camera.view;
+        skybox_data.camera_projection = packet->camera.projection;
+        skybox_data.brightness = 1.0f;
+        simple->skybox_ubo->set_data(&skybox_data, sizeof(skybox_data));
+
+        cmd.bind_pipeline(*simple->skybox_pipeline);
+        cmd.set_viewport(0.0f, 0.0f, w, h);
+        cmd.set_scissor(0, 0, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+        cmd.bind_descriptor_set(0, *simple->skybox_ds);
+        cmd.bind_vertex_buffer(*simple->skybox_cube_vbo);
+        cmd.draw(36);
+    }
+
+    // --- PBR mesh rendering ---
     if (simple->valid && !packet->mesh_draws.empty()) {
         auto& cmd = *ctx->cmd;
-        const float w = static_cast<float>(ctx->swapchain->width());
-        const float h = static_cast<float>(ctx->swapchain->height());
 
-        // Update camera UBO
-        CameraUBOData cam_data;
+        // Update PBR camera UBO
+        PBRCameraUBO cam_data;
         cam_data.view       = packet->camera.view;
         cam_data.projection = packet->camera.projection;
+        cam_data.camera_pos = packet->camera.position;
+        cam_data._pad0 = 0.0f;
+
+        // Use first directional light if available, otherwise default sun
+        if (!packet->dir_lights.empty()) {
+            cam_data.light_dir   = packet->dir_lights[0].direction;
+            cam_data.light_color = packet->dir_lights[0].color;
+            cam_data.light_intensity = packet->dir_lights[0].intensity;
+        } else {
+            cam_data.light_dir   = glm::vec3(0.0f, -1.0f, -0.5f);
+            cam_data.light_color = glm::vec3(1.0f, 0.95f, 0.8f);
+            cam_data.light_intensity = 2.0f;
+        }
+        cam_data._pad1 = 0.0f;
         simple->camera_ubo->set_data(&cam_data, sizeof(cam_data));
 
-        // Bind pipeline, viewport, scissor
         cmd.bind_pipeline(*simple->pipeline);
         cmd.set_viewport(0.0f, 0.0f, w, h);
         cmd.set_scissor(0, 0, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
 
-        // Bind camera descriptor set
         cmd.bind_descriptor_set(0, *simple->camera_ds);
+        cmd.bind_descriptor_set(1, *simple->material_ds);
 
-        // Bind cube geometry
-        cmd.bind_vertex_buffer(*simple->cube_vbo);
-        cmd.bind_index_buffer(*simple->cube_ibo);
+        cmd.bind_vertex_buffer(*simple->mesh_vbo);
+        cmd.bind_index_buffer(*simple->mesh_ibo);
 
-        // Draw each mesh from the frame packet
         for (const auto& draw : packet->mesh_draws) {
             PushConstantData pc;
             pc.transform = draw.transform;
             cmd.push_constants(rhi::ShaderStage::Vertex, 0,
                                sizeof(PushConstantData), &pc);
-            cmd.draw_indexed(simple->cube_index_count);
+            cmd.draw_indexed(simple->index_count);
         }
     }
 
@@ -82,7 +117,7 @@ void present_frame(ResMut<RenderContext> ctx,
     ctx->swapchain->present();
 }
 
-// --- System: handle window resize → recreate swapchain ---
+// --- System: handle window resize -> recreate swapchain ---
 void handle_swapchain_resize(
     ResMut<RenderContext> ctx,
     Res<Windows> windows,

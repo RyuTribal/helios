@@ -7,6 +7,7 @@
 namespace helios::rhi {
 
 class CommandBuffer;
+class Texture;
 
 // Abstract swapchain interface.
 class Swapchain {
@@ -34,7 +35,9 @@ public:
     // Convenience: begin rendering to the current swapchain image.
     // Handles image layout transitions and begins dynamic rendering with clear color.
     // Call after acquire_next_image() and cmd.begin().
-    virtual void begin_rendering(CommandBuffer& cmd, const ClearValues& clear) = 0;
+    // If depth_attachment is provided, a depth buffer is attached to the rendering.
+    virtual void begin_rendering(CommandBuffer& cmd, const ClearValues& clear,
+                                 Texture* depth_attachment = nullptr) = 0;
 
     // Convenience: end rendering to the current swapchain image.
     // Handles image layout transition to present-ready. Call before cmd.end().
