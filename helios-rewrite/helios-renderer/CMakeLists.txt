@@ -37,6 +37,11 @@ add_library(helios-renderer STATIC
     src/helios/vulkan/vulkan_swapchain.cpp
     src/helios/vulkan/vulkan_vma.cpp
     src/helios/pipeline_cache.cpp
+    # Render graph
+    src/helios/graph/render_graph.cpp
+    src/helios/graph/render_graph_builder.cpp
+    src/helios/graph/render_context.cpp
+    src/helios/graph/resource_pool.cpp
 )
 
 target_include_directories(helios-renderer
