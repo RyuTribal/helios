@@ -89,8 +89,8 @@ void ForwardPlusPlugin::build(App& app) {
 
     // Look up the frame_begin and frame_end SystemIds registered by RenderPlugin
     // so we can insert systems between them.
-    auto begin_id = app.id_of(frame_begin);
-    auto end_id = app.id_of(frame_end);
+    auto begin_id = app.id_of("frame_begin");
+    auto end_id = app.id_of("frame_end");
 
     // Register the extraction system (main thread, runs during PreRender).
     // Must run after frame_begin (needs RenderContext) and before frame_end.

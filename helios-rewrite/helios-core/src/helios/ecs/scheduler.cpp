@@ -11,6 +11,12 @@ SystemId Scheduler::next_id() {
     return SystemId{ m_next_id.fetch_add(1, std::memory_order_relaxed) };
 }
 
+SystemId Scheduler::id_of(const std::string& name) const {
+    auto it = m_name_ids.find(name);
+    if (it != m_name_ids.end()) return it->second;
+    return SystemId{0};
+}
+
 void Scheduler::rebuild_plan(Schedule schedule) {
     auto& data = m_schedules[static_cast<size_t>(schedule)];
     HELIOS_LOG(Scheduler, Debug, "Rebuilding execution plan for schedule {} ({} systems)",

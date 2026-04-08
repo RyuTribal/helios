@@ -57,9 +57,10 @@ public:
     SystemDescriptorBuilder add_system(Schedule schedule, SystemSet<F> set,
                                        std::string name = "");
 
-    /// Get the SystemId for a previously registered function.
-    template <typename F>
-    SystemId id_of(F&& fn) const;
+    /// Get the SystemId for a named system. Used for cross-plugin ordering.
+    SystemId id_of(const std::string& name) const {
+        return m_scheduler.id_of(name);
+    }
 
     // ---- Execution ----
 
@@ -154,11 +155,6 @@ template <typename F>
 SystemDescriptorBuilder App::add_system(Schedule schedule, SystemSet<F> set,
                                         std::string name) {
     return m_scheduler.add_system(schedule, std::move(set), std::move(name));
-}
-
-template <typename F>
-SystemId App::id_of(F&& fn) const {
-    return m_scheduler.id_of(std::forward<F>(fn));
 }
 
 } // namespace helios

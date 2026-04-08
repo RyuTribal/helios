@@ -59,11 +59,10 @@ public:
     /// Can only be called once; subsequent calls are no-ops.
     void enable_parallel(uint32_t thread_count = 0);
 
-    /// Get the SystemId assigned to a function pointer. Useful for chaining
-    /// .after(scheduler.id_of(some_system)).
+    /// Get the SystemId assigned to a named system. Useful for cross-plugin
+    /// ordering: .after(scheduler.id_of("frame_begin")).
     /// Returns a zero SystemId if not found.
-    template <typename F>
-    SystemId id_of(F&& fn) const;
+    SystemId id_of(const std::string& name) const;
 
 private:
     static constexpr size_t SCHEDULE_COUNT = static_cast<size_t>(Schedule::COUNT);
@@ -87,8 +86,8 @@ private:
     bool                                     m_parallel = false; // start sequential
     std::unique_ptr<ThreadPool>              m_pool;
 
-    // Function-pointer to SystemId mapping for id_of()
-    std::unordered_map<std::type_index, SystemId> m_function_ids;
+    // Name → SystemId mapping for id_of()
+    std::unordered_map<std::string, SystemId> m_name_ids;
 
     SystemId next_id();
 };
@@ -105,9 +104,6 @@ SystemDescriptorBuilder Scheduler::add_system(Schedule schedule, F&& system,
 
     SystemId id = next_id();
 
-    // Store function type -> id mapping
-    m_function_ids[std::type_index(typeid(std::decay_t<F>))] = id;
-
     // Build descriptor
     SystemDescriptor desc;
     desc.id       = id;
@@ -118,15 +114,11 @@ SystemDescriptorBuilder Scheduler::add_system(Schedule schedule, F&& system,
     desc.run      = SystemParamExtractor<std::decay_t<F>>::wrap(
                         std::forward<F>(system));
 
+    // Store name → id mapping for cross-plugin ordering via id_of()
+    m_name_ids[desc.name] = id;
+
     data.systems.push_back(std::move(desc));
     return SystemDescriptorBuilder(data.systems.back());
-}
-
-template <typename F>
-SystemId Scheduler::id_of(F&& /*fn*/) const {
-    auto it = m_function_ids.find(std::type_index(typeid(std::decay_t<F>)));
-    if (it != m_function_ids.end()) return it->second;
-    return SystemId{0};
 }
 
 template <typename F>
