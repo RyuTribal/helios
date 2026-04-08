@@ -1,10 +1,12 @@
 // Helios Engine - PBR Sandbox Demo (3-state version)
 //
-// Demonstrates asset loading/unloading between scenes using the GameFlow
-// state machine. Three states:
-//   Loading  -- async-loads assets for the next scene
-//   Scene1   -- DamagedHelmet + skybox
-//   Scene2   -- Lion + skybox (shared skybox, helmet textures get GC'd)
+// Demonstrates the asset-to-GPU pipeline. Users just load a mesh and
+// spawn an entity -- the engine handles textures, materials, GPU upload.
+//
+// Three states:
+//   Loading  -- loads assets for the next scene via AssetServer
+//   Scene1   -- DamagedHelmet + skybox + physics
+//   Scene2   -- Lion + skybox
 //
 // Press 1 to switch to Scene1, 2 to switch to Scene2.
 
@@ -20,11 +22,16 @@
 #include <helios/forward_plus/pbr_render_state.h>
 #include <helios/forward_plus/skybox_state.h>
 #include <helios/forward_plus/gpu_data.h>
+#include <helios/forward_plus/gpu_cache.h>
 #include <helios/graph/frame_packet.h>
 #include <helios/app/game_flow_plugin.h>
 #include <helios/app/state.h>
 #include <helios/app/state_builder.h>
 #include <helios/assets/asset_server.h>
+#include <helios/assets/asset_plugin.h>
+#include <helios/assets/mesh_asset.h>
+#include <helios/assets/material_asset.h>
+#include <helios/assets/handle.h>
 
 #include "asset_loader.h"
 
@@ -118,37 +125,6 @@ static std::vector<uint8_t> generate_bounce_wav() {
 // ============================================================
 
 enum class SceneState { Loading, Scene1, Scene2 };
-
-
-// ============================================================
-// Scene asset handle tracking (resource shared across states)
-// ============================================================
-
-struct SceneAssets {
-    // Per-scene GPU resources (owned by the active scene state)
-    std::unique_ptr<rhi::Buffer> mesh_vbo;
-    std::unique_ptr<rhi::Buffer> mesh_ibo;
-    uint32_t index_count = 0;
-
-    std::unique_ptr<rhi::Texture> albedo_tex;
-    std::unique_ptr<rhi::Texture> normal_tex;
-    std::unique_ptr<rhi::Texture> metallic_roughness_tex;
-    std::unique_ptr<rhi::Texture> emissive_tex;
-
-    // Asset handles for refcount tracking
-    std::vector<AssetHandle> tracked_handles;
-
-    void clear() {
-        mesh_vbo.reset();
-        mesh_ibo.reset();
-        index_count = 0;
-        albedo_tex.reset();
-        normal_tex.reset();
-        metallic_roughness_tex.reset();
-        emissive_tex.reset();
-        tracked_handles.clear();
-    }
-};
 
 /// Which scene we want to transition to next (set by input handling).
 struct PendingScene {
@@ -284,139 +260,6 @@ void physics_update_system(ResMut<PhysicsDemo> demo,
 }
 
 // ============================================================
-// Helper: load helmet scene assets
-// ============================================================
-
-static SceneAssets load_helmet_assets(rhi::Device& device) {
-    SceneAssets scene;
-
-    const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
-    const std::string helmet_dir = asset_dir + "/Meshes/damaged_helmet_source_glb";
-    const std::string tex_dir = helmet_dir + "/textures";
-
-    // Load mesh
-    auto mesh = sandbox::load_gltf_mesh(device, (helmet_dir + "/scene.gltf").c_str());
-    scene.mesh_vbo = std::move(mesh.vbo);
-    scene.mesh_ibo = std::move(mesh.ibo);
-    scene.index_count = mesh.index_count;
-
-    // Load textures
-    scene.albedo_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/Material_MR_baseColor.jpeg").c_str(), "HelmetAlbedo");
-    scene.normal_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/Material_MR_normal.jpeg").c_str(), "HelmetNormal");
-    scene.metallic_roughness_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/Material_MR_metallicRoughness.png").c_str(), "HelmetMR");
-    scene.emissive_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/Material_MR_emissive.jpeg").c_str(), "HelmetEmissive");
-
-    return scene;
-}
-
-// ============================================================
-// Helper: load lion scene assets
-// ============================================================
-
-static SceneAssets load_lion_assets(rhi::Device& device) {
-    SceneAssets scene;
-
-    const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
-    const std::string lion_dir = asset_dir + "/Meshes/lion";
-    const std::string tex_dir = lion_dir + "/textures";
-
-    // Load mesh
-    auto mesh = sandbox::load_gltf_mesh(device, (lion_dir + "/scene.gltf").c_str());
-    scene.mesh_vbo = std::move(mesh.vbo);
-    scene.mesh_ibo = std::move(mesh.ibo);
-    scene.index_count = mesh.index_count;
-
-    // Load textures -- lion has baseColor and normal only
-    scene.albedo_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/material0000_baseColor.png").c_str(), "LionAlbedo");
-    scene.normal_tex = sandbox::load_texture_2d(device,
-        (tex_dir + "/material0000_normal.jpeg").c_str(), "LionNormal");
-
-    // Create a 1x1 white texture for metallic-roughness (default)
-    {
-        uint8_t white_pixel[4] = {255, 255, 255, 255};
-        rhi::TextureDesc desc;
-        desc.width = 1; desc.height = 1;
-        desc.format = rhi::TextureFormat::RGBA8;
-        desc.type = rhi::TextureType::Texture2D;
-        desc.mip_levels = 1; desc.array_layers = 1;
-        desc.usage = rhi::TextureUsage::Sampled;
-        desc.debug_name = "LionMR_Default";
-        scene.metallic_roughness_tex = device.create_texture(desc, white_pixel);
-    }
-
-    // Create a 1x1 black texture for emissive (default)
-    {
-        uint8_t black_pixel[4] = {0, 0, 0, 255};
-        rhi::TextureDesc desc;
-        desc.width = 1; desc.height = 1;
-        desc.format = rhi::TextureFormat::RGBA8;
-        desc.type = rhi::TextureType::Texture2D;
-        desc.mip_levels = 1; desc.array_layers = 1;
-        desc.usage = rhi::TextureUsage::Sampled;
-        desc.debug_name = "LionEmissive_Default";
-        scene.emissive_tex = device.create_texture(desc, black_pixel);
-    }
-
-    return scene;
-}
-
-// ============================================================
-// AssetServer for tracking -- lightweight wrapper for refcounts
-// ============================================================
-
-/// Simplified asset tracking resource. Wraps an AssetServer for refcount/GC
-/// and also holds per-scene handles.
-struct AssetTracker {
-    std::unique_ptr<AssetServer> server;
-
-    // Skybox handle -- shared between scenes, acquired by both
-    AssetHandle skybox_handle{};
-
-    AssetTracker() = default;
-
-    explicit AssetTracker(const std::filesystem::path& root)
-        : server(std::make_unique<AssetServer>(root, 0))  // 0 loader threads (sync only)
-    {
-        // Register a trivial importer for tracking purposes
-        server->register_importer<std::string>(
-            [](const std::filesystem::path& path, AssetServer& /*server*/) -> std::any {
-                return std::any(path.string());
-            });
-    }
-
-    // Create tracked handles for a scene's assets and acquire them
-    std::vector<AssetHandle> track_scene(const std::string& prefix, int count) {
-        std::vector<AssetHandle> handles;
-        for (int i = 0; i < count; ++i) {
-            std::string path = prefix + "/asset_" + std::to_string(i);
-            auto h = server->load_sync<std::string>(path);
-            if (h) {
-                server->acquire(h);
-                handles.push_back(h);
-            }
-        }
-        return handles;
-    }
-
-    // Release all handles for a scene
-    void release_scene(const std::vector<AssetHandle>& handles) {
-        for (auto h : handles) {
-            server->release(h);
-        }
-    }
-
-    // Run GC and log unloaded assets
-    std::vector<AssetHandle> gc() {
-        return server->collect_garbage();
-    }
-};
-
-// ============================================================
 // Forward declarations of states
 // ============================================================
 
@@ -425,7 +268,7 @@ class Scene1State;
 class Scene2State;
 
 // ============================================================
-// LoadingState
+// LoadingState -- loads assets via AssetServer, then transitions
 // ============================================================
 
 class LoadingState : public State<SceneState> {
@@ -438,93 +281,31 @@ public:
         HELIOS_LOG(Scene, Info, "Loading assets for {}...",
                    m_target == SceneState::Scene1 ? "Scene1 (Helmet)" : "Scene2 (Lion)");
 
-        // Load synchronously (in a real engine this would be async)
-        auto& ctx = world.resource<RenderContext>();
-        auto& device = *ctx.device;
+        auto& server = *world.resource<std::shared_ptr<AssetServer>>();
 
-        auto& scene_assets = world.resource<SceneAssets>();
-        auto& tracker = world.resource<AssetTracker>();
-
-        // Release old scene handles and run GC
-        tracker.release_scene(scene_assets.tracked_handles);
-        auto unloaded = tracker.gc();
-        if (!unloaded.empty()) {
-            HELIOS_LOG(Scene, Info, "GC unloaded {} assets during transition", unloaded.size());
-        }
-
-        // Clear old GPU resources
-        device.wait_idle();
-        scene_assets.clear();
-
-        // Load new scene
+        // Load mesh asset synchronously (importer auto-loads textures + materials)
         if (m_target == SceneState::Scene1) {
-            scene_assets = load_helmet_assets(device);
-            scene_assets.tracked_handles = tracker.track_scene("helmet", 5);
+            m_mesh_handle = server.load_sync<MeshAsset>(
+                "Meshes/damaged_helmet_source_glb/scene.gltf");
         } else {
-            scene_assets = load_lion_assets(device);
-            scene_assets.tracked_handles = tracker.track_scene("lion", 4);
+            m_mesh_handle = server.load_sync<MeshAsset>(
+                "Meshes/lion/scene.gltf");
         }
 
-        // Update PBR render state with new mesh/textures
-        auto& pbr = world.resource<PBRRenderState>();
-        auto& skybox = world.resource<SkyboxState>();
-
-        if (scene_assets.mesh_vbo && scene_assets.mesh_ibo &&
-            scene_assets.albedo_tex && scene_assets.normal_tex &&
-            scene_assets.metallic_roughness_tex && scene_assets.emissive_tex) {
-
-            // Move mesh data into PBR state
-            pbr.mesh_vbo = std::move(scene_assets.mesh_vbo);
-            pbr.mesh_ibo = std::move(scene_assets.mesh_ibo);
-            pbr.index_count = scene_assets.index_count;
-
-            // Move textures into PBR state
-            pbr.albedo_tex = std::move(scene_assets.albedo_tex);
-            pbr.normal_tex = std::move(scene_assets.normal_tex);
-            pbr.metallic_roughness_tex = std::move(scene_assets.metallic_roughness_tex);
-            pbr.emissive_tex = std::move(scene_assets.emissive_tex);
-
-            // Update the material descriptor set with the new textures
-            rhi::Texture* env_tex = skybox.env_cubemap ? skybox.env_cubemap.get()
-                                                       : pbr.albedo_tex.get();
-            device.update_descriptor_set(*pbr.material_ds, {
-                rhi::DescriptorWrite{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.albedo_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 1,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.normal_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 2,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.metallic_roughness_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 3,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = pbr.emissive_tex.get(),
-                },
-                rhi::DescriptorWrite{
-                    .binding = 4,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = env_tex,
-                },
-            });
-
-            pbr.valid = true;
+        if (m_mesh_handle) {
+            server.acquire(m_mesh_handle);
+            HELIOS_LOG(Scene, Info, "Loaded mesh asset (handle {}/{})",
+                       m_mesh_handle.index, m_mesh_handle.generation);
         } else {
-            HELIOS_LOG(Scene, Error, "Failed to load scene assets");
-            pbr.valid = false;
+            HELIOS_LOG(Scene, Error, "Failed to load mesh asset");
         }
 
         m_loaded = true;
         HELIOS_LOG(Scene, Info, "Loading complete for {}",
                    m_target == SceneState::Scene1 ? "Scene1" : "Scene2");
     }
+
+    ~LoadingState() = default;
 
     static void describe(StateBuilder<LoadingState>& s) {
         s.opaque();
@@ -544,6 +325,7 @@ public:
 private:
     World* m_world = nullptr;
     SceneState m_target = SceneState::Scene1;
+    AssetHandle m_mesh_handle{};
     bool m_loaded = false;
 };
 
@@ -556,6 +338,12 @@ public:
     explicit Scene1State(World& world) : m_world(&world) {
         HELIOS_LOG(Scene, Info, "Scene1: Entering (DamagedHelmet + Physics)");
 
+        auto& server = *world.resource<std::shared_ptr<AssetServer>>();
+
+        // Find the loaded helmet mesh handle
+        m_mesh_handle = server.load_sync<MeshAsset>(
+            "Meshes/damaged_helmet_source_glb/scene.gltf");
+
         // Spawn helmet entity at Y=3 (physics will move it)
         m_helmet = spawn_tracked(world);
         world.add(m_helmet, Transform{
@@ -564,8 +352,7 @@ public:
                 glm::radians(90.0f), glm::radians(180.0f), 0.0f))
         });
         world.add(m_helmet, MeshRenderer{
-            .mesh = Handle<MeshAsset>{1, 1},
-            .material = Handle<MaterialAsset>{1, 1}
+            .mesh = Handle<MeshAsset>::from(m_mesh_handle),
         });
         world.add(m_helmet, Tag{.name = "damaged_helmet"});
 
@@ -621,6 +408,16 @@ public:
             demo.floor_body  = 0;
         }
         demo.active = false;
+
+        // Release the mesh asset handle
+        if (m_mesh_handle) {
+            auto& server = *m_world->resource<std::shared_ptr<AssetServer>>();
+            server.release(m_mesh_handle);
+            auto unloaded = server.collect_garbage();
+            if (!unloaded.empty()) {
+                HELIOS_LOG(Scene, Info, "GC unloaded {} assets", unloaded.size());
+            }
+        }
     }
 
     static void describe(StateBuilder<Scene1State>& s) {
@@ -642,6 +439,7 @@ public:
 private:
     World* m_world = nullptr;
     Entity m_helmet{};
+    AssetHandle m_mesh_handle{};
 };
 
 // ============================================================
@@ -653,6 +451,11 @@ public:
     explicit Scene2State(World& world) : m_world(&world) {
         HELIOS_LOG(Scene, Info, "Scene2: Entering (Lion)");
 
+        auto& server = *world.resource<std::shared_ptr<AssetServer>>();
+
+        // Find the loaded lion mesh handle
+        m_mesh_handle = server.load_sync<MeshAsset>("Meshes/lion/scene.gltf");
+
         // Spawn lion entity -- rotated to face camera
         m_lion = spawn_tracked(world);
         world.add(m_lion, Transform{
@@ -662,8 +465,7 @@ public:
             .scale = glm::vec3{0.01f}  // lion model is large, scale down
         });
         world.add(m_lion, MeshRenderer{
-            .mesh = Handle<MeshAsset>{1, 1},
-            .material = Handle<MaterialAsset>{1, 1}
+            .mesh = Handle<MeshAsset>::from(m_mesh_handle),
         });
         world.add(m_lion, Tag{.name = "lion"});
 
@@ -672,6 +474,15 @@ public:
 
     ~Scene2State() {
         HELIOS_LOG(Scene, Info, "Scene2: Exiting (Lion)");
+        // Release the mesh asset handle
+        if (m_mesh_handle) {
+            auto& server = *m_world->resource<std::shared_ptr<AssetServer>>();
+            server.release(m_mesh_handle);
+            auto unloaded = server.collect_garbage();
+            if (!unloaded.empty()) {
+                HELIOS_LOG(Scene, Info, "GC unloaded {} assets", unloaded.size());
+            }
+        }
     }
 
     static void describe(StateBuilder<Scene2State>& s) {
@@ -693,6 +504,7 @@ public:
 private:
     World* m_world = nullptr;
     Entity m_lion{};
+    AssetHandle m_mesh_handle{};
 };
 
 // ============================================================
@@ -734,6 +546,7 @@ struct ScenePlugin {
 // ============================================================
 // SandboxAssetsPlugin: sets up shared GPU infrastructure
 // (PBR pipeline, skybox, depth buffer -- scene-independent)
+// Per-mesh/per-material data is now handled by GPUResourceCache.
 // ============================================================
 
 struct SandboxAssetsPlugin {
@@ -854,11 +667,12 @@ struct SandboxAssetsPlugin {
         }
 
         // ---- PBR graphics pipeline ----
+        // Note: vertex layout matches PBRVertex from mesh_asset.h
         {
             rhi::GraphicsPipelineDesc pipe_desc;
             pipe_desc.vertex_shader = pbr.vert_shader.get();
             pipe_desc.fragment_shader = pbr.frag_shader.get();
-            pipe_desc.layout.stride = sizeof(sandbox::PBRVertex);
+            pipe_desc.layout.stride = sizeof(PBRVertex);
             pipe_desc.layout.attributes = {
                 rhi::VertexAttribute{
                     .location = 0, .binding = 0, .offset = 0,
@@ -919,11 +733,7 @@ struct SandboxAssetsPlugin {
             });
         }
 
-        // ---- Material descriptor set (initially empty, filled by scene states) ----
-        {
-            pbr.material_ds = device.allocate_descriptor_set(*pbr.material_layout);
-        }
-
+        pbr.valid = true;
         HELIOS_LOG(Game, Info, "PBR pipeline created");
 
         // ============================================================
@@ -1054,7 +864,7 @@ int main() {
         .default_level = LogLevel::Debug,
     });
 
-    HELIOS_LOG(Core, Info, "=== Helios PBR Sandbox (3-State Demo) ===");
+    HELIOS_LOG(Core, Info, "=== Helios PBR Sandbox (Asset Pipeline Demo) ===");
 
     App app;
 
@@ -1066,13 +876,16 @@ int main() {
     }});
     app.add_plugin(InputPlugin{});
     app.add_plugin(RenderPlugin{});
+
+    // Asset pipeline -- registers AssetServer + MeshAsset importer
+    app.add_plugin(AssetPlugin{AssetPluginConfig{
+        .asset_root = HELIOS_DEMO_ASSET_DIR,
+        .loader_threads = 0,  // sync-only for this demo
+    }});
+
     app.add_plugin(ForwardPlusPlugin{});
 
-    // Asset tracking resource
-    app.insert_resource(AssetTracker{HELIOS_DEMO_ASSET_DIR});
-    app.insert_resource(SceneAssets{});
     app.insert_resource(PendingScene{.target = SceneState::Scene1, .pending = true});
-    app.insert_resource(renderer::FramePacket{});
 
     // Shared GPU resources (pipeline, skybox)
     app.add_plugin(SandboxAssetsPlugin{});
@@ -1081,15 +894,18 @@ int main() {
     app.add_plugin(GamePlugin{});
     app.add_plugin(ScenePlugin{});
 
-    // Acquire skybox handle in the tracker (shared, never GC'd)
+    // Register despawn hook: release MeshRenderer asset handles automatically
     {
-        auto& tracker = app.world().resource<AssetTracker>();
-        auto skybox_h = tracker.server->load_sync<std::string>("shared/skybox");
-        if (skybox_h) {
-            tracker.server->acquire(skybox_h);
-            tracker.server->acquire(skybox_h);  // 2 refs: one per scene
-            tracker.skybox_handle = skybox_h;
-        }
+        auto& world = app.world();
+        world.register_despawn_hook([](World& w, Entity e) {
+            auto* mr = w.try_get<MeshRenderer>(e);
+            if (!mr) return;
+            auto* server_ptr = w.try_resource<std::shared_ptr<AssetServer>>();
+            if (!server_ptr || !*server_ptr) return;
+            auto& server = **server_ptr;
+            if (mr->mesh) server.release(mr->mesh.untyped());
+            if (mr->material) server.release(mr->material.untyped());
+        });
     }
 
     // State management

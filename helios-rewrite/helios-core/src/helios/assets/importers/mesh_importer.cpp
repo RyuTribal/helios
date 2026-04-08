@@ -236,9 +236,10 @@ namespace {
 
 AssetHandle load_texture_sub_asset(const std::string& texture_path,
                                    AssetServer& server) {
-    // Check if already loaded
-    auto existing = server.load_sync<TextureAsset>(texture_path);
-    if (existing) return existing;
+    // Use the absolute path as a storage key for deduplication.
+    // store() checks the cache first, so repeated loads of the same
+    // texture return the same handle.
+    std::string store_key = "texture:" + texture_path;
 
     // Load pixels from disk
     int w, h, channels;
@@ -256,7 +257,7 @@ AssetHandle load_texture_sub_asset(const std::string& texture_path,
     tex.pixels.assign(raw, raw + byte_count);
     stbi_image_free(raw);
 
-    auto handle = server.store<TextureAsset>(texture_path, std::move(tex));
+    auto handle = server.store<TextureAsset>(store_key, std::move(tex));
     server.acquire(handle);  // held by the parent material
     return handle;
 }
