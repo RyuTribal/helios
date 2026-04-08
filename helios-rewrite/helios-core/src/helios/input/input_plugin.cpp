@@ -18,11 +18,14 @@ void InputPlugin::build(App& app) {
     app.insert_resource<RawInput>(RawInput{});
     app.insert_resource<InputMap>(InputMap{});
 
-    // Register systems in PreUpdate.
+    // Register systems in PreUpdate with explicit ordering.
     // update_raw_input reads GLFW callback data after poll_window_events.
     // update_action_map refreshes InputMap's raw pointer after update_raw_input.
-    app.add_system(Schedule::PreUpdate, update_raw_input,   "update_raw_input");
-    app.add_system(Schedule::PreUpdate, update_action_map,  "update_action_map");
+    auto raw_input_id = app.add_system(Schedule::PreUpdate, update_raw_input, "update_raw_input")
+        .after(app.id_of("poll_window_events"))
+        .id();
+    app.add_system(Schedule::PreUpdate, update_action_map, "update_action_map")
+        .after(raw_input_id);
 
     HELIOS_LOG(Input, Info, "InputPlugin built: RawInput and InputMap resources registered");
 }
