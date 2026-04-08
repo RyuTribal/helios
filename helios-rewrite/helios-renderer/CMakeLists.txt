@@ -44,6 +44,7 @@ add_library(helios-renderer STATIC
     src/helios/forward_plus/default_textures.cpp
     src/helios/forward_plus/pipeline_init.cpp
     src/helios/forward_plus/forward_plus_draw.cpp
+    src/helios/forward_plus/gpu_cache.cpp
     # IBL one-shot compute dispatches
     src/helios/forward_plus/ibl/equirect_to_cube.cpp
     src/helios/forward_plus/ibl/ibl_generation.cpp
