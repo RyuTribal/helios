@@ -2,6 +2,7 @@
 #include "helios/ecs/scheduler.h"
 #include "helios/core/engine_log_channels.h"
 
+#include <algorithm>
 #include <exception>
 
 namespace helios {
@@ -17,6 +18,47 @@ SystemId Scheduler::id_of(const std::string& name) const {
     auto it = m_name_ids.find(name);
     if (it != m_name_ids.end()) return it->second;
     return SystemId{0};
+}
+
+void Scheduler::add_system(Schedule schedule, SystemDescriptor descriptor) {
+    auto& data = m_schedules[static_cast<size_t>(schedule)];
+    data.dirty = true;
+
+    // Assign an id if the descriptor doesn't already have one.
+    if (descriptor.id.value == 0) {
+        descriptor.id = next_id();
+    }
+
+    // Ensure name is set.
+    if (descriptor.name.empty()) {
+        descriptor.name = "state_system_" + std::to_string(descriptor.id.value);
+    }
+
+    // Store name -> id mapping (skip duplicate names from state systems).
+    m_name_ids.emplace(descriptor.name, descriptor.id);
+
+    data.systems.push_back(std::move(descriptor));
+}
+
+size_t Scheduler::remove_systems_by_tag(std::type_index tag) {
+    size_t removed = 0;
+    for (auto& data : m_schedules) {
+        auto it = std::remove_if(data.systems.begin(), data.systems.end(),
+            [&](const SystemDescriptor& desc) {
+                if (desc.owner_tag.has_value() && *desc.owner_tag == tag) {
+                    // Remove name mapping.
+                    m_name_ids.erase(desc.name);
+                    ++removed;
+                    return true;
+                }
+                return false;
+            });
+        if (it != data.systems.end()) {
+            data.systems.erase(it, data.systems.end());
+            data.dirty = true;
+        }
+    }
+    return removed;
 }
 
 void Scheduler::rebuild_plan(Schedule schedule) {

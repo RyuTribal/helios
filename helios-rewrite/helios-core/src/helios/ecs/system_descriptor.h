@@ -6,7 +6,9 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
+#include <typeindex>
 #include <vector>
 
 namespace helios {
@@ -31,6 +33,11 @@ struct SystemDescriptor {
     std::vector<AccessDescriptor>    accesses;   // all reads and writes
     std::vector<SystemId>            after;       // must run after these systems
     std::vector<SystemId>            before;      // must run before these systems
+
+    /// Optional tag for bulk removal (used by state management).
+    /// Systems owned by a state are tagged with the state's type_index
+    /// so they can be removed when the state is popped.
+    std::optional<std::type_index>   owner_tag;
 };
 
 /// Helper: extract only reads from accesses

@@ -43,6 +43,14 @@ public:
     SystemDescriptorBuilder add_system(Schedule schedule, SystemSet<F> set,
                                        std::string name = "");
 
+    /// Add a pre-built SystemDescriptor. Used by state management to register
+    /// member-function systems with a type-erased invoker and an owner_tag.
+    void add_system(Schedule schedule, SystemDescriptor descriptor);
+
+    /// Remove all systems tagged with a given owner_tag.
+    /// Returns the number of systems removed.
+    size_t remove_systems_by_tag(std::type_index tag);
+
     /// Run all systems in the given schedule.
     void run(World& world, Schedule schedule);
 
