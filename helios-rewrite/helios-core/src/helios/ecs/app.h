@@ -12,10 +12,15 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_set>
 
 namespace helios {
+
+// Forward declaration so insert_resource<Windows>() can cache m_has_windows
+// without pulling in the full window header.
+class Windows;
 
 class App {
 public:
@@ -86,12 +91,17 @@ public:
 
     /// Install a callback that runs after the PreRender schedule.
     /// Only one callback is supported; later calls overwrite the previous one.
-    void set_post_pre_render(PostPreRenderFn fn) { m_post_pre_render = std::move(fn); }
+    void set_post_pre_render(PostPreRenderFn fn) {
+        m_post_pre_render = std::move(fn);
+        m_has_post_pre_render = static_cast<bool>(m_post_pre_render);
+    }
 
 private:
     World     m_world;
     Scheduler m_scheduler;
     bool      m_running = false;
+    bool      m_has_windows = false;   // cached at build time, avoids hash-map lookup per frame
+    bool      m_has_post_pre_render = false; // cached when hook is set
 
     std::unordered_set<std::type_index> m_registered_plugins;
 
@@ -118,6 +128,11 @@ App& App::add_plugin(P plugin) {
 template <typename T>
 App& App::insert_resource(T resource) {
     m_world.insert_resource<T>(std::move(resource));
+    // Cache whether the Windows resource exists so tick() avoids a hash-map
+    // lookup every frame.
+    if constexpr (std::is_same_v<std::decay_t<T>, Windows>) {
+        m_has_windows = true;
+    }
     return *this;
 }
 

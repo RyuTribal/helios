@@ -28,9 +28,12 @@ void App::tick() {
 
     m_scheduler.run(m_world, Schedule::PreUpdate);
 
-    // Check if window system requested quit (close button pressed)
-    if (auto* windows = m_world.try_resource<Windows>()) {
-        if (windows->quit_requested()) {
+    // Check if window system requested quit (close button pressed).
+    // m_has_windows is cached at build time so we avoid a hash-map lookup
+    // every frame.  The resource itself is guaranteed to exist if the flag
+    // is true (WindowPlugin inserts it during build).
+    if (m_has_windows) {
+        if (m_world.resource<Windows>().quit_requested()) {
             HELIOS_LOG(Core, Info, "Window close requested — shutting down");
             m_running = false;
             return;
@@ -59,7 +62,9 @@ void App::tick() {
     m_scheduler.run(m_world, Schedule::PreRender);
 
     // Submit render data to the render thread (if a render plugin installed the hook).
-    if (m_post_pre_render) {
+    // m_has_post_pre_render is cached when set_post_pre_render() is called,
+    // avoiding a std::function truthiness test every frame.
+    if (m_has_post_pre_render) {
         m_post_pre_render(m_world);
     }
 

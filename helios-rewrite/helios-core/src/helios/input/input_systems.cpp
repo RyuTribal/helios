@@ -18,10 +18,11 @@ void update_raw_input(ResMut<RawInput> input, Res<Windows> windows) {
     // Snapshot previous frame state before applying new events.
     input->begin_frame();
 
-    // If no primary window (headless mode), nothing to process.
-    if (!windows->has_primary()) {
-        return;
-    }
+    // InputPlugin requires WindowPlugin, which guarantees a primary window
+    // exists.  Assert once rather than branching every frame.
+    HELIOS_ASSERT(windows->has_primary(),
+                  "update_raw_input requires a primary window "
+                  "(InputPlugin depends on WindowPlugin)");
 
     const Window& primary = windows->primary();
     const WindowCallbackData& cb = primary.callback_data();

@@ -74,6 +74,14 @@ private:
         bool                          dirty = true; // needs rebuild
     };
 
+    // Execution strategy: run_sequential or run_parallel, selected once at
+    // enable_parallel() time.  Avoids a branch on every schedule run.
+    using RunStrategy = void (Scheduler::*)(ScheduleData&, World&);
+    RunStrategy m_run_strategy = &Scheduler::run_sequential;
+
+    void run_sequential(ScheduleData& data, World& world);
+    void run_parallel(ScheduleData& data, World& world);
+
     std::array<ScheduleData, SCHEDULE_COUNT> m_schedules;
     std::atomic<uint64_t>                    m_next_id{1};
     bool                                     m_parallel = false; // start sequential

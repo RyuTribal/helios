@@ -17,7 +17,12 @@ namespace helios {
 
 // --- System: present each frame ---
 void present_frame(ResMut<RenderContext> ctx) {
-    if (!ctx->swapchain || !ctx->cmd || !ctx->device) return;
+    // device and cmd are guaranteed non-null by RenderPlugin::build() which
+    // asserts on creation.  Only swapchain can become null if recreation
+    // failed in handle_swapchain_resize, so we check just that.
+    HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
+    HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
+    if (!ctx->swapchain) return;
 
     if (!ctx->swapchain->acquire_next_image()) {
         // Swapchain out of date — will be recreated on next resize event
