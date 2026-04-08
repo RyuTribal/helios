@@ -7,6 +7,13 @@
 
 namespace helios::rhi {
 
+// Forward declarations for abstract base types referenced by descriptor structs.
+class Shader;
+class Buffer;
+class Texture;
+class RenderPass;
+class DescriptorSetLayout;
+
 // ---------------------------------------------------------------------------
 //  Bitfield operator helper macro
 // ---------------------------------------------------------------------------
@@ -235,27 +242,21 @@ struct DescriptorWrite {
     uint32_t binding       = 0;
     DescriptorType type    = DescriptorType::UniformBuffer;
     // Buffer fields (used when type is UniformBuffer or StorageBuffer)
-    void* buffer_handle    = nullptr;  // native buffer pointer, cast by backend
+    Buffer* buffer_handle  = nullptr;
     uint32_t offset        = 0;
     uint32_t range         = 0;        // 0 = whole buffer
     // Image fields (used when type is CombinedImageSampler or StorageImage)
-    void* texture_handle   = nullptr;  // native texture pointer, cast by backend
+    Texture* texture_handle = nullptr;
 };
 
-// Forward declarations for backend types used in desc structs.
-// The actual Vulkan types are defined in vulkan/ headers.
-// GraphicsPipelineDesc and ComputePipelineDesc reference shader/layout/render-pass
-// objects by pointer. In the new RAII design these are non-owning references
-// to objects whose lifetime is managed by the caller.
-
 struct GraphicsPipelineDesc {
-    const void* vertex_shader     = nullptr;   // pointer to VulkanShader (or backend shader)
-    const void* fragment_shader   = nullptr;
-    const void* geometry_shader   = nullptr;
+    const Shader* vertex_shader   = nullptr;
+    const Shader* fragment_shader = nullptr;
+    const Shader* geometry_shader = nullptr;
     VertexLayout layout;
     RenderState state;
-    const void* render_pass       = nullptr;   // pointer to VulkanRenderPass (or backend RP)
-    std::vector<const void*> descriptor_layouts; // pointers to descriptor set layouts
+    const RenderPass* render_pass = nullptr;
+    std::vector<const DescriptorSetLayout*> descriptor_layouts;
     uint32_t push_constant_size   = 0;
     ShaderStage push_constant_stages = ShaderStage::Vertex;
     std::string debug_name;
@@ -267,8 +268,8 @@ struct GraphicsPipelineDesc {
 };
 
 struct ComputePipelineDesc {
-    const void* compute_shader    = nullptr;
-    std::vector<const void*> descriptor_layouts;
+    const Shader* compute_shader  = nullptr;
+    std::vector<const DescriptorSetLayout*> descriptor_layouts;
     uint32_t push_constant_size   = 0;
     std::string debug_name;
 };

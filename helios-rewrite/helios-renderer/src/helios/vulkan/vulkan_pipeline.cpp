@@ -63,7 +63,7 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& device, const GraphicsPipelineDesc&
     // -- 1. Shader stages --
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
-    auto add_stage = [&](const void* shader_ptr) {
+    auto add_stage = [&](const Shader* shader_ptr) {
         if (!shader_ptr) return;
         const auto* shader = static_cast<const VulkanShader*>(shader_ptr);
         VkPipelineShaderStageCreateInfo stage_info{};
