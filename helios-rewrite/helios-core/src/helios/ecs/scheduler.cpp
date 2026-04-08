@@ -2,6 +2,8 @@
 #include "helios/ecs/scheduler.h"
 #include "helios/core/engine_log_channels.h"
 
+#include <exception>
+
 namespace helios {
 
 Scheduler::Scheduler() = default;
@@ -46,8 +48,18 @@ void Scheduler::run(World& world, Schedule schedule) {
 void Scheduler::run_sequential(ScheduleData& data, World& world) {
     for (const auto& stage : data.plan.stages) {
         for (size_t idx : stage.system_indices) {
-            data.systems[idx].run(world);
+            try {
+                data.systems[idx].run(world);
+            } catch (const std::exception& e) {
+                HELIOS_LOG(Scheduler, Error, "System '{}' threw: {}",
+                    data.systems[idx].name, e.what());
+            } catch (...) {
+                HELIOS_LOG(Scheduler, Error, "System '{}' threw an unknown exception",
+                    data.systems[idx].name);
+            }
         }
+        // Apply deferred commands accumulated during this stage.
+        world.apply_and_clear_pending_commands();
     }
 }
 
@@ -71,11 +83,27 @@ void Scheduler::run_parallel(ScheduleData& data, World& world) {
             }
 
             // Wait for all systems in this stage to complete before
-            // moving to the next stage.
+            // moving to the next stage. Collect exceptions without
+            // aborting so all futures are joined.
+            std::exception_ptr first_error;
             for (auto& f : futures) {
-                f.get();
+                try {
+                    f.get();
+                } catch (const std::exception& e) {
+                    if (!first_error) first_error = std::current_exception();
+                    HELIOS_LOG(Scheduler, Error, "System threw in parallel stage: {}", e.what());
+                } catch (...) {
+                    if (!first_error) first_error = std::current_exception();
+                    HELIOS_LOG(Scheduler, Error, "System threw unknown exception in parallel stage");
+                }
+            }
+            if (first_error) {
+                HELIOS_LOG(Scheduler, Error,
+                    "One or more parallel systems failed; continuing to next stage");
             }
         }
+        // Apply deferred commands accumulated during this stage.
+        world.apply_and_clear_pending_commands();
     }
 }
 

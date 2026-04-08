@@ -43,6 +43,13 @@ public:
     explicit Commands(EntityAllocator& allocator)
         : m_allocator(&allocator) {}
 
+    // Non-copyable: systems must take Commands& (reference) so that deferred
+    // operations accumulate in the world-owned buffer, not a temporary copy.
+    Commands(const Commands&) = delete;
+    Commands& operator=(const Commands&) = delete;
+    Commands(Commands&&) = default;
+    Commands& operator=(Commands&&) = default;
+
     /// Allocate an entity immediately, queue deferred spawn into empty archetype.
     /// Returns an EntityBuilder for chaining .insert() calls.
     EntityBuilder spawn();

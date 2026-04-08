@@ -20,7 +20,7 @@ struct MyEvent  { int data; };
 void system_readonly(Query<const Position, const Velocity> /*q*/, Res<TimeRes> /*t*/) {}
 void system_readwrite(Query<Position, const Velocity> /*q*/) {}
 void system_resource_write(ResMut<TimeRes> /*t*/) {}
-void system_commands_only(Commands /*cmd*/) {}
+void system_commands_only(Commands& /*cmd*/) {}
 void system_events(EventReader<MyEvent> /*r*/, EventWriter<MyEvent> /*w*/) {}
 
 // ---- Helper ----
@@ -62,9 +62,11 @@ TEST(SystemParamTraits, ResourceWrite) {
     EXPECT_TRUE(has_access(accesses, typeid(TimeRes), AccessMode::Write));
 }
 
-TEST(SystemParamTraits, CommandsNoAccess) {
+TEST(SystemParamTraits, CommandsWriteAccess) {
     auto accesses = SystemParamExtractor<decltype(&system_commands_only)>::accesses();
-    EXPECT_TRUE(accesses.empty());
+    // Commands reports Write access so the DAG serializes all command-using systems.
+    EXPECT_EQ(accesses.size(), 1u);
+    EXPECT_TRUE(has_access(accesses, typeid(Commands), AccessMode::Write));
 }
 
 TEST(SystemParamTraits, EventReaderWriter) {

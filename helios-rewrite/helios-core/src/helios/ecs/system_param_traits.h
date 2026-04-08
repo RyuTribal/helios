@@ -179,15 +179,20 @@ struct SystemParam<ResMut<T>> {
     }
 };
 
-// --- Commands (deferred -- no access conflicts) ---
+// --- Commands (deferred -- writes applied after each stage) ---
+// Reports Write access on Commands so the DAG serializes all
+// command-using systems (Commands is NOT thread-safe).
 template <>
 struct SystemParam<Commands> {
     static std::vector<AccessDescriptor> accesses() {
-        return {}; // Commands are deferred, no data race
+        return { AccessDescriptor{
+            .type = std::type_index(typeid(Commands)),
+            .mode = AccessMode::Write,
+        } };
     }
 
-    static Commands fetch(World& world) {
-        return Commands(world.entities());
+    static Commands& fetch(World& world) {
+        return world.pending_commands();
     }
 };
 
