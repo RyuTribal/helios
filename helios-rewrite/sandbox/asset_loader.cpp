@@ -28,7 +28,7 @@ namespace sandbox {
 // Helper: read SPIR-V from disk
 // ---------------------------------------------------------------------------
 
-static std::vector<uint8_t> read_spirv(const std::filesystem::path& path) {
+std::vector<uint8_t> read_spirv(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) return {};
     auto sz = file.tellg();
@@ -36,6 +36,17 @@ static std::vector<uint8_t> read_spirv(const std::filesystem::path& path) {
     file.seekg(0);
     file.read(reinterpret_cast<char*>(data.data()), sz);
     return data;
+}
+
+std::vector<glm::vec3> build_skybox_cube() {
+    return {
+        {-1,-1, 1},{ 1,-1, 1},{ 1, 1, 1},{ 1, 1, 1},{-1, 1, 1},{-1,-1, 1},
+        { 1,-1,-1},{-1,-1,-1},{-1, 1,-1},{-1, 1,-1},{ 1, 1,-1},{ 1,-1,-1},
+        { 1,-1, 1},{ 1,-1,-1},{ 1, 1,-1},{ 1, 1,-1},{ 1, 1, 1},{ 1,-1, 1},
+        {-1,-1,-1},{-1,-1, 1},{-1, 1, 1},{-1, 1, 1},{-1, 1,-1},{-1,-1,-1},
+        {-1, 1, 1},{ 1, 1, 1},{ 1, 1,-1},{ 1, 1,-1},{-1, 1,-1},{-1, 1, 1},
+        {-1,-1,-1},{ 1,-1,-1},{ 1,-1, 1},{ 1,-1, 1},{-1,-1, 1},{-1,-1,-1},
+    };
 }
 
 // ---------------------------------------------------------------------------

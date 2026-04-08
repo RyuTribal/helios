@@ -12,7 +12,6 @@
 #include <helios/components/components.h>
 #include <helios/core/logging.h>
 #include <helios/window/window_plugin.h>
-#include <helios/window/window_events.h>
 #include <helios/input/input_plugin.h>
 #include <helios/input/input_map.h>
 #include <helios/input/raw_input.h>
@@ -41,8 +40,6 @@
 
 #include <cmath>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
 #include <vector>
 
 using namespace helios;
@@ -122,46 +119,6 @@ static std::vector<uint8_t> generate_bounce_wav() {
 
 enum class SceneState { Loading, Scene1, Scene2 };
 
-// ============================================================
-// Helper: read SPIR-V file from disk
-// ============================================================
-
-static std::vector<uint8_t> read_spirv(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) return {};
-    auto sz = file.tellg();
-    std::vector<uint8_t> data(static_cast<size_t>(sz));
-    file.seekg(0);
-    file.read(reinterpret_cast<char*>(data.data()), sz);
-    return data;
-}
-
-// ============================================================
-// Skybox cube geometry (36 vertices, position only)
-// ============================================================
-
-static std::vector<glm::vec3> build_skybox_cube() {
-    return {
-        // +Z face
-        {-1, -1,  1}, { 1, -1,  1}, { 1,  1,  1},
-        { 1,  1,  1}, {-1,  1,  1}, {-1, -1,  1},
-        // -Z face
-        { 1, -1, -1}, {-1, -1, -1}, {-1,  1, -1},
-        {-1,  1, -1}, { 1,  1, -1}, { 1, -1, -1},
-        // +X face
-        { 1, -1,  1}, { 1, -1, -1}, { 1,  1, -1},
-        { 1,  1, -1}, { 1,  1,  1}, { 1, -1,  1},
-        // -X face
-        {-1, -1, -1}, {-1, -1,  1}, {-1,  1,  1},
-        {-1,  1,  1}, {-1,  1, -1}, {-1, -1, -1},
-        // +Y face
-        {-1,  1,  1}, { 1,  1,  1}, { 1,  1, -1},
-        { 1,  1, -1}, {-1,  1, -1}, {-1,  1,  1},
-        // -Y face
-        {-1, -1, -1}, { 1, -1, -1}, { 1, -1,  1},
-        { 1, -1,  1}, {-1, -1,  1}, {-1, -1, -1},
-    };
-}
 
 // ============================================================
 // Scene asset handle tracking (resource shared across states)
@@ -270,21 +227,6 @@ void orbit_camera_system(Res<RawInput> input,
     }
 }
 
-void log_frame_packet(Res<renderer::FramePacket> packet, Res<Time> time) {
-    if (time->frame_count() % 300 == 0 && time->frame_count() > 0) {
-        HELIOS_LOG(Game, Debug, "Frame {} | FramePacket: {} meshes, {} dir lights | dt={:.3f}ms",
-            time->frame_count(),
-            packet->mesh_draws.size(),
-            packet->dir_lights.size(),
-            time->delta() * 1000.0f);
-    }
-}
-
-void handle_resize(EventReader<WindowResized> events) {
-    for (const auto& e : events) {
-        HELIOS_LOG(Game, Debug, "Window resized: {}x{}", e.width, e.height);
-    }
-}
 
 // ============================================================
 // Physics update system (runs during Update when demo is active)
@@ -339,49 +281,6 @@ void physics_update_system(ResMut<PhysicsDemo> demo,
     if (demo->audio) {
         demo->audio->update();
     }
-}
-
-// ============================================================
-// Helper: update material descriptor set with current scene textures
-// ============================================================
-
-static void update_material_ds(rhi::Device& device,
-                                PBRRenderState& pbr,
-                                const SceneAssets& scene,
-                                const SkyboxState& skybox) {
-    if (!pbr.material_ds) return;
-
-    // Use env cubemap for binding 4 if available, else albedo as fallback
-    rhi::Texture* env_tex = skybox.env_cubemap ? skybox.env_cubemap.get()
-                                               : scene.albedo_tex.get();
-
-    device.update_descriptor_set(*pbr.material_ds, {
-        rhi::DescriptorWrite{
-            .binding = 0,
-            .type = rhi::DescriptorType::CombinedImageSampler,
-            .texture_handle = scene.albedo_tex.get(),
-        },
-        rhi::DescriptorWrite{
-            .binding = 1,
-            .type = rhi::DescriptorType::CombinedImageSampler,
-            .texture_handle = scene.normal_tex.get(),
-        },
-        rhi::DescriptorWrite{
-            .binding = 2,
-            .type = rhi::DescriptorType::CombinedImageSampler,
-            .texture_handle = scene.metallic_roughness_tex.get(),
-        },
-        rhi::DescriptorWrite{
-            .binding = 3,
-            .type = rhi::DescriptorType::CombinedImageSampler,
-            .texture_handle = scene.emissive_tex.get(),
-        },
-        rhi::DescriptorWrite{
-            .binding = 4,
-            .type = rhi::DescriptorType::CombinedImageSampler,
-            .texture_handle = env_tex,
-        },
-    });
 }
 
 // ============================================================
@@ -806,9 +705,7 @@ struct GamePlugin {
         app.insert_resource(PhysicsDemo{});
         app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
         app.add_system(Schedule::Update, physics_update_system, "physics_update");
-        app.add_system(Schedule::PostUpdate, log_frame_packet, "log_frame_packet");
-        app.add_system(Schedule::PreUpdate, handle_resize, "handle_resize");
-        HELIOS_LOG(Game, Info, "GamePlugin initialized (with physics + audio)");
+        HELIOS_LOG(Game, Info, "GamePlugin initialized");
     }
 };
 
@@ -932,8 +829,8 @@ struct SandboxAssetsPlugin {
 
         // ---- Load PBR shaders ----
         {
-            auto vert_spirv = read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.vert.spv");
-            auto frag_spirv = read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.frag.spv");
+            auto vert_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.vert.spv");
+            auto frag_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.frag.spv");
             if (vert_spirv.empty() || frag_spirv.empty()) {
                 HELIOS_LOG(Game, Error, "Failed to load PBR shaders from '{}'", shader_dir);
                 app.insert_resource(std::move(pbr));
@@ -1043,8 +940,8 @@ struct SandboxAssetsPlugin {
         }
 
         if (env_cubemap) {
-            auto sky_vert_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.vert.spv");
-            auto sky_frag_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.frag.spv");
+            auto sky_vert_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "skybox.vert.spv");
+            auto sky_frag_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "skybox.frag.spv");
 
             if (!sky_vert_spirv.empty() && !sky_frag_spirv.empty()) {
                 rhi::ShaderDesc sv_desc;
@@ -1111,7 +1008,7 @@ struct SandboxAssetsPlugin {
 
                 skybox.pipeline = device.create_graphics_pipeline(sky_pipe);
 
-                auto sky_verts = build_skybox_cube();
+                auto sky_verts = sandbox::build_skybox_cube();
                 rhi::BufferDesc sky_vbo_desc;
                 sky_vbo_desc.size = static_cast<uint32_t>(sky_verts.size() * sizeof(glm::vec3));
                 sky_vbo_desc.usage = rhi::BufferUsage::Vertex;
