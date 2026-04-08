@@ -1,8 +1,5 @@
 // helios-renderer/src/helios/render_plugin.cpp
 #include "helios/render_plugin.h"
-#include "helios/forward_plus/simple_render_state.h"
-#include "helios/forward_plus/gpu_data.h"
-#include "helios/graph/frame_packet.h"
 #include "helios/rhi/rhi.h"
 #include "helios/rhi/rhi_factory.h"
 #include "helios/window/windows.h"
@@ -18,10 +15,8 @@ HELIOS_DEFINE_LOG_CHANNEL(Render);
 
 namespace helios {
 
-// --- System: present each frame ---
-void present_frame(ResMut<RenderContext> ctx,
-                   Res<renderer::FramePacket> packet,
-                   ResMut<SimpleRenderState> simple) {
+// --- System: begin frame (acquire + begin command buffer + begin rendering) ---
+void frame_begin(ResMut<RenderContext> ctx) {
     HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
     HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
     if (!ctx->swapchain) return;
@@ -34,85 +29,25 @@ void present_frame(ResMut<RenderContext> ctx,
     ctx->cmd->begin();
 
     rhi::ClearValues clear;
-    clear.color[0] = 0.02f;
-    clear.color[1] = 0.02f;
-    clear.color[2] = 0.02f;
-    clear.color[3] = 1.0f;
+    clear.color[0] = ctx->clear_color[0];
+    clear.color[1] = ctx->clear_color[1];
+    clear.color[2] = ctx->clear_color[2];
+    clear.color[3] = ctx->clear_color[3];
     clear.depth = 1.0f;
 
     // Begin rendering with depth attachment if available
-    rhi::Texture* depth_ptr = simple->depth_texture ? simple->depth_texture.get() : nullptr;
+    rhi::Texture* depth_ptr = ctx->depth_texture ? ctx->depth_texture.get() : nullptr;
     ctx->swapchain->begin_rendering(*ctx->cmd, clear, depth_ptr);
+}
 
-    const float w = static_cast<float>(ctx->swapchain->width());
-    const float h = static_cast<float>(ctx->swapchain->height());
-
-    // --- Skybox ---
-    if (simple->has_skybox && simple->skybox_pipeline && simple->skybox_ds) {
-        auto& cmd = *ctx->cmd;
-
-        // Update skybox UBO (rotation-only view matrix)
-        SkyboxUBOData skybox_data;
-        skybox_data.camera_view = packet->camera.view;
-        skybox_data.camera_projection = packet->camera.projection;
-        skybox_data.brightness = 1.0f;
-        simple->skybox_ubo->set_data(&skybox_data, sizeof(skybox_data));
-
-        cmd.bind_pipeline(*simple->skybox_pipeline);
-        cmd.set_viewport(0.0f, 0.0f, w, h);
-        cmd.set_scissor(0, 0, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-        cmd.bind_descriptor_set(0, *simple->skybox_ds);
-        cmd.bind_vertex_buffer(*simple->skybox_cube_vbo);
-        cmd.draw(36);
-    }
-
-    // --- PBR mesh rendering ---
-    if (simple->valid && !packet->mesh_draws.empty()) {
-        auto& cmd = *ctx->cmd;
-
-        // Update PBR camera UBO
-        PBRCameraUBO cam_data;
-        cam_data.view       = packet->camera.view;
-        cam_data.projection = packet->camera.projection;
-        cam_data.camera_pos = packet->camera.position;
-        cam_data._pad0 = 0.0f;
-
-        // Use first directional light if available, otherwise default sun
-        if (!packet->dir_lights.empty()) {
-            cam_data.light_dir   = packet->dir_lights[0].direction;
-            cam_data.light_color = packet->dir_lights[0].color;
-            cam_data.light_intensity = packet->dir_lights[0].intensity;
-        } else {
-            cam_data.light_dir   = glm::vec3(0.0f, -1.0f, -0.5f);
-            cam_data.light_color = glm::vec3(1.0f, 0.95f, 0.8f);
-            cam_data.light_intensity = 2.0f;
-        }
-        cam_data._pad1 = 0.0f;
-        simple->camera_ubo->set_data(&cam_data, sizeof(cam_data));
-
-        cmd.bind_pipeline(*simple->pipeline);
-        cmd.set_viewport(0.0f, 0.0f, w, h);
-        cmd.set_scissor(0, 0, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-
-        cmd.bind_descriptor_set(0, *simple->camera_ds);
-        cmd.bind_descriptor_set(1, *simple->material_ds);
-
-        cmd.bind_vertex_buffer(*simple->mesh_vbo);
-        cmd.bind_index_buffer(*simple->mesh_ibo);
-
-        for (const auto& draw : packet->mesh_draws) {
-            PushConstantData pc;
-            pc.transform = draw.transform;
-            cmd.push_constants(rhi::ShaderStage::Vertex, 0,
-                               sizeof(PushConstantData), &pc);
-            cmd.draw_indexed(simple->index_count);
-        }
-    }
+// --- System: end frame (end rendering + submit + present) ---
+void frame_end(ResMut<RenderContext> ctx) {
+    if (!ctx->swapchain) return;
+    // If acquire failed in frame_begin, the command buffer was never started.
+    // The swapchain tracks this internally; end_rendering / present are safe no-ops.
 
     ctx->swapchain->end_rendering(*ctx->cmd);
-
     ctx->cmd->end();
-
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
     ctx->swapchain->present();
 }
@@ -120,7 +55,6 @@ void present_frame(ResMut<RenderContext> ctx,
 // --- System: handle window resize -> recreate swapchain + depth buffer ---
 void handle_swapchain_resize(
     ResMut<RenderContext> ctx,
-    ResMut<SimpleRenderState> simple,
     Res<Windows> windows,
     EventReader<WindowResized> resize_events)
 {
@@ -147,14 +81,14 @@ void handle_swapchain_resize(
             ctx->swapchain = std::move(new_swapchain);
 
             // Recreate depth buffer to match the new swapchain size
-            if (simple->depth_texture) {
+            if (ctx->depth_texture) {
                 rhi::TextureDesc depth_desc;
                 depth_desc.width = e.width;
                 depth_desc.height = e.height;
                 depth_desc.format = rhi::TextureFormat::Depth32F;
                 depth_desc.usage = rhi::TextureUsage::DepthAttachment;
                 depth_desc.debug_name = "DepthBuffer";
-                simple->depth_texture = ctx->device->create_texture(depth_desc);
+                ctx->depth_texture = ctx->device->create_texture(depth_desc);
             }
         } else {
             HELIOS_LOG(Render, Warn, "Swapchain recreation failed for {}x{}, will retry", e.width, e.height);
@@ -192,17 +126,17 @@ void RenderPlugin::build(App& app) {
     ctx.device = std::move(device);
     ctx.swapchain = std::move(swapchain);
     ctx.cmd = std::move(cmd);
+    ctx.clear_color[0] = clear_color[0];
+    ctx.clear_color[1] = clear_color[1];
+    ctx.clear_color[2] = clear_color[2];
+    ctx.clear_color[3] = clear_color[3];
     app.insert_resource(std::move(ctx));
 
-    // Insert default resources so present_frame's parameter resolution
-    // succeeds even without ForwardPlusPlugin.  If ForwardPlusPlugin IS
-    // added, it will overwrite these with properly populated versions.
-    if (!app.world().has_resource<renderer::FramePacket>())
-        app.insert_resource(renderer::FramePacket{});
-    if (!app.world().has_resource<SimpleRenderState>())
-        app.insert_resource(SimpleRenderState{});
+    // Register frame_begin and frame_end with explicit ordering.
+    // Other plugins insert draw systems between them using id_of().
+    auto begin_id = app.add_system(Schedule::PreRender, frame_begin, "frame_begin").id();
+    app.add_system(Schedule::PreRender, frame_end, "frame_end").after(begin_id);
 
-    app.add_system(Schedule::PreRender, present_frame, "present_frame");
     app.add_system(Schedule::PreUpdate, handle_swapchain_resize, "handle_swapchain_resize");
     app.add_system(Schedule::Shutdown, gpu_shutdown, "gpu_shutdown");
 

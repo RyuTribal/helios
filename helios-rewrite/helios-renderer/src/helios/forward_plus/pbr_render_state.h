@@ -1,7 +1,7 @@
-// helios-renderer/src/helios/forward_plus/simple_render_state.h
+// helios-renderer/src/helios/forward_plus/pbr_render_state.h
 //
-// Render state for the PBR sandbox demo: DamagedHelmet with PBR shading
-// and an HDR skybox. Also retains the old flat-color cube path as fallback.
+// PBR rendering state: shaders, pipeline, descriptor sets, textures, mesh buffers.
+// Split from the old SimpleRenderState god-struct.
 #pragma once
 
 #include "helios/rhi/rhi.h"
@@ -9,8 +9,7 @@
 
 namespace helios {
 
-struct SimpleRenderState {
-    // PBR mesh rendering
+struct PBRRenderState {
     std::unique_ptr<rhi::Shader> vert_shader;
     std::unique_ptr<rhi::Shader> frag_shader;
     std::unique_ptr<rhi::Pipeline> pipeline;
@@ -31,21 +30,7 @@ struct SimpleRenderState {
     std::unique_ptr<rhi::Texture> metallic_roughness_tex;
     std::unique_ptr<rhi::Texture> emissive_tex;
 
-    // Skybox
-    std::unique_ptr<rhi::Shader> skybox_vert;
-    std::unique_ptr<rhi::Shader> skybox_frag;
-    std::unique_ptr<rhi::Pipeline> skybox_pipeline;
-    std::unique_ptr<rhi::DescriptorSetLayout> skybox_layout;
-    std::unique_ptr<rhi::DescriptorSet> skybox_ds;
-    std::unique_ptr<rhi::Buffer> skybox_ubo;
-    std::unique_ptr<rhi::Buffer> skybox_cube_vbo;
-    std::unique_ptr<rhi::Texture> env_cubemap;
-
-    // Depth buffer
-    std::unique_ptr<rhi::Texture> depth_texture;
-
     bool valid = false;
-    bool has_skybox = false;
 };
 
 } // namespace helios

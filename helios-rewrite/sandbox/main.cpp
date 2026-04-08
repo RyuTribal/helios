@@ -12,7 +12,8 @@
 #include <helios/input/raw_input.h>
 #include <helios/render_plugin.h>
 #include <helios/forward_plus/forward_plus_plugin.h>
-#include <helios/forward_plus/simple_render_state.h>
+#include <helios/forward_plus/pbr_render_state.h>
+#include <helios/forward_plus/skybox_state.h>
 #include <helios/forward_plus/gpu_data.h>
 #include <helios/graph/frame_packet.h>
 
@@ -153,46 +154,52 @@ struct SandboxAssetsPlugin {
         const std::string shader_dir = "shaders";
 #endif
 
-        SimpleRenderState state;
+        PBRRenderState pbr;
+        SkyboxState skybox;
 
         // ---- Load helmet mesh ----
         auto helmet = sandbox::load_gltf_mesh(device,
             (helmet_dir + "/scene.gltf").c_str());
         if (!helmet.vbo || !helmet.ibo) {
             HELIOS_LOG(Game, Error, "Failed to load helmet mesh");
-            app.insert_resource(std::move(state));
+            app.insert_resource(std::move(pbr));
+            app.insert_resource(std::move(skybox));
             return;
         }
-        state.mesh_vbo = std::move(helmet.vbo);
-        state.mesh_ibo = std::move(helmet.ibo);
-        state.index_count = helmet.index_count;
+        pbr.mesh_vbo = std::move(helmet.vbo);
+        pbr.mesh_ibo = std::move(helmet.ibo);
+        pbr.index_count = helmet.index_count;
 
         // ---- Load PBR textures ----
-        state.albedo_tex = sandbox::load_texture_2d(device,
+        pbr.albedo_tex = sandbox::load_texture_2d(device,
             (tex_dir + "/Material_MR_baseColor.jpeg").c_str(), "HelmetAlbedo");
-        state.normal_tex = sandbox::load_texture_2d(device,
+        pbr.normal_tex = sandbox::load_texture_2d(device,
             (tex_dir + "/Material_MR_normal.jpeg").c_str(), "HelmetNormal");
-        state.metallic_roughness_tex = sandbox::load_texture_2d(device,
+        pbr.metallic_roughness_tex = sandbox::load_texture_2d(device,
             (tex_dir + "/Material_MR_metallicRoughness.png").c_str(), "HelmetMR");
-        state.emissive_tex = sandbox::load_texture_2d(device,
+        pbr.emissive_tex = sandbox::load_texture_2d(device,
             (tex_dir + "/Material_MR_emissive.jpeg").c_str(), "HelmetEmissive");
 
-        if (!state.albedo_tex || !state.normal_tex ||
-            !state.metallic_roughness_tex || !state.emissive_tex) {
+        if (!pbr.albedo_tex || !pbr.normal_tex ||
+            !pbr.metallic_roughness_tex || !pbr.emissive_tex) {
             HELIOS_LOG(Game, Error, "Failed to load one or more PBR textures");
-            app.insert_resource(std::move(state));
+            app.insert_resource(std::move(pbr));
+            app.insert_resource(std::move(skybox));
             return;
         }
 
         // ---- Load HDR skybox and convert to cubemap ----
-        auto equirect = sandbox::load_hdr_texture(device,
-            (asset_dir + "/Textures/default_skybox.hdr").c_str(), "SkyboxEquirect");
-        if (equirect) {
-            state.env_cubemap = sandbox::convert_equirect_to_cubemap(
-                device, *ctx.cmd, *equirect, 1024);
+        std::unique_ptr<rhi::Texture> env_cubemap;
+        {
+            auto equirect = sandbox::load_hdr_texture(device,
+                (asset_dir + "/Textures/default_skybox.hdr").c_str(), "SkyboxEquirect");
+            if (equirect) {
+                env_cubemap = sandbox::convert_equirect_to_cubemap(
+                    device, *ctx.cmd, *equirect, 1024);
+            }
         }
 
-        // ---- Create depth buffer ----
+        // ---- Create depth buffer (stored in RenderContext) ----
         {
             rhi::TextureDesc depth_desc;
             depth_desc.width = ctx.swapchain->width();
@@ -203,7 +210,7 @@ struct SandboxAssetsPlugin {
             depth_desc.array_layers = 1;
             depth_desc.usage = rhi::TextureUsage::DepthAttachment;
             depth_desc.debug_name = "DepthBuffer";
-            state.depth_texture = device.create_texture(depth_desc);
+            ctx.depth_texture = device.create_texture(depth_desc);
         }
 
         // ---- PBR Camera UBO (set 0, binding 0) ----
@@ -213,7 +220,7 @@ struct SandboxAssetsPlugin {
             ubo_desc.usage = rhi::BufferUsage::Uniform;
             ubo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
             ubo_desc.debug_name = "PBRCameraUBO";
-            state.camera_ubo = device.create_buffer(ubo_desc);
+            pbr.camera_ubo = device.create_buffer(ubo_desc);
         }
 
         // ---- Camera descriptor set layout (set 0) ----
@@ -228,7 +235,7 @@ struct SandboxAssetsPlugin {
                 },
             };
             layout_desc.debug_name = "PBRCamera_DSL";
-            state.camera_layout = device.create_descriptor_set_layout(layout_desc);
+            pbr.camera_layout = device.create_descriptor_set_layout(layout_desc);
         }
 
         // ---- Material descriptor set layout (set 1) ----
@@ -267,8 +274,11 @@ struct SandboxAssetsPlugin {
                 },
             };
             layout_desc.debug_name = "PBRMaterial_DSL";
-            state.material_layout = device.create_descriptor_set_layout(layout_desc);
+            pbr.material_layout = device.create_descriptor_set_layout(layout_desc);
         }
+
+        // Use the swapchain's actual color format for pipeline creation
+        const rhi::TextureFormat swapchain_color_fmt = ctx.swapchain->color_format();
 
         // ---- Load PBR shaders ----
         {
@@ -276,7 +286,8 @@ struct SandboxAssetsPlugin {
             auto frag_spirv = read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.frag.spv");
             if (vert_spirv.empty() || frag_spirv.empty()) {
                 HELIOS_LOG(Game, Error, "Failed to load PBR shaders from '{}'", shader_dir);
-                app.insert_resource(std::move(state));
+                app.insert_resource(std::move(pbr));
+                app.insert_resource(std::move(skybox));
                 return;
             }
 
@@ -285,21 +296,21 @@ struct SandboxAssetsPlugin {
             vert_desc.spirv_code = std::move(vert_spirv);
             vert_desc.entry_point = "main";
             vert_desc.debug_name = "pbr_simple_vert";
-            state.vert_shader = device.create_shader(vert_desc);
+            pbr.vert_shader = device.create_shader(vert_desc);
 
             rhi::ShaderDesc frag_desc;
             frag_desc.stage = rhi::ShaderStage::Fragment;
             frag_desc.spirv_code = std::move(frag_spirv);
             frag_desc.entry_point = "main";
             frag_desc.debug_name = "pbr_simple_frag";
-            state.frag_shader = device.create_shader(frag_desc);
+            pbr.frag_shader = device.create_shader(frag_desc);
         }
 
         // ---- PBR graphics pipeline ----
         {
             rhi::GraphicsPipelineDesc pipe_desc;
-            pipe_desc.vertex_shader = state.vert_shader.get();
-            pipe_desc.fragment_shader = state.frag_shader.get();
+            pipe_desc.vertex_shader = pbr.vert_shader.get();
+            pipe_desc.fragment_shader = pbr.frag_shader.get();
             pipe_desc.layout.stride = sizeof(sandbox::PBRVertex);
             pipe_desc.layout.attributes = {
                 rhi::VertexAttribute{
@@ -330,32 +341,33 @@ struct SandboxAssetsPlugin {
             pipe_desc.state.blend = rhi::BlendMode::None;
             pipe_desc.render_pass = nullptr;
             pipe_desc.descriptor_layouts = {
-                state.camera_layout.get(),
-                state.material_layout.get()
+                pbr.camera_layout.get(),
+                pbr.material_layout.get()
             };
             pipe_desc.push_constant_size = sizeof(PushConstantData);
             pipe_desc.push_constant_stages = rhi::ShaderStage::Vertex;
             pipe_desc.debug_name = "PBRSimple";
             pipe_desc.use_dynamic_rendering = true;
-            pipe_desc.dynamic_color_formats = { rhi::TextureFormat::BGRA8 };
+            pipe_desc.dynamic_color_formats = { swapchain_color_fmt };
             pipe_desc.dynamic_depth_format = rhi::TextureFormat::Depth32F;
 
-            state.pipeline = device.create_graphics_pipeline(pipe_desc);
-            if (!state.pipeline) {
+            pbr.pipeline = device.create_graphics_pipeline(pipe_desc);
+            if (!pbr.pipeline) {
                 HELIOS_LOG(Game, Error, "Failed to create PBR pipeline");
-                app.insert_resource(std::move(state));
+                app.insert_resource(std::move(pbr));
+                app.insert_resource(std::move(skybox));
                 return;
             }
         }
 
         // ---- Camera descriptor set ----
         {
-            state.camera_ds = device.allocate_descriptor_set(*state.camera_layout);
-            device.update_descriptor_set(*state.camera_ds, {
+            pbr.camera_ds = device.allocate_descriptor_set(*pbr.camera_layout);
+            device.update_descriptor_set(*pbr.camera_ds, {
                 rhi::DescriptorWrite{
                     .binding = 0,
                     .type = rhi::DescriptorType::UniformBuffer,
-                    .buffer_handle = state.camera_ubo.get(),
+                    .buffer_handle = pbr.camera_ubo.get(),
                     .range = sizeof(PBRCameraUBO),
                 },
             });
@@ -363,31 +375,31 @@ struct SandboxAssetsPlugin {
 
         // ---- Material descriptor set ----
         {
-            state.material_ds = device.allocate_descriptor_set(*state.material_layout);
+            pbr.material_ds = device.allocate_descriptor_set(*pbr.material_layout);
 
             // Use the env cubemap for binding 4, or albedo as fallback
-            rhi::Texture* env_tex = state.env_cubemap ? state.env_cubemap.get() : state.albedo_tex.get();
+            rhi::Texture* env_tex = env_cubemap ? env_cubemap.get() : pbr.albedo_tex.get();
 
-            device.update_descriptor_set(*state.material_ds, {
+            device.update_descriptor_set(*pbr.material_ds, {
                 rhi::DescriptorWrite{
                     .binding = 0,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = state.albedo_tex.get(),
+                    .texture_handle = pbr.albedo_tex.get(),
                 },
                 rhi::DescriptorWrite{
                     .binding = 1,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = state.normal_tex.get(),
+                    .texture_handle = pbr.normal_tex.get(),
                 },
                 rhi::DescriptorWrite{
                     .binding = 2,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = state.metallic_roughness_tex.get(),
+                    .texture_handle = pbr.metallic_roughness_tex.get(),
                 },
                 rhi::DescriptorWrite{
                     .binding = 3,
                     .type = rhi::DescriptorType::CombinedImageSampler,
-                    .texture_handle = state.emissive_tex.get(),
+                    .texture_handle = pbr.emissive_tex.get(),
                 },
                 rhi::DescriptorWrite{
                     .binding = 4,
@@ -397,13 +409,13 @@ struct SandboxAssetsPlugin {
             });
         }
 
-        state.valid = true;
-        HELIOS_LOG(Game, Info, "PBR pipeline created: {} indices", state.index_count);
+        pbr.valid = true;
+        HELIOS_LOG(Game, Info, "PBR pipeline created: {} indices", pbr.index_count);
 
         // ============================================================
         // Skybox setup
         // ============================================================
-        if (state.env_cubemap) {
+        if (env_cubemap) {
             // Load skybox shaders
             auto sky_vert_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.vert.spv");
             auto sky_frag_spirv = read_spirv(std::filesystem::path(shader_dir) / "skybox.frag.spv");
@@ -414,14 +426,14 @@ struct SandboxAssetsPlugin {
                 sv_desc.spirv_code = std::move(sky_vert_spirv);
                 sv_desc.entry_point = "main";
                 sv_desc.debug_name = "skybox_vert";
-                state.skybox_vert = device.create_shader(sv_desc);
+                skybox.vert_shader = device.create_shader(sv_desc);
 
                 rhi::ShaderDesc sf_desc;
                 sf_desc.stage = rhi::ShaderStage::Fragment;
                 sf_desc.spirv_code = std::move(sky_frag_spirv);
                 sf_desc.entry_point = "main";
                 sf_desc.debug_name = "skybox_frag";
-                state.skybox_frag = device.create_shader(sf_desc);
+                skybox.frag_shader = device.create_shader(sf_desc);
 
                 // Skybox descriptor layout: UBO at binding 0, cubemap at binding 1
                 rhi::DescriptorSetLayoutDesc sky_layout_desc;
@@ -440,7 +452,7 @@ struct SandboxAssetsPlugin {
                     },
                 };
                 sky_layout_desc.debug_name = "Skybox_DSL";
-                state.skybox_layout = device.create_descriptor_set_layout(sky_layout_desc);
+                skybox.layout = device.create_descriptor_set_layout(sky_layout_desc);
 
                 // Skybox UBO
                 rhi::BufferDesc sky_ubo_desc;
@@ -448,12 +460,12 @@ struct SandboxAssetsPlugin {
                 sky_ubo_desc.usage = rhi::BufferUsage::Uniform;
                 sky_ubo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
                 sky_ubo_desc.debug_name = "SkyboxUBO";
-                state.skybox_ubo = device.create_buffer(sky_ubo_desc);
+                skybox.ubo = device.create_buffer(sky_ubo_desc);
 
                 // Skybox pipeline: depth test enabled, depth write disabled, LessEqual
                 rhi::GraphicsPipelineDesc sky_pipe;
-                sky_pipe.vertex_shader = state.skybox_vert.get();
-                sky_pipe.fragment_shader = state.skybox_frag.get();
+                sky_pipe.vertex_shader = skybox.vert_shader.get();
+                sky_pipe.fragment_shader = skybox.frag_shader.get();
                 sky_pipe.layout.stride = sizeof(glm::vec3);
                 sky_pipe.layout.attributes = {
                     rhi::VertexAttribute{
@@ -467,14 +479,14 @@ struct SandboxAssetsPlugin {
                 sky_pipe.state.depth_write = false;
                 sky_pipe.state.blend = rhi::BlendMode::None;
                 sky_pipe.render_pass = nullptr;
-                sky_pipe.descriptor_layouts = { state.skybox_layout.get() };
+                sky_pipe.descriptor_layouts = { skybox.layout.get() };
                 sky_pipe.push_constant_size = 0;
                 sky_pipe.debug_name = "SkyboxPipeline";
                 sky_pipe.use_dynamic_rendering = true;
-                sky_pipe.dynamic_color_formats = { rhi::TextureFormat::BGRA8 };
+                sky_pipe.dynamic_color_formats = { swapchain_color_fmt };
                 sky_pipe.dynamic_depth_format = rhi::TextureFormat::Depth32F;
 
-                state.skybox_pipeline = device.create_graphics_pipeline(sky_pipe);
+                skybox.pipeline = device.create_graphics_pipeline(sky_pipe);
 
                 // Skybox cube VBO
                 auto sky_verts = build_skybox_cube();
@@ -483,32 +495,36 @@ struct SandboxAssetsPlugin {
                 sky_vbo_desc.usage = rhi::BufferUsage::Vertex;
                 sky_vbo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
                 sky_vbo_desc.debug_name = "SkyboxCubeVBO";
-                state.skybox_cube_vbo = device.create_buffer(sky_vbo_desc, sky_verts.data());
+                skybox.cube_vbo = device.create_buffer(sky_vbo_desc, sky_verts.data());
+
+                // Move env_cubemap into skybox state
+                skybox.env_cubemap = std::move(env_cubemap);
 
                 // Skybox descriptor set
-                state.skybox_ds = device.allocate_descriptor_set(*state.skybox_layout);
-                device.update_descriptor_set(*state.skybox_ds, {
+                skybox.ds = device.allocate_descriptor_set(*skybox.layout);
+                device.update_descriptor_set(*skybox.ds, {
                     rhi::DescriptorWrite{
                         .binding = 0,
                         .type = rhi::DescriptorType::UniformBuffer,
-                        .buffer_handle = state.skybox_ubo.get(),
+                        .buffer_handle = skybox.ubo.get(),
                         .range = sizeof(SkyboxUBOData),
                     },
                     rhi::DescriptorWrite{
                         .binding = 1,
                         .type = rhi::DescriptorType::CombinedImageSampler,
-                        .texture_handle = state.env_cubemap.get(),
+                        .texture_handle = skybox.env_cubemap.get(),
                     },
                 });
 
-                state.has_skybox = true;
+                skybox.valid = true;
                 HELIOS_LOG(Game, Info, "Skybox pipeline created");
             } else {
                 HELIOS_LOG(Game, Warn, "Skybox shaders not found, skybox disabled");
             }
         }
 
-        app.insert_resource(std::move(state));
+        app.insert_resource(std::move(pbr));
+        app.insert_resource(std::move(skybox));
         HELIOS_LOG(Game, Info, "SandboxAssetsPlugin: all GPU resources loaded");
     }
 };
@@ -538,6 +554,7 @@ int main() {
     app.add_plugin(ForwardPlusPlugin{});
 
     // Asset loading (must be after RenderPlugin and before game systems)
+    app.insert_resource(renderer::FramePacket{});
     app.add_plugin(SandboxAssetsPlugin{});
 
     // Game plugins

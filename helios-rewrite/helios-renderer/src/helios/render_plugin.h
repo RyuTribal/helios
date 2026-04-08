@@ -36,17 +36,17 @@ struct RenderContext {
     std::unique_ptr<rhi::Device> device;
     std::unique_ptr<rhi::Swapchain> swapchain;
     std::unique_ptr<rhi::CommandBuffer> cmd;
+    std::unique_ptr<rhi::Texture> depth_texture;  // recreated on resize
     void* surface = nullptr;  // owned, destroyed with device
+    float clear_color[4] = {0.1f, 0.1f, 0.1f, 1.0f};
 };
 
-// Forward declarations for system functions (needed for cross-plugin ordering).
-namespace renderer { struct FramePacket; }
-struct SimpleRenderState;
+/// Infrastructure system: acquire swapchain image, begin command buffer,
+/// begin dynamic rendering. Runs first in PreRender.
+void frame_begin(ResMut<RenderContext> ctx);
 
-/// The present_frame system function. Declared here so other plugins can
-/// reference it for explicit ordering via app.id_of(present_frame).
-void present_frame(ResMut<RenderContext> ctx,
-                   Res<renderer::FramePacket> packet,
-                   ResMut<SimpleRenderState> simple);
+/// Infrastructure system: end rendering, end command buffer, submit + present.
+/// Runs last in PreRender, after all draw systems.
+void frame_end(ResMut<RenderContext> ctx);
 
 } // namespace helios

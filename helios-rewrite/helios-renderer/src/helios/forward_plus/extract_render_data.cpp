@@ -1,6 +1,7 @@
 // helios-renderer/src/helios/forward_plus/extract_render_data.cpp
 #include "helios/forward_plus/extract_render_data.h"
 #include "helios/forward_plus/forward_plus_log_channel.h"
+#include "helios/rhi/rhi_swapchain.h"
 
 namespace helios {
 
@@ -9,17 +10,20 @@ void extract_render_data(
     Query<const Transform, const PointLight>                      point_lights,
     Query<const Transform, const DirectionalLight>                dir_lights,
     Query<const Transform, const Camera, With<ActiveCamera>>      cameras,
+    Res<RenderContext>                                             render_ctx,
     ResMut<renderer::FramePacket>                                 packet)
 {
     packet->clear();
+
+    // Compute aspect ratio from actual swapchain dimensions
+    const float aspect = (render_ctx->swapchain && render_ctx->swapchain->height() > 0)
+        ? static_cast<float>(render_ctx->swapchain->width()) / static_cast<float>(render_ctx->swapchain->height())
+        : 16.0f / 9.0f;
 
     // --- Active camera ---
     // Only one active camera is expected; take the first match.
     bool camera_found = false;
     for (auto [t, cam] : cameras) {
-        // Aspect ratio will be corrected from viewport dims in build_forward_plus_graph.
-        // Use 16:9 as extraction-time placeholder.
-        const float aspect = 16.0f / 9.0f;
         packet->camera = renderer::CameraData{
             .view         = glm::inverse(t.to_mat4()),
             .projection   = (cam.projection == ProjectionType::Perspective)

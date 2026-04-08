@@ -2,7 +2,9 @@
 #include "helios/forward_plus/forward_plus_plugin.h"
 #include "helios/forward_plus/forward_plus_log_channel.h"
 #include "helios/forward_plus/extract_render_data.h"
-#include "helios/forward_plus/simple_render_state.h"
+#include "helios/forward_plus/forward_plus_draw.h"
+#include "helios/forward_plus/pbr_render_state.h"
+#include "helios/forward_plus/skybox_state.h"
 #include "helios/forward_plus/passes/depth_prepass.h"
 #include "helios/forward_plus/passes/shadow_pass.h"
 #include "helios/forward_plus/passes/light_culling_pass.h"
@@ -76,31 +78,44 @@ void ForwardPlusPlugin::build(App& app) {
     // Insert an empty RenderGraph resource.
     app.insert_resource(graph::RenderGraph{});
 
-    // SimpleRenderState is now populated by the sandbox (or any consuming app)
-    // with full PBR pipeline setup. Insert a default empty state here as
-    // fallback; the sandbox will overwrite it with the populated version.
-    if (!app.world().has_resource<SimpleRenderState>()) {
-        app.insert_resource(SimpleRenderState{});
+    // Insert default empty PBRRenderState and SkyboxState as fallbacks;
+    // the sandbox (or any consuming app) will overwrite with populated versions.
+    if (!app.world().has_resource<PBRRenderState>()) {
+        app.insert_resource(PBRRenderState{});
+    }
+    if (!app.world().has_resource<SkyboxState>()) {
+        app.insert_resource(SkyboxState{});
     }
 
-    // Look up the present_frame SystemId registered by RenderPlugin so we
-    // can add explicit ordering: extraction -> graph build -> present.
-    auto present_id = app.id_of(present_frame);
+    // Look up the frame_begin and frame_end SystemIds registered by RenderPlugin
+    // so we can insert systems between them.
+    auto begin_id = app.id_of(frame_begin);
+    auto end_id = app.id_of(frame_end);
 
     // Register the extraction system (main thread, runs during PreRender).
-    // Must run before present_frame which reads the FramePacket.
+    // Must run after frame_begin (needs RenderContext) and before frame_end.
     auto extract_builder = app.add_system(Schedule::PreRender, extract_render_data,
                                           "extract_render_data");
-    if (present_id.value != 0)
-        extract_builder.before(present_id);
+    if (begin_id.value != 0)
+        extract_builder.after(begin_id);
+    if (end_id.value != 0)
+        extract_builder.before(end_id);
     auto extract_id = extract_builder.id();
 
-    // Register the graph builder after extraction completes, before present.
+    // Register the graph builder after extraction completes, before frame_end.
     auto graph_builder = app.add_system(Schedule::PreRender, build_forward_plus_graph,
                                         "build_forward_plus_graph");
     graph_builder.after(extract_id);
-    if (present_id.value != 0)
-        graph_builder.before(present_id);
+    if (end_id.value != 0)
+        graph_builder.before(end_id);
+
+    // Register the draw system between frame_begin and frame_end.
+    // Runs after extraction + graph build so FramePacket is populated.
+    auto draw_builder = app.add_system(Schedule::PreRender, forward_plus_draw,
+                                       "forward_plus_draw");
+    draw_builder.after(extract_id);
+    if (end_id.value != 0)
+        draw_builder.before(end_id);
 
     HELIOS_LOG_INFO(ForwardPlus, "ForwardPlus plugin registered");
 }
