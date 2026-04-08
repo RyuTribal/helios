@@ -29,7 +29,18 @@
 
 #include "asset_loader.h"
 
+// Physics
+#include "interface/physics_world.h"
+#include "interface/body_types.h"
+#include "interface/physics_factory.h"
+
+// Audio
+#include "interface/audio_device.h"
+#include "interface/audio_types.h"
+#include "interface/audio_factory.h"
+
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -42,6 +53,68 @@ using namespace helios;
 
 HELIOS_DEFINE_LOG_CHANNEL(Game);
 HELIOS_DEFINE_LOG_CHANNEL(Scene);
+HELIOS_DEFINE_LOG_CHANNEL(Physics);
+HELIOS_DEFINE_LOG_CHANNEL(Audio);
+
+// ============================================================
+// PhysicsDemo resource (bundles physics + audio state)
+// ============================================================
+
+struct PhysicsDemo {
+    std::unique_ptr<physics::PhysicsWorld> physics;
+    std::unique_ptr<audio::AudioDevice>    audio;
+    physics::BodyHandle floor_body  = 0;
+    physics::BodyHandle helmet_body = 0;
+    std::vector<uint8_t> bounce_wav;
+    bool active = false;
+};
+
+// ============================================================
+// WAV generation: a short 220Hz sine "thud" with linear fade-out
+// ============================================================
+
+static std::vector<uint8_t> generate_bounce_wav() {
+    constexpr int   sample_rate = 44100;
+    constexpr float duration    = 0.1f;
+    constexpr float freq        = 220.0f;
+    const int num_samples = static_cast<int>(sample_rate * duration);
+
+    std::vector<int16_t> samples(num_samples);
+    for (int i = 0; i < num_samples; i++) {
+        float t = static_cast<float>(i) / sample_rate;
+        float envelope = 1.0f - (t / duration);
+        float sample = std::sin(2.0f * 3.14159265f * freq * t) * envelope;
+        samples[i] = static_cast<int16_t>(sample * 32767.0f * 0.5f);
+    }
+
+    uint32_t data_size = static_cast<uint32_t>(num_samples * sizeof(int16_t));
+    uint32_t file_size = 36 + data_size;
+
+    std::vector<uint8_t> wav;
+    wav.resize(44 + data_size);
+    auto write = [&](size_t off, const void* data, size_t n) {
+        std::memcpy(wav.data() + off, data, n);
+    };
+    // RIFF header
+    write(0, "RIFF", 4);
+    write(4, &file_size, 4);
+    write(8, "WAVE", 4);
+    // fmt chunk
+    write(12, "fmt ", 4);
+    uint32_t fmt_size = 16;  write(16, &fmt_size, 4);
+    uint16_t audio_fmt = 1;  write(20, &audio_fmt, 2);  // PCM
+    uint16_t channels = 1;   write(22, &channels, 2);
+    uint32_t sr = sample_rate; write(24, &sr, 4);
+    uint32_t byte_rate = sample_rate * 2; write(28, &byte_rate, 4);
+    uint16_t block_align = 2; write(32, &block_align, 2);
+    uint16_t bits = 16;       write(34, &bits, 2);
+    // data chunk
+    write(36, "data", 4);
+    write(40, &data_size, 4);
+    std::memcpy(wav.data() + 44, samples.data(), data_size);
+
+    return wav;
+}
 
 // ============================================================
 // State enum
@@ -210,6 +283,61 @@ void log_frame_packet(Res<renderer::FramePacket> packet, Res<Time> time) {
 void handle_resize(EventReader<WindowResized> events) {
     for (const auto& e : events) {
         HELIOS_LOG(Game, Debug, "Window resized: {}x{}", e.width, e.height);
+    }
+}
+
+// ============================================================
+// Physics update system (runs during Update when demo is active)
+// ============================================================
+
+void physics_update_system(ResMut<PhysicsDemo> demo,
+                           Res<Time> time,
+                           Res<RawInput> input,
+                           Query<Transform, const Tag> tagged) {
+    if (!demo->active || !demo->physics) return;
+
+    // R key: reset helmet to starting position
+    if (input->key_just_pressed(KeyCode::R)) {
+        HELIOS_LOG(Physics, Info, "Resetting helmet to starting position");
+        demo->physics->destroy_body(demo->helmet_body);
+
+        physics::BodyDesc helmet_desc;
+        helmet_desc.type        = physics::BodyType::Dynamic;
+        helmet_desc.position    = {0.0f, 3.0f, 0.0f};
+        helmet_desc.shape       = physics::SphereShape{1.0f};
+        helmet_desc.mass        = 2.0f;
+        helmet_desc.restitution = 0.6f;
+        demo->helmet_body = demo->physics->create_body(helmet_desc, 2);
+    }
+
+    // Step the simulation
+    demo->physics->step(time->delta());
+
+    // Read back helmet position and apply to the entity Transform
+    auto pos = demo->physics->get_position(demo->helmet_body);
+    for (auto [t, tag] : tagged) {
+        if (tag.name == "damaged_helmet") {
+            t.position = pos;
+            // Keep the display rotation from the original spawn
+        }
+    }
+
+    // Drain contact events and play bounce sounds
+    auto contacts = demo->physics->drain_contacts();
+    for (auto& contact : contacts) {
+        HELIOS_LOG(Physics, Debug, "Contact at ({:.2f}, {:.2f}, {:.2f}) impulse={:.2f}",
+                   contact.world_point.x, contact.world_point.y, contact.world_point.z,
+                   contact.impulse);
+
+        if (demo->audio && !demo->bounce_wav.empty()) {
+            demo->audio->play_at(
+                demo->bounce_wav.data(), demo->bounce_wav.size(),
+                contact.world_point);
+        }
+    }
+
+    if (demo->audio) {
+        demo->audio->update();
     }
 }
 
@@ -527,12 +655,12 @@ private:
 class Scene1State : public State<SceneState> {
 public:
     explicit Scene1State(World& world) : m_world(&world) {
-        HELIOS_LOG(Scene, Info, "Scene1: Entering (DamagedHelmet)");
+        HELIOS_LOG(Scene, Info, "Scene1: Entering (DamagedHelmet + Physics)");
 
-        // Spawn helmet entity
+        // Spawn helmet entity at Y=3 (physics will move it)
         m_helmet = spawn_tracked(world);
         world.add(m_helmet, Transform{
-            .position = glm::vec3{0.0f, 0.0f, 0.0f},
+            .position = glm::vec3{0.0f, 3.0f, 0.0f},
             .rotation = glm::quat(glm::vec3(
                 glm::radians(90.0f), glm::radians(180.0f), 0.0f))
         });
@@ -543,10 +671,57 @@ public:
         world.add(m_helmet, Tag{.name = "damaged_helmet"});
 
         HELIOS_LOG(Scene, Info, "Scene1: Spawned helmet entity");
+
+        // --- Set up physics ---
+        auto& demo = world.resource<PhysicsDemo>();
+        if (!demo.physics) {
+            HELIOS_LOG(Physics, Info, "Creating physics world");
+            demo.physics = physics::create_physics_world();
+        }
+
+        // Static floor (large box at Y=-2)
+        physics::BodyDesc floor_desc;
+        floor_desc.type        = physics::BodyType::Static;
+        floor_desc.position    = {0.0f, -2.0f, 0.0f};
+        floor_desc.shape       = physics::BoxShape{{50.0f, 0.5f, 50.0f}};
+        demo.floor_body = demo.physics->create_body(floor_desc, 1);
+
+        // Dynamic helmet sphere at Y=3
+        physics::BodyDesc helmet_desc;
+        helmet_desc.type        = physics::BodyType::Dynamic;
+        helmet_desc.position    = {0.0f, 3.0f, 0.0f};
+        helmet_desc.shape       = physics::SphereShape{1.0f};
+        helmet_desc.mass        = 2.0f;
+        helmet_desc.restitution = 0.6f;
+        demo.helmet_body = demo.physics->create_body(helmet_desc, 2);
+
+        HELIOS_LOG(Physics, Info, "Floor body={} helmet body={}", demo.floor_body, demo.helmet_body);
+
+        // --- Set up audio ---
+        if (!demo.audio) {
+            HELIOS_LOG(Audio, Info, "Creating audio device");
+            demo.audio = audio::create_audio_device();
+        }
+        if (demo.bounce_wav.empty()) {
+            demo.bounce_wav = generate_bounce_wav();
+            HELIOS_LOG(Audio, Info, "Generated bounce WAV ({} bytes)", demo.bounce_wav.size());
+        }
+
+        demo.active = true;
+        HELIOS_LOG(Scene, Info, "Scene1: Physics and audio ready. Press R to re-drop helmet.");
     }
 
     ~Scene1State() {
         HELIOS_LOG(Scene, Info, "Scene1: Exiting (DamagedHelmet)");
+        // Clean up physics bodies (keep the world alive for re-entry)
+        auto& demo = m_world->resource<PhysicsDemo>();
+        if (demo.physics) {
+            if (demo.helmet_body) demo.physics->destroy_body(demo.helmet_body);
+            if (demo.floor_body)  demo.physics->destroy_body(demo.floor_body);
+            demo.helmet_body = 0;
+            demo.floor_body  = 0;
+        }
+        demo.active = false;
     }
 
     static void describe(StateBuilder<Scene1State>& s) {
@@ -628,10 +803,12 @@ private:
 struct GamePlugin {
     void build(App& app) {
         app.insert_resource(OrbitCamera{});
+        app.insert_resource(PhysicsDemo{});
         app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
+        app.add_system(Schedule::Update, physics_update_system, "physics_update");
         app.add_system(Schedule::PostUpdate, log_frame_packet, "log_frame_packet");
         app.add_system(Schedule::PreUpdate, handle_resize, "handle_resize");
-        HELIOS_LOG(Game, Info, "GamePlugin initialized");
+        HELIOS_LOG(Game, Info, "GamePlugin initialized (with physics + audio)");
     }
 };
 
@@ -1027,7 +1204,7 @@ int main() {
     );
 
     HELIOS_LOG(Core, Info, "All plugins loaded. Starting engine...");
-    HELIOS_LOG(Game, Info, "Controls: Press 1 = Scene1 (Helmet), 2 = Scene2 (Lion), RMB = orbit camera");
+    HELIOS_LOG(Game, Info, "Controls: 1 = Scene1 (Helmet+Physics), 2 = Scene2 (Lion), R = re-drop helmet, RMB = orbit camera");
 
     app.run();
 

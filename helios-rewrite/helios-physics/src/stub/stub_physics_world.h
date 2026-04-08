@@ -59,6 +59,7 @@ private:
     };
 
     std::unordered_map<BodyHandle, BodyData> m_bodies;
+    std::vector<ContactEvent> m_pending_contacts;
     PhysicsConfig m_config;
     BodyHandle    m_next_handle = 1;
 };

@@ -62,6 +62,7 @@ endif()
 # --- helios-audio library ---
 set(HELIOS_AUDIO_SOURCES
     src/stub/stub_audio_device.cpp
+    src/interface/audio_factory.cpp
 )
 
 if(HELIOS_AUDIO_HAS_SOLOUD)

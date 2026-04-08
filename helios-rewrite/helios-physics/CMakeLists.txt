@@ -38,6 +38,7 @@ endif()
 # --- helios-physics library ---
 set(HELIOS_PHYSICS_SOURCES
     src/stub/stub_physics_world.cpp
+    src/interface/physics_factory.cpp
 )
 
 if(HELIOS_PHYSICS_HAS_JOLT)
@@ -66,6 +67,7 @@ if(HELIOS_PHYSICS_HAS_JOLT)
     if(NOT MSVC)
         set_source_files_properties(
             src/jolt/jolt_physics_world.cpp
+            src/interface/physics_factory.cpp
             PROPERTIES COMPILE_OPTIONS
             "-Wno-unused-parameter;-Wno-missing-field-initializers;-Wno-old-style-cast"
         )

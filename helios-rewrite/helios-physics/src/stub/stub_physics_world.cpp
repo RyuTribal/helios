@@ -86,7 +86,7 @@ void StubPhysicsWorld::apply_impulse(BodyHandle handle, const glm::vec3& impulse
 }
 
 void StubPhysicsWorld::step(float dt) {
-    // Simple Euler integration for dynamic bodies
+    // Simple Euler integration for dynamic bodies with basic collision
     for (auto& [handle, body] : m_bodies) {
         if (body.desc.type != BodyType::Dynamic) continue;
 
@@ -94,13 +94,51 @@ void StubPhysicsWorld::step(float dt) {
         body.velocity += m_config.gravity * dt;
 
         // Integrate position
-        body.position += body.velocity * dt;
+        glm::vec3 new_pos = body.position + body.velocity * dt;
+
+        // Check against all static bodies for simple floor collision
+        float body_radius = 0.0f;
+        if (auto* sphere = std::get_if<SphereShape>(&body.desc.shape)) {
+            body_radius = sphere->radius;
+        } else if (auto* box = std::get_if<BoxShape>(&body.desc.shape)) {
+            body_radius = box->half_extents.y;
+        }
+
+        for (auto& [other_handle, other] : m_bodies) {
+            if (other.desc.type != BodyType::Static) continue;
+
+            // Simple floor plane: static body top surface
+            float floor_y = other.position.y;
+            if (auto* box = std::get_if<BoxShape>(&other.desc.shape)) {
+                floor_y += box->half_extents.y;
+            }
+
+            float body_bottom = new_pos.y - body_radius;
+            if (body_bottom < floor_y && body.velocity.y < 0.0f) {
+                // Bounce
+                new_pos.y = floor_y + body_radius;
+                float impulse_mag = std::abs(body.velocity.y) * body.desc.mass;
+                body.velocity.y = -body.velocity.y * body.desc.restitution;
+
+                // Generate contact event
+                ContactEvent event;
+                event.entity_a = body.entity_id;
+                event.entity_b = other.entity_id;
+                event.world_point = glm::vec3(new_pos.x, floor_y, new_pos.z);
+                event.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                event.impulse = impulse_mag;
+                m_pending_contacts.push_back(event);
+            }
+        }
+
+        body.position = new_pos;
     }
 }
 
 std::vector<ContactEvent> StubPhysicsWorld::drain_contacts() {
-    // Stub does not detect contacts
-    return {};
+    std::vector<ContactEvent> result = std::move(m_pending_contacts);
+    m_pending_contacts.clear();
+    return result;
 }
 
 std::optional<RayHit> StubPhysicsWorld::raycast(
