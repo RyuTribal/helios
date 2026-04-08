@@ -26,6 +26,9 @@ add_executable(helios-tests
     input/test_raw_input.cpp
     input/test_input_map.cpp
     input/test_input_integration.cpp
+    app/test_state.cpp
+    app/test_game_flow.cpp
+    app/test_transitions.cpp
 )
 
 target_link_libraries(helios-tests
