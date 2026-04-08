@@ -75,12 +75,24 @@ public:
     ResourceStorage(ResourceStorage&&) = default;
     ResourceStorage& operator=(ResourceStorage&&) = default;
 
+    // Destructor: destroy resources in reverse insertion order.
+    // Resources inserted later (which may depend on earlier ones)
+    // are destroyed first — e.g. GPU pipelines before the device.
+    ~ResourceStorage() {
+        for (auto it = m_insertion_order.rbegin(); it != m_insertion_order.rend(); ++it) {
+            m_resources.erase(*it);
+        }
+        m_insertion_order.clear();
+    }
+
     template <typename T>
     void insert(T resource) {
-        m_resources.insert_or_assign(
-            std::type_index(typeid(T)),
-            ResourceSlot::make<T>(std::move(resource))
-        );
+        auto key = std::type_index(typeid(T));
+        bool is_new = !m_resources.count(key);
+        m_resources.insert_or_assign(key, ResourceSlot::make<T>(std::move(resource)));
+        if (is_new) {
+            m_insertion_order.push_back(key);
+        }
     }
 
     template <typename T>
@@ -126,7 +138,9 @@ public:
 
     template <typename T>
     void remove() {
-        m_resources.erase(std::type_index(typeid(T)));
+        auto key = std::type_index(typeid(T));
+        m_resources.erase(key);
+        std::erase(m_insertion_order, key);
     }
 
     size_t count() const {
@@ -135,6 +149,7 @@ public:
 
 private:
     std::unordered_map<std::type_index, ResourceSlot> m_resources;
+    std::vector<std::type_index> m_insertion_order;
 };
 
 } // namespace helios

@@ -93,11 +93,6 @@ void App::run() {
         tick();
     }
 
-    // Run shutdown hook before resource destructors fire (e.g. GPU wait_idle).
-    if (m_shutdown_hook) {
-        m_shutdown_hook(m_world);
-    }
-
     HELIOS_LOG(Core, Info, "App shutting down");
 }
 
