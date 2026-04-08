@@ -60,34 +60,42 @@ protected:
 TEST(AssetHandleTest, DefaultIsNull) {
     AssetHandle h;
     EXPECT_FALSE(static_cast<bool>(h));
-    EXPECT_EQ(h.id, 0u);
+    EXPECT_EQ(h.index, 0u);
+    EXPECT_EQ(h.generation, 0u);
 }
 
 TEST(AssetHandleTest, NonZeroIsValid) {
-    AssetHandle h{42};
+    AssetHandle h{42, 1};
     EXPECT_TRUE(static_cast<bool>(h));
 }
 
 TEST(AssetHandleTest, Equality) {
-    AssetHandle a{1};
-    AssetHandle b{1};
-    AssetHandle c{2};
+    AssetHandle a{1, 1};
+    AssetHandle b{1, 1};
+    AssetHandle c{2, 1};
     EXPECT_EQ(a, b);
     EXPECT_NE(a, c);
 }
 
 TEST(AssetHandleTest, HashWorks) {
     std::unordered_map<AssetHandle, int> map;
-    AssetHandle h{99};
+    AssetHandle h{99, 1};
     map[h] = 42;
     EXPECT_EQ(map[h], 42);
 }
 
 TEST(AssetHandleTest, Ordering) {
-    AssetHandle a{1};
-    AssetHandle b{2};
+    AssetHandle a{1, 1};
+    AssetHandle b{2, 1};
     EXPECT_LT(a, b);
     EXPECT_GT(b, a);
+}
+
+TEST(AssetHandleTest, PackedRoundTrip) {
+    AssetHandle h{42, 7};
+    uint64_t packed = h.packed();
+    AssetHandle unpacked = AssetHandle::from_packed(packed);
+    EXPECT_EQ(h, unpacked);
 }
 
 // ----- AssetStatus tests -----
@@ -315,6 +323,100 @@ TEST_F(AssetServerTest, DrainEmptyWhenNothingLoaded) {
     AssetServer server(m_test_dir, 1);
     auto completed = server.drain_completed();
     EXPECT_TRUE(completed.empty());
+}
+
+// ----- Refcount and GC -----
+
+TEST_F(AssetServerTest, AcquireAndRelease) {
+    AssetServer server(m_test_dir, 1);
+    register_test_importer(server);
+
+    auto handle = server.load_sync<TestAsset>("test.txt");
+    ASSERT_TRUE(static_cast<bool>(handle));
+
+    EXPECT_EQ(server.refcount(handle), 0u);
+
+    server.acquire(handle);
+    EXPECT_EQ(server.refcount(handle), 1u);
+
+    server.acquire(handle);
+    EXPECT_EQ(server.refcount(handle), 2u);
+
+    server.release(handle);
+    EXPECT_EQ(server.refcount(handle), 1u);
+
+    server.release(handle);
+    EXPECT_EQ(server.refcount(handle), 0u);
+}
+
+TEST_F(AssetServerTest, CollectGarbageUnloadsZeroRefcount) {
+    AssetServer server(m_test_dir, 1);
+    register_test_importer(server);
+
+    auto h1 = server.load_sync<TestAsset>("test.txt");
+    auto h2 = server.load_sync<TestAsset>("test2.txt");
+    ASSERT_TRUE(static_cast<bool>(h1));
+    ASSERT_TRUE(static_cast<bool>(h2));
+
+    // Acquire both, then release h1
+    server.acquire(h1);
+    server.acquire(h2);
+    server.release(h1);
+
+    auto unloaded = server.collect_garbage();
+    EXPECT_EQ(unloaded.size(), 1u);
+    EXPECT_EQ(unloaded[0], h1);
+
+    // h1 should be gone, h2 should still be there
+    EXPECT_EQ(server.get<TestAsset>(h1), nullptr);
+    EXPECT_NE(server.get<TestAsset>(h2), nullptr);
+}
+
+TEST_F(AssetServerTest, CollectGarbageNothingToCollect) {
+    AssetServer server(m_test_dir, 1);
+    register_test_importer(server);
+
+    auto handle = server.load_sync<TestAsset>("test.txt");
+    ASSERT_TRUE(static_cast<bool>(handle));
+
+    server.acquire(handle);
+
+    auto unloaded = server.collect_garbage();
+    EXPECT_TRUE(unloaded.empty());
+    EXPECT_NE(server.get<TestAsset>(handle), nullptr);
+}
+
+TEST_F(AssetServerTest, ExplicitUnload) {
+    AssetServer server(m_test_dir, 1);
+    register_test_importer(server);
+
+    auto handle = server.load_sync<TestAsset>("test.txt");
+    ASSERT_TRUE(static_cast<bool>(handle));
+
+    server.unload(handle);
+    EXPECT_EQ(server.get<TestAsset>(handle), nullptr);
+    EXPECT_EQ(server.status(handle), AssetStatus::Failed);
+}
+
+TEST_F(AssetServerTest, SharedAssetNotCollected) {
+    AssetServer server(m_test_dir, 1);
+    register_test_importer(server);
+
+    auto handle = server.load_sync<TestAsset>("test.txt");
+    ASSERT_TRUE(static_cast<bool>(handle));
+
+    // Two "owners" acquire
+    server.acquire(handle);
+    server.acquire(handle);
+
+    // One releases
+    server.release(handle);
+    EXPECT_EQ(server.refcount(handle), 1u);
+
+    // GC should not collect (refcount = 1)
+    auto unloaded = server.collect_garbage();
+    EXPECT_TRUE(unloaded.empty());
+    EXPECT_NE(server.get<TestAsset>(handle), nullptr);
 }
 
 } // namespace helios::test

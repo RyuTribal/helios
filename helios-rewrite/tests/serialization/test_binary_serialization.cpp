@@ -102,22 +102,24 @@ TEST(BinaryHelpersTest, EmptyStringRoundTrip) {
 
 TEST(BinaryHelpersTest, AssetHandleRoundTrip) {
     std::ostringstream out(std::ios::binary);
-    write_binary(out, AssetHandle{42});
+    write_binary(out, AssetHandle{42, 7});
 
     std::istringstream in(out.str(), std::ios::binary);
     AssetHandle v;
     read_binary(in, v);
-    EXPECT_EQ(v.id, 42u);
+    EXPECT_EQ(v.index, 42u);
+    EXPECT_EQ(v.generation, 7u);
 }
 
 TEST(BinaryHelpersTest, NullAssetHandleRoundTrip) {
     std::ostringstream out(std::ios::binary);
-    write_binary(out, AssetHandle{0});
+    write_binary(out, AssetHandle{});
 
     std::istringstream in(out.str(), std::ios::binary);
-    AssetHandle v{99};
+    AssetHandle v{99, 1};
     read_binary(in, v);
-    EXPECT_EQ(v.id, 0u);
+    EXPECT_EQ(v.index, 0u);
+    EXPECT_EQ(v.generation, 0u);
 }
 
 // ----- glm type round-trips -----

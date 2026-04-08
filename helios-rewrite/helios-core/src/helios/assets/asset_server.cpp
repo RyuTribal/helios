@@ -1,5 +1,6 @@
 #include "helios/assets/asset_server.h"
 #include "helios/assets/load_batch.h"
+#include "helios/core/engine_log_channels.h"
 
 #include <cassert>
 #include <optional>
@@ -26,7 +27,8 @@ AssetServer::~AssetServer() {
 }
 
 AssetHandle AssetServer::next_handle() {
-    return AssetHandle{m_next_id.fetch_add(1, std::memory_order_relaxed)};
+    uint32_t idx = m_next_index.fetch_add(1, std::memory_order_relaxed);
+    return AssetHandle{idx, 1};  // generation starts at 1
 }
 
 AssetHandle AssetServer::find_cached(std::type_index type,
@@ -37,17 +39,29 @@ AssetHandle AssetServer::find_cached(std::type_index type,
     if (it != m_path_cache.end()) {
         return it->second;
     }
-    return AssetHandle{0};
+    return AssetHandle{};
+}
+
+void AssetServer::remove_from_path_cache(uint64_t packed_key) {
+    // m_mutex must be held by caller
+    for (auto it = m_path_cache.begin(); it != m_path_cache.end(); ++it) {
+        if (it->second.packed() == packed_key) {
+            m_path_cache.erase(it);
+            return;
+        }
+    }
 }
 
 void AssetServer::execute_load(const LoadRequest& request) {
+    uint64_t key = request.handle.packed();
+
     // Find the importer for this type
     ImporterFn importer;
     {
         std::lock_guard lock(m_mutex);
         auto it = m_importers.find(request.type);
         if (it == m_importers.end()) {
-            auto asset_it = m_assets.find(request.handle.id);
+            auto asset_it = m_assets.find(key);
             if (asset_it != m_assets.end()) {
                 asset_it->second.status = AssetStatus::Failed;
             }
@@ -76,7 +90,7 @@ void AssetServer::execute_load(const LoadRequest& request) {
     // Store result
     {
         std::lock_guard lock(m_mutex);
-        auto it = m_assets.find(request.handle.id);
+        auto it = m_assets.find(key);
         if (it != m_assets.end()) {
             if (success) {
                 it->second.data = std::move(result);
@@ -122,13 +136,86 @@ void AssetServer::loader_thread_main(std::stop_token stop) {
 
 AssetStatus AssetServer::status(AssetHandle handle) const {
     std::lock_guard lock(m_mutex);
-    auto it = m_assets.find(handle.id);
+    uint64_t key = handle.packed();
+    auto it = m_assets.find(key);
     if (it == m_assets.end()) return AssetStatus::Failed;
     return it->second.status;
 }
 
 bool AssetServer::is_loaded(AssetHandle handle) const {
     return status(handle) == AssetStatus::Loaded;
+}
+
+void AssetServer::acquire(AssetHandle handle) {
+    std::lock_guard lock(m_mutex);
+    uint64_t key = handle.packed();
+    m_refcounts[key]++;
+}
+
+void AssetServer::release(AssetHandle handle) {
+    std::lock_guard lock(m_mutex);
+    uint64_t key = handle.packed();
+    auto it = m_refcounts.find(key);
+    if (it != m_refcounts.end() && it->second > 0) {
+        it->second--;
+    }
+}
+
+uint32_t AssetServer::refcount(AssetHandle handle) const {
+    std::lock_guard lock(m_mutex);
+    uint64_t key = handle.packed();
+    auto it = m_refcounts.find(key);
+    if (it == m_refcounts.end()) return 0;
+    return it->second;
+}
+
+std::vector<AssetHandle> AssetServer::collect_garbage() {
+    std::lock_guard lock(m_mutex);
+    std::vector<AssetHandle> unloaded;
+
+    // Find all assets with zero refcount
+    for (auto it = m_refcounts.begin(); it != m_refcounts.end(); ) {
+        if (it->second == 0) {
+            uint64_t key = it->first;
+            AssetHandle handle = AssetHandle::from_packed(key);
+
+            // Get path for logging before removing
+            auto asset_it = m_assets.find(key);
+            if (asset_it != m_assets.end()) {
+                std::string path_str = asset_it->second.path.string();
+                HELIOS_LOG(Assets, Info, "Unloaded asset '{}' (handle {}/{})",
+                           path_str, handle.index, handle.generation);
+                m_assets.erase(asset_it);
+            }
+
+            // Remove from path cache
+            remove_from_path_cache(key);
+
+            unloaded.push_back(handle);
+            it = m_refcounts.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    return unloaded;
+}
+
+void AssetServer::unload(AssetHandle handle) {
+    std::lock_guard lock(m_mutex);
+    uint64_t key = handle.packed();
+
+    auto asset_it = m_assets.find(key);
+    if (asset_it != m_assets.end()) {
+        std::string path_str = asset_it->second.path.string();
+        HELIOS_LOG(Assets, Info, "Unloaded asset '{}' (handle {}/{})",
+                   path_str, handle.index, handle.generation);
+        m_assets.erase(asset_it);
+    }
+
+    // Remove from path cache and refcounts
+    remove_from_path_cache(key);
+    m_refcounts.erase(key);
 }
 
 void AssetServer::watch_for_changes(bool enable) {

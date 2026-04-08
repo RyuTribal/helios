@@ -28,8 +28,8 @@ struct CameraData {
 
 struct MeshDraw {
     glm::mat4 transform{1.0f};
-    uint64_t mesh = 0;         // AssetHandle::id
-    uint64_t material = 0;     // AssetHandle::id
+    uint64_t mesh = 0;         // AssetHandle::packed()
+    uint64_t material = 0;     // AssetHandle::packed()
 };
 
 // ---------------------------------------------------------------------------

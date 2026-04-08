@@ -197,7 +197,7 @@ struct ScenePlugin {
         world.spawn(
             Transform{ .position = glm::vec3{0.0f, 0.0f, 0.0f},
                         .rotation = glm::quat(glm::vec3(glm::radians(90.0f), glm::radians(180.0f), 0.0f)) },
-            MeshRenderer{ .mesh = AssetHandle{1}, .material = AssetHandle{1} },
+            MeshRenderer{ .mesh = AssetHandle{1, 1}, .material = AssetHandle{1, 1} },
             Tag{ .name = "damaged_helmet" });
 
         HELIOS_LOG(Scene, Info, "Scene: camera + sun + damaged_helmet");

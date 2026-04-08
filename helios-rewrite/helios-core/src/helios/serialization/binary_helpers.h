@@ -45,7 +45,8 @@ inline void write_binary(std::ostream& out, const std::string& v) {
 }
 
 inline void write_binary(std::ostream& out, const AssetHandle& v) {
-    out.write(reinterpret_cast<const char*>(&v.id), sizeof(v.id));
+    out.write(reinterpret_cast<const char*>(&v.index), sizeof(v.index));
+    out.write(reinterpret_cast<const char*>(&v.generation), sizeof(v.generation));
 }
 
 inline void write_binary(std::ostream& out, const glm::vec2& v) {
@@ -122,7 +123,8 @@ inline void read_binary(std::istream& in, std::string& v) {
 }
 
 inline void read_binary(std::istream& in, AssetHandle& v) {
-    in.read(reinterpret_cast<char*>(&v.id), sizeof(v.id));
+    in.read(reinterpret_cast<char*>(&v.index), sizeof(v.index));
+    in.read(reinterpret_cast<char*>(&v.generation), sizeof(v.generation));
 }
 
 inline void read_binary(std::istream& in, glm::vec2& v) {

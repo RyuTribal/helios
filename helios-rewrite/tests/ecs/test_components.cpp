@@ -27,24 +27,25 @@ static bool mat4_approx_equal(const glm::mat4& a, const glm::mat4& b, float eps 
 TEST(AssetHandle, DefaultIsInvalid) {
     AssetHandle h;
     EXPECT_FALSE(h);
-    EXPECT_EQ(h.id, 0u);
+    EXPECT_EQ(h.index, 0u);
+    EXPECT_EQ(h.generation, 0u);
 }
 
 TEST(AssetHandle, NonZeroIsValid) {
-    AssetHandle h{42};
+    AssetHandle h{42, 1};
     EXPECT_TRUE(h);
 }
 
 TEST(AssetHandle, EqualityAndInequality) {
-    AssetHandle a{1}, b{1}, c{2};
+    AssetHandle a{1, 1}, b{1, 1}, c{2, 1};
     EXPECT_EQ(a, b);
     EXPECT_NE(a, c);
 }
 
 TEST(AssetHandle, HashSpecialization) {
     std::hash<AssetHandle> hasher;
-    AssetHandle h{99};
-    EXPECT_EQ(hasher(h), std::hash<uint64_t>{}(99u));
+    AssetHandle h{99, 1};
+    EXPECT_EQ(hasher(h), std::hash<uint64_t>{}(h.packed()));
 }
 
 TEST(BodyHandle, DefaultIsInvalid) {
@@ -55,6 +56,13 @@ TEST(BodyHandle, DefaultIsInvalid) {
 TEST(BodyHandle, NonZeroIsValid) {
     BodyHandle h{7};
     EXPECT_TRUE(h);
+}
+
+TEST(AssetHandle, PackUnpackRoundTrip) {
+    AssetHandle h{123, 456};
+    uint64_t packed = h.packed();
+    AssetHandle unpacked = AssetHandle::from_packed(packed);
+    EXPECT_EQ(h, unpacked);
 }
 
 TEST(SoundHandle, DefaultIsInvalid) {
@@ -163,8 +171,8 @@ TEST(WorldComponents, SpawnWithTransformAndQuery) {
 TEST(WorldComponents, SpawnMultipleAndQueryMeshRenderer) {
     World world;
     MeshRenderer mr;
-    mr.mesh     = AssetHandle{10};
-    mr.material = AssetHandle{20};
+    mr.mesh     = AssetHandle{10, 1};
+    mr.material = AssetHandle{20, 1};
 
     world.spawn(Transform{}, mr);
     world.spawn(Transform{}, mr, PointLight{});
