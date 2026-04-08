@@ -71,7 +71,7 @@ void log_frame_packet(Res<renderer::FramePacket> packet, Res<Time> time) {
 
 void handle_resize(EventReader<WindowResized> events) {
     for (const auto& e : events) {
-        HELIOS_LOG(Game, Info, "Window resized: {}x{}", e.width, e.height);
+        HELIOS_LOG(Game, Debug, "Window resized: {}x{}", e.width, e.height);
     }
 }
 
@@ -102,7 +102,7 @@ struct ScenePlugin {
 
         // Camera
         world.spawn(
-            Transform{ .position = glm::vec3{0, 5, -10} },
+            Transform{ .position = glm::vec3{0, 5, 10} },
             Camera{ .fov_degrees = 60.0f },
             ActiveCamera{},
             Tag{ .name = "main_camera" });

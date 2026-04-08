@@ -1,6 +1,7 @@
 // helios-renderer/src/helios/render_plugin.h
 #pragma once
 
+#include "helios/ecs/system_params.h"
 #include "helios/rhi/rhi_factory.h"
 #include "helios/rhi/rhi_types.h"
 #include <cstdint>
@@ -37,5 +38,15 @@ struct RenderContext {
     std::unique_ptr<rhi::CommandBuffer> cmd;
     void* surface = nullptr;  // owned, destroyed with device
 };
+
+// Forward declarations for system functions (needed for cross-plugin ordering).
+namespace renderer { struct FramePacket; }
+struct SimpleRenderState;
+
+/// The present_frame system function. Declared here so other plugins can
+/// reference it for explicit ordering via app.id_of(present_frame).
+void present_frame(ResMut<RenderContext> ctx,
+                   Res<renderer::FramePacket> packet,
+                   ResMut<SimpleRenderState> simple);
 
 } // namespace helios

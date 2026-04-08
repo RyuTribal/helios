@@ -1,5 +1,8 @@
 // helios-renderer/src/helios/render_plugin.cpp
 #include "helios/render_plugin.h"
+#include "helios/forward_plus/simple_render_state.h"
+#include "helios/forward_plus/gpu_data.h"
+#include "helios/graph/frame_packet.h"
 #include "helios/rhi/rhi.h"
 #include "helios/rhi/rhi_factory.h"
 #include "helios/window/windows.h"
@@ -16,16 +19,14 @@ HELIOS_DEFINE_LOG_CHANNEL(Render);
 namespace helios {
 
 // --- System: present each frame ---
-void present_frame(ResMut<RenderContext> ctx) {
-    // device and cmd are guaranteed non-null by RenderPlugin::build() which
-    // asserts on creation.  Only swapchain can become null if recreation
-    // failed in handle_swapchain_resize, so we check just that.
+void present_frame(ResMut<RenderContext> ctx,
+                   Res<renderer::FramePacket> packet,
+                   ResMut<SimpleRenderState> simple) {
     HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
     HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
     if (!ctx->swapchain) return;
 
     if (!ctx->swapchain->acquire_next_image()) {
-        // Swapchain out of date — will be recreated on next resize event
         HELIOS_LOG(Render, Debug, "Swapchain acquire failed, skipping frame");
         return;
     }
@@ -33,12 +34,46 @@ void present_frame(ResMut<RenderContext> ctx) {
     ctx->cmd->begin();
 
     rhi::ClearValues clear;
-    clear.color[0] = 0.1f;
-    clear.color[1] = 0.1f;
-    clear.color[2] = 0.1f;
+    clear.color[0] = 0.12f;
+    clear.color[1] = 0.14f;
+    clear.color[2] = 0.18f;
     clear.color[3] = 1.0f;
     ctx->swapchain->begin_rendering(*ctx->cmd, clear);
-    // TODO: execute render graph here instead of just clearing
+
+    // --- Simple flat-color mesh rendering ---
+    if (simple->valid && !packet->mesh_draws.empty()) {
+        auto& cmd = *ctx->cmd;
+        const float w = static_cast<float>(ctx->swapchain->width());
+        const float h = static_cast<float>(ctx->swapchain->height());
+
+        // Update camera UBO
+        CameraUBOData cam_data;
+        cam_data.view       = packet->camera.view;
+        cam_data.projection = packet->camera.projection;
+        simple->camera_ubo->set_data(&cam_data, sizeof(cam_data));
+
+        // Bind pipeline, viewport, scissor
+        cmd.bind_pipeline(*simple->pipeline);
+        cmd.set_viewport(0.0f, 0.0f, w, h);
+        cmd.set_scissor(0, 0, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+
+        // Bind camera descriptor set
+        cmd.bind_descriptor_set(0, *simple->camera_ds);
+
+        // Bind cube geometry
+        cmd.bind_vertex_buffer(*simple->cube_vbo);
+        cmd.bind_index_buffer(*simple->cube_ibo);
+
+        // Draw each mesh from the frame packet
+        for (const auto& draw : packet->mesh_draws) {
+            PushConstantData pc;
+            pc.transform = draw.transform;
+            cmd.push_constants(rhi::ShaderStage::Vertex, 0,
+                               sizeof(PushConstantData), &pc);
+            cmd.draw_indexed(simple->cube_index_count);
+        }
+    }
+
     ctx->swapchain->end_rendering(*ctx->cmd);
 
     ctx->cmd->end();
@@ -103,6 +138,14 @@ void RenderPlugin::build(App& app) {
     ctx.swapchain = std::move(swapchain);
     ctx.cmd = std::move(cmd);
     app.insert_resource(std::move(ctx));
+
+    // Insert default resources so present_frame's parameter resolution
+    // succeeds even without ForwardPlusPlugin.  If ForwardPlusPlugin IS
+    // added, it will overwrite these with properly populated versions.
+    if (!app.world().has_resource<renderer::FramePacket>())
+        app.insert_resource(renderer::FramePacket{});
+    if (!app.world().has_resource<SimpleRenderState>())
+        app.insert_resource(SimpleRenderState{});
 
     app.add_system(Schedule::PreRender, present_frame, "present_frame");
     app.add_system(Schedule::PreUpdate, handle_swapchain_resize, "handle_swapchain_resize");

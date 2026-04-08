@@ -42,6 +42,7 @@ enum class TextureFormat : uint8_t {
     R8,
     RG8,
     RGBA8,
+    BGRA8,          // common swapchain format (B8G8R8A8_UNORM)
     RG16F,
     RGBA16F,
     R32F,
@@ -258,6 +259,11 @@ struct GraphicsPipelineDesc {
     uint32_t push_constant_size   = 0;
     ShaderStage push_constant_stages = ShaderStage::Vertex;
     std::string debug_name;
+    // Dynamic rendering: when render_pass is nullptr, these formats are used
+    // to create the pipeline via VkPipelineRenderingCreateInfo (Vulkan 1.3).
+    std::vector<TextureFormat> dynamic_color_formats;
+    TextureFormat dynamic_depth_format = TextureFormat::Depth32F;
+    bool use_dynamic_rendering = false;
 };
 
 struct ComputePipelineDesc {

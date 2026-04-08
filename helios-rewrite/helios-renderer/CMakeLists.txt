@@ -43,6 +43,7 @@ add_library(helios-renderer STATIC
     src/helios/forward_plus/extract_render_data.cpp
     src/helios/forward_plus/default_textures.cpp
     src/helios/forward_plus/pipeline_init.cpp
+    src/helios/forward_plus/simple_render_state.cpp
     # IBL one-shot compute dispatches
     src/helios/forward_plus/ibl/equirect_to_cube.cpp
     src/helios/forward_plus/ibl/ibl_generation.cpp
@@ -83,6 +84,11 @@ target_compile_features(helios-renderer PUBLIC cxx_std_20)
 target_compile_definitions(helios-renderer PRIVATE
     $<$<CONFIG:Debug>:HELIOS_VULKAN_VALIDATION=1>
     $<$<CONFIG:RelWithDebInfo>:HELIOS_VULKAN_VALIDATION=1>
+)
+
+# Shader directory path for runtime loading
+target_compile_definitions(helios-renderer PRIVATE
+    HELIOS_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders"
 )
 
 # Compiler warnings

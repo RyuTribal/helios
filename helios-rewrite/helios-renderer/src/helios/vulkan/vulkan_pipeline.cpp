@@ -214,7 +214,25 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& device, const GraphicsPipelineDesc&
     pipeline_info.pDynamicState       = &dynamic_state;
     pipeline_info.layout              = m_pipeline_layout;
 
-    if (desc.render_pass) {
+    // Dynamic rendering (Vulkan 1.3): when use_dynamic_rendering is set, the
+    // pipeline is created with VkPipelineRenderingCreateInfo instead of a
+    // traditional VkRenderPass.
+    VkPipelineRenderingCreateInfo rendering_create_info{};
+    std::vector<VkFormat> vk_color_formats;
+
+    if (desc.use_dynamic_rendering) {
+        for (auto fmt : desc.dynamic_color_formats) {
+            vk_color_formats.push_back(to_vk_format(fmt));
+        }
+        rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        rendering_create_info.colorAttachmentCount = static_cast<uint32_t>(vk_color_formats.size());
+        rendering_create_info.pColorAttachmentFormats = vk_color_formats.data();
+        if (desc.state.depth_test || desc.state.depth_write) {
+            rendering_create_info.depthAttachmentFormat = to_vk_format(desc.dynamic_depth_format);
+        }
+        pipeline_info.pNext = &rendering_create_info;
+        pipeline_info.renderPass = VK_NULL_HANDLE;
+    } else if (desc.render_pass) {
         const auto* rp = static_cast<const VulkanRenderPass*>(desc.render_pass);
         pipeline_info.renderPass = rp->vk_render_pass();
     }

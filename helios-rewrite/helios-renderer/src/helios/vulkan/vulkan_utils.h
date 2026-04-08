@@ -11,6 +11,7 @@ inline VkFormat to_vk_format(TextureFormat format)
         case TextureFormat::R8:              return VK_FORMAT_R8_UNORM;
         case TextureFormat::RG8:             return VK_FORMAT_R8G8_UNORM;
         case TextureFormat::RGBA8:           return VK_FORMAT_R8G8B8A8_UNORM;
+        case TextureFormat::BGRA8:           return VK_FORMAT_B8G8R8A8_UNORM;
         case TextureFormat::RG16F:           return VK_FORMAT_R16G16_SFLOAT;
         case TextureFormat::RGBA16F:         return VK_FORMAT_R16G16B16A16_SFLOAT;
         case TextureFormat::R32F:            return VK_FORMAT_R32_SFLOAT;
@@ -127,6 +128,7 @@ inline uint32_t format_bytes_per_pixel(TextureFormat format)
         case TextureFormat::R8:              return 1;
         case TextureFormat::RG8:             return 2;
         case TextureFormat::RGBA8:           return 4;
+        case TextureFormat::BGRA8:           return 4;
         case TextureFormat::RG16F:           return 4;
         case TextureFormat::RGBA16F:         return 8;
         case TextureFormat::R32F:            return 4;

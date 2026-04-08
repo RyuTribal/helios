@@ -2,6 +2,7 @@
 #include "helios/forward_plus/forward_plus_plugin.h"
 #include "helios/forward_plus/forward_plus_log_channel.h"
 #include "helios/forward_plus/extract_render_data.h"
+#include "helios/forward_plus/simple_render_state.h"
 #include "helios/forward_plus/passes/depth_prepass.h"
 #include "helios/forward_plus/passes/shadow_pass.h"
 #include "helios/forward_plus/passes/light_culling_pass.h"
@@ -9,6 +10,7 @@
 #include "helios/forward_plus/passes/skybox_pass.h"
 #include "helios/forward_plus/passes/tonemap_pass.h"
 #include "helios/forward_plus/pipeline_init.h"
+#include "helios/render_plugin.h"
 #include "helios/ecs/app.h"
 #include "helios/graph/frame_packet.h"
 #include "helios/graph/render_graph.h"
@@ -74,13 +76,42 @@ void ForwardPlusPlugin::build(App& app) {
     // Insert an empty RenderGraph resource.
     app.insert_resource(graph::RenderGraph{});
 
-    // Register the extraction system (main thread, runs during PreRender).
-    auto extract_id = app.add_system(Schedule::PreRender, extract_render_data,
-                                     "extract_render_data").id();
+    // Create the simple flat-color rendering state for MVP rendering.
+    // This is the "get something on screen" path that will be replaced
+    // by the full Forward+ pipeline when the pass execute bodies are done.
+    auto& render_ctx = app.world().resource<RenderContext>();
+    if (render_ctx.device) {
+#ifdef HELIOS_SHADER_DIR
+        const char* shader_dir = HELIOS_SHADER_DIR;
+#else
+        const char* shader_dir = "shaders";
+#endif
+        auto simple_state = create_simple_render_state(*render_ctx.device, shader_dir);
+        app.insert_resource(std::move(simple_state));
+    } else {
+        HELIOS_LOG_WARN(ForwardPlus, "RenderContext::device is null, "
+                        "skipping SimpleRenderState creation");
+        app.insert_resource(SimpleRenderState{});
+    }
 
-    // Register the graph builder after extraction completes.
-    app.add_system(Schedule::PreRender, build_forward_plus_graph,
-                   "build_forward_plus_graph").after(extract_id);
+    // Look up the present_frame SystemId registered by RenderPlugin so we
+    // can add explicit ordering: extraction -> graph build -> present.
+    auto present_id = app.id_of(present_frame);
+
+    // Register the extraction system (main thread, runs during PreRender).
+    // Must run before present_frame which reads the FramePacket.
+    auto extract_builder = app.add_system(Schedule::PreRender, extract_render_data,
+                                          "extract_render_data");
+    if (present_id.value != 0)
+        extract_builder.before(present_id);
+    auto extract_id = extract_builder.id();
+
+    // Register the graph builder after extraction completes, before present.
+    auto graph_builder = app.add_system(Schedule::PreRender, build_forward_plus_graph,
+                                        "build_forward_plus_graph");
+    graph_builder.after(extract_id);
+    if (present_id.value != 0)
+        graph_builder.before(present_id);
 
     HELIOS_LOG_INFO(ForwardPlus, "ForwardPlus plugin registered");
 }
