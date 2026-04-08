@@ -24,6 +24,10 @@ FetchContent_MakeAvailable(vk-bootstrap)
 # --- helios-renderer library ---
 add_library(helios-renderer STATIC
     src/helios/vulkan/vulkan_context.cpp
+    src/helios/vulkan/vulkan_device.cpp
+    src/helios/vulkan/vulkan_shader.cpp
+    src/helios/vulkan/vulkan_buffer.cpp
+    src/helios/vulkan/vulkan_texture.cpp
     src/helios/vulkan/vulkan_vma.cpp
 )
 
