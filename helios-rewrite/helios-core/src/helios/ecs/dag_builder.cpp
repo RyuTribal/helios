@@ -1,9 +1,11 @@
 // helios-core/src/helios/ecs/dag_builder.cpp
 #include "helios/ecs/dag_builder.h"
 #include "helios/ecs/access_descriptor.h"
+#include "helios/core/assert.h"
 
 #include <algorithm>
 #include <queue>
+#include <string>
 #include <unordered_map>
 
 namespace helios {
@@ -111,8 +113,16 @@ ExecutionPlan build_execution_plan(const std::vector<SystemDescriptor>& systems)
 
     // Cycle detection
     if (topo_order.size() != n) {
-        // Cycle detected -- return empty plan. The caller should treat this
-        // as a fatal configuration error.
+        // Identify which systems are in the cycle (those not in topo_order).
+        std::string cycle_systems;
+        for (size_t i = 0; i < n; i++) {
+            if (std::find(topo_order.begin(), topo_order.end(), i) == topo_order.end()) {
+                if (!cycle_systems.empty()) cycle_systems += ", ";
+                cycle_systems += systems[i].name;
+            }
+        }
+        HELIOS_ASSERT(false,
+            ("System ordering cycle detected involving: " + cycle_systems).c_str());
         return {};
     }
 
