@@ -23,7 +23,11 @@ graph::TextureHandle add_skybox_pass(
     graph.add_pass<PassData>(
         "SkyboxPass",
         [&](PassData& data, graph::RenderGraphBuilder& builder) {
-            // Read-modify-write the HDR color texture
+            // Read-modify-write the HDR color texture.
+            // The read establishes the dependency on the forward pass that
+            // created/wrote this texture; without it the graph compiler has
+            // no edge to enforce ordering.
+            builder.read(hdr_color);
             data.color = builder.write(hdr_color,
                                        graph::ResourceUsage::ColorAttachment);
             result = data.color;

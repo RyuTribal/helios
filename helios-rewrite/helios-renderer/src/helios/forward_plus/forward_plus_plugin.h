@@ -2,6 +2,9 @@
 #pragma once
 
 #include "helios/forward_plus/forward_plus_config.h"
+#include "helios/ecs/system_params.h"
+#include "helios/graph/frame_packet.h"
+#include "helios/graph/render_graph.h"
 
 namespace helios {
 
@@ -10,7 +13,7 @@ class App; // forward declaration
 /// ForwardPlus rendering plugin.
 ///
 /// Registers the Forward+ pipeline configuration, extraction system, and
-/// (eventually) the graph-build system with the App scheduler.
+/// the graph-build system with the App scheduler.
 ///
 /// Usage:
 ///   app.add_plugin(ForwardPlusPlugin{});           // default config
@@ -23,5 +26,12 @@ struct ForwardPlusPlugin {
 
     void build(App& app);
 };
+
+/// ECS system: wires all 6 Forward+ render passes into the render graph.
+/// Runs during PreRender, after extract_render_data.
+void build_forward_plus_graph(
+    Res<renderer::FramePacket> packet,
+    Res<ForwardPlusConfig> config,
+    ResMut<graph::RenderGraph> graph);
 
 } // namespace helios

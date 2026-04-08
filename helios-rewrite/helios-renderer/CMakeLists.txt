@@ -41,6 +41,10 @@ add_library(helios-renderer STATIC
     src/helios/forward_plus/forward_plus_plugin.cpp
     src/helios/forward_plus/extract_render_data.cpp
     src/helios/forward_plus/default_textures.cpp
+    src/helios/forward_plus/pipeline_init.cpp
+    # IBL one-shot compute dispatches
+    src/helios/forward_plus/ibl/equirect_to_cube.cpp
+    src/helios/forward_plus/ibl/ibl_generation.cpp
     # Forward+ pass nodes
     src/helios/forward_plus/passes/depth_prepass.cpp
     src/helios/forward_plus/passes/shadow_pass.cpp
@@ -94,6 +98,16 @@ if(NOT MSVC)
         PROPERTIES COMPILE_OPTIONS "-Wno-missing-field-initializers;-Wno-unused-parameter;-Wno-unused-variable;-Wno-unused-function"
     )
 endif()
+
+# --- Shader compilation (GLSL -> SPIR-V via glslc) ---
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compile_shaders.cmake)
+
+compile_shaders(
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+    OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders
+    BACKEND    vulkan
+    TARGET     helios-renderer
+)
 
 # Tests
 if(HELIOS_BUILD_TESTS)

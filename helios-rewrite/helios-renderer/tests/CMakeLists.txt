@@ -8,6 +8,9 @@ add_executable(helios-renderer-tests
     graph/test_graph_culling.cpp
     graph/test_resource_pool.cpp
     graph/test_frame_packet.cpp
+    # Forward+ tests
+    forward_plus/test_forward_plus_graph.cpp
+    forward_plus/test_cascade_matrices.cpp
 )
 
 target_link_libraries(helios-renderer-tests
