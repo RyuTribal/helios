@@ -8,10 +8,44 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace helios {
+
+// ---------------------------------------------------------------------------
+// Flags helpers
+// ---------------------------------------------------------------------------
+
+namespace Flags {
+    inline bool has(uint32_t flags, uint32_t bit) { return (flags & bit) != 0; }
+    inline void set(uint32_t& flags, uint32_t bit) { flags |= bit; }
+    inline void clear(uint32_t& flags, uint32_t bit) { flags &= ~bit; }
+    inline void toggle(uint32_t& flags, uint32_t bit) { flags ^= bit; }
+} // namespace Flags
+
+// ---------------------------------------------------------------------------
+// Per-component flag namespaces
+// ---------------------------------------------------------------------------
+
+namespace MeshFlags {
+    constexpr uint32_t CastShadows    = 1u << 0;
+    constexpr uint32_t ReceiveShadows = 1u << 1;
+} // namespace MeshFlags
+
+namespace RigidBodyFlags {
+    constexpr uint32_t UseGravity = 1u << 0;
+} // namespace RigidBodyFlags
+
+namespace ColliderFlags {
+    constexpr uint32_t IsTrigger = 1u << 0;
+} // namespace ColliderFlags
+
+namespace AudioFlags {
+    constexpr uint32_t Looping     = 1u << 0;
+    constexpr uint32_t PlayOnStart = 1u << 1;
+} // namespace AudioFlags
 
 // ---------------------------------------------------------------------------
 // Transform
@@ -45,8 +79,7 @@ struct GlobalTransform {
 struct MeshRenderer {
     AssetHandle mesh;
     AssetHandle material;
-    bool cast_shadows   = true;
-    bool receive_shadows = true;
+    uint32_t flags = MeshFlags::CastShadows | MeshFlags::ReceiveShadows;
 };
 
 struct PointLight {
@@ -78,20 +111,20 @@ struct ActiveCamera {};
 struct RigidBody {
     BodyType body_type = BodyType::Dynamic;
     BodyHandle handle;
-    float mass        = 1.0f;
-    bool  use_gravity = true;
+    float    mass  = 1.0f;
+    uint32_t flags = RigidBodyFlags::UseGravity;
 };
 
 struct BoxCollider {
     glm::vec3 half_extents = glm::vec3(0.5f);
     glm::vec3 offset       = glm::vec3(0.0f);
-    bool      is_trigger   = false;
+    uint32_t  flags        = 0;
 };
 
 struct SphereCollider {
-    float     radius    = 0.5f;
-    glm::vec3 offset    = glm::vec3(0.0f);
-    bool      is_trigger = false;
+    float     radius = 0.5f;
+    glm::vec3 offset = glm::vec3(0.0f);
+    uint32_t  flags  = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -100,10 +133,9 @@ struct SphereCollider {
 
 struct AudioSource {
     SoundHandle clip;
-    float       volume    = 1.0f;
-    float       pitch     = 1.0f;
-    bool        looping   = false;
-    bool        play_on_start = false;
+    float    volume = 1.0f;
+    float    pitch  = 1.0f;
+    uint32_t flags  = 0;
 };
 
 // ---------------------------------------------------------------------------

@@ -128,14 +128,14 @@ TEST(RigidBody, DefaultValues) {
     RigidBody rb;
     EXPECT_EQ(rb.body_type, BodyType::Dynamic);
     EXPECT_NEAR(rb.mass, 1.0f, 1e-5f);
-    EXPECT_TRUE(rb.use_gravity);
+    EXPECT_TRUE(Flags::has(rb.flags, RigidBodyFlags::UseGravity));
     EXPECT_FALSE(rb.handle);
 }
 
 TEST(BoxCollider, DefaultValues) {
     BoxCollider bc;
     EXPECT_NEAR(bc.half_extents.x, 0.5f, 1e-5f);
-    EXPECT_FALSE(bc.is_trigger);
+    EXPECT_FALSE(Flags::has(bc.flags, ColliderFlags::IsTrigger));
 }
 
 // ---------------------------------------------------------------------------
