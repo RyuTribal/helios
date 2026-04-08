@@ -171,8 +171,8 @@ TEST(WorldComponents, SpawnWithTransformAndQuery) {
 TEST(WorldComponents, SpawnMultipleAndQueryMeshRenderer) {
     World world;
     MeshRenderer mr;
-    mr.mesh     = AssetHandle{10, 1};
-    mr.material = AssetHandle{20, 1};
+    mr.mesh     = Handle<MeshAsset>{10, 1};
+    mr.material = Handle<MaterialAsset>{20, 1};
 
     world.spawn(Transform{}, mr);
     world.spawn(Transform{}, mr, PointLight{});

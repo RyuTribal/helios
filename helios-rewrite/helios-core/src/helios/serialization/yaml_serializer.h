@@ -82,6 +82,12 @@ inline void serialize_yaml(YAML::Emitter& out, const AssetHandle& h) {
     out << YAML::EndMap;
 }
 
+/// Serialize a typed Handle<T> (same wire format as AssetHandle).
+template<typename T>
+inline void serialize_yaml(YAML::Emitter& out, const Handle<T>& h) {
+    serialize_yaml(out, h.untyped());
+}
+
 // --- glm types ---
 
 inline void serialize_yaml(YAML::Emitter& out, const glm::vec2& v) {
@@ -321,8 +327,8 @@ inline GlobalTransform deserialize_yaml_global_transform(const YAML::Node& node)
 
 inline MeshRenderer deserialize_yaml_mesh_renderer(const YAML::Node& node) {
     MeshRenderer mr;
-    if (node["mesh"])     mr.mesh     = deserialize_yaml_asset_handle(node["mesh"]);
-    if (node["material"]) mr.material = deserialize_yaml_asset_handle(node["material"]);
+    if (node["mesh"])     mr.mesh     = Handle<MeshAsset>::from(deserialize_yaml_asset_handle(node["mesh"]));
+    if (node["material"]) mr.material = Handle<MaterialAsset>::from(deserialize_yaml_asset_handle(node["material"]));
     if (node["flags"])    mr.flags    = node["flags"].as<uint32_t>();
     return mr;
 }

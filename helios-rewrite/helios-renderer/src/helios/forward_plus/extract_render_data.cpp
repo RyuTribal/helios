@@ -55,8 +55,8 @@ void extract_render_data(
     for (auto [t, mr] : meshes) {
         packet->mesh_draws.push_back(renderer::MeshDraw{
             .transform = t.to_mat4(),
-            .mesh      = mr.mesh.packed(),
-            .material  = mr.material.packed(),
+            .mesh      = mr.mesh.untyped().packed(),
+            .material  = mr.material.untyped().packed(),
         });
     }
 

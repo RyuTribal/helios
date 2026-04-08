@@ -1,6 +1,9 @@
 #pragma once
 
 #include "helios/components/component_enums.h"
+#include "helios/assets/handle.h"
+#include "helios/assets/mesh_asset.h"
+#include "helios/assets/material_asset.h"
 #include "helios/ecs/asset_handle.h"
 #include "helios/ecs/entity.h"
 
@@ -77,8 +80,8 @@ struct GlobalTransform {
 // ---------------------------------------------------------------------------
 
 struct MeshRenderer {
-    AssetHandle mesh;
-    AssetHandle material;
+    Handle<MeshAsset> mesh;
+    Handle<MaterialAsset> material;  // override material (if null, uses mesh's default)
     uint32_t flags = MeshFlags::CastShadows | MeshFlags::ReceiveShadows;
 };
 

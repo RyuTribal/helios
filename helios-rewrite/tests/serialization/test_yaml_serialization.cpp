@@ -239,8 +239,8 @@ TEST(YamlSerializerTest, CameraRoundTrip) {
 
 TEST(YamlSerializerTest, MeshRendererRoundTrip) {
     MeshRenderer original;
-    original.mesh     = AssetHandle{1, 2};
-    original.material = AssetHandle{3, 4};
+    original.mesh     = Handle<MeshAsset>{1, 2};
+    original.material = Handle<MaterialAsset>{3, 4};
     original.flags    = MeshFlags::CastShadows;
 
     auto yaml = emit_to_string([&](YAML::Emitter& out) {
@@ -419,7 +419,7 @@ TEST(SceneSerializerTest, SaveAndLoadRoundTrip) {
             Transform{glm::vec3(0, 0, 0),
                       glm::quat(1, 0, 0, 0),
                       glm::vec3(1, 1, 1)},
-            MeshRenderer{AssetHandle{1, 1}, AssetHandle{2, 1},
+            MeshRenderer{Handle<MeshAsset>{1, 1}, Handle<MaterialAsset>{2, 1},
                          MeshFlags::CastShadows | MeshFlags::ReceiveShadows}
         );
 

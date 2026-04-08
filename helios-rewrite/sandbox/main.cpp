@@ -564,8 +564,8 @@ public:
                 glm::radians(90.0f), glm::radians(180.0f), 0.0f))
         });
         world.add(m_helmet, MeshRenderer{
-            .mesh = AssetHandle{1, 1},
-            .material = AssetHandle{1, 1}
+            .mesh = Handle<MeshAsset>{1, 1},
+            .material = Handle<MaterialAsset>{1, 1}
         });
         world.add(m_helmet, Tag{.name = "damaged_helmet"});
 
@@ -662,8 +662,8 @@ public:
             .scale = glm::vec3{0.01f}  // lion model is large, scale down
         });
         world.add(m_lion, MeshRenderer{
-            .mesh = AssetHandle{1, 1},
-            .material = AssetHandle{1, 1}
+            .mesh = Handle<MeshAsset>{1, 1},
+            .material = Handle<MaterialAsset>{1, 1}
         });
         world.add(m_lion, Tag{.name = "lion"});
 
