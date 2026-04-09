@@ -1,6 +1,7 @@
 #include "helios/assets/asset_plugin.h"
 
 #include "helios/assets/asset_server.h"
+#include "helios/core/assert.h"
 #include "helios/assets/mesh_asset.h"
 #include "helios/assets/shader_asset.h"
 #include "helios/assets/importers/texture_importer.h"
@@ -15,6 +16,9 @@
 namespace helios {
 
 void AssetPlugin::build(App& app) {
+    HELIOS_ASSERT(!config.asset_root.empty(),
+        "AssetPlugin requires an asset_root path. Pass AssetPluginConfig{.asset_root = \"path/to/assets\"}");
+
     // 1. Insert AssetServer as a World resource.
     //    AssetServer is non-movable, so we heap-allocate via a shared_ptr wrapper
     //    stored inside a helper struct that IS movable.
