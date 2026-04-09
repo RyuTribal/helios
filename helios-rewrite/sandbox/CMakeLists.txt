@@ -12,9 +12,10 @@ target_link_libraries(sandbox
 )
 target_compile_features(sandbox PRIVATE cxx_std_20)
 
-# Asset paths (hardcoded for this one-off demo)
+# Asset paths
 target_compile_definitions(sandbox PRIVATE
-    HELIOS_DEMO_ASSET_DIR="/home/ryutribal/programming/helios_test/helios_test/Assets"
+    HELIOS_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders"
+    HELIOS_DEMO_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets"
 )
 
 # Compiler warnings
