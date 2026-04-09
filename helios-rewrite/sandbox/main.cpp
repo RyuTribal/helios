@@ -15,11 +15,9 @@
 #include <helios/core/logging.h>
 #include <helios/window/window_plugin.h>
 #include <helios/input/input_plugin.h>
-#include <helios/input/input_map.h>
 #include <helios/input/raw_input.h>
 #include <helios/render_plugin.h>
 #include <helios/forward_plus/forward_plus_plugin.h>
-#include <helios/forward_plus/gpu_data.h>
 #include <helios/app/game_flow_plugin.h>
 #include <helios/app/state.h>
 #include <helios/app/state_builder.h>
@@ -159,9 +157,8 @@ void orbit_camera_system(Res<RawInput> input,
 
 
 // ============================================================
-// Physics update system (runs during Update when demo is active)
-// Reads back helmet position and plays bounce sounds using
-// plugin-provided PhysicsWorld and AudioDevice resources.
+// Physics update system — handles R key reset only.
+// Transform sync is automatic via PhysicsPlugin's sync systems.
 // ============================================================
 
 void physics_update_system(ResMut<ScenePhysics> scene,
@@ -187,7 +184,6 @@ void physics_update_system(ResMut<ScenePhysics> scene,
         scene->helmet_body = (*physics)->create_body(helmet_desc, 2);
         body_map->register_body(scene->helmet_entity, scene->helmet_body, physics::BodyType::Dynamic);
     }
-    // Transform readback is now handled automatically by sync_physics_to_ecs (PostUpdate).
 }
 
 // Separate system: react to collision events from the physics plugin.
