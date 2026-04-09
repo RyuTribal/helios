@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include "helios/core/assert.h"
 #include <functional>
@@ -30,6 +31,7 @@ public:
 
     Column(Column&& other) noexcept
         : m_data(std::move(other.m_data))
+        , m_changed_ticks(std::move(other.m_changed_ticks))
         , m_count(other.m_count)
         , m_element_size(other.m_element_size)
         , m_element_align(other.m_element_align)
@@ -42,6 +44,7 @@ public:
         if (this != &other) {
             clear();
             m_data = std::move(other.m_data);
+            m_changed_ticks = std::move(other.m_changed_ticks);
             m_count = other.m_count;
             m_element_size = other.m_element_size;
             m_element_align = other.m_element_align;
@@ -55,11 +58,12 @@ public:
     Column(const Column&) = delete;
     Column& operator=(const Column&) = delete;
 
-    void push(void* src) {
+    void push(void* src, uint32_t tick = 0) {
         size_t required = (m_count + 1) * m_element_size;
         grow_if_needed(required);
         void* dst = m_data.data() + m_count * m_element_size;
         m_move_construct(dst, src);
+        m_changed_ticks.push_back(tick);
         ++m_count;
     }
 
@@ -73,9 +77,11 @@ public:
             void* last_ptr = m_data.data() + last * m_element_size;
             m_move_construct(target, last_ptr);
             m_destructor(last_ptr);
+            m_changed_ticks[index] = m_changed_ticks[last];
         }
 
         m_data.resize(last * m_element_size);
+        m_changed_ticks.pop_back();
         --m_count;
     }
 
@@ -90,9 +96,11 @@ public:
             void* last_ptr = m_data.data() + last * m_element_size;
             m_move_construct(src, last_ptr);
             m_destructor(last_ptr);
+            m_changed_ticks[index] = m_changed_ticks[last];
         }
 
         m_data.resize(last * m_element_size);
+        m_changed_ticks.pop_back();
         --m_count;
     }
 
@@ -129,6 +137,22 @@ public:
         if (m_destructor) m_destructor(ptr);
     }
 
+    // -----------------------------------------------------------------
+    // Change-detection tick storage
+    // -----------------------------------------------------------------
+
+    /// Read the last-changed tick for the element at index.
+    uint32_t changed_tick(size_t index) const {
+        HELIOS_ASSERT(index < m_count);
+        return m_changed_ticks[index];
+    }
+
+    /// Stamp a new tick on the element at index (called on mutable access).
+    void stamp(size_t index, uint32_t tick) {
+        HELIOS_ASSERT(index < m_count);
+        m_changed_ticks[index] = tick;
+    }
+
     size_t count() const { return m_count; }
     size_t element_size() const { return m_element_size; }
     bool empty() const { return m_count == 0; }
@@ -140,6 +164,7 @@ public:
             }
         }
         m_data.clear();
+        m_changed_ticks.clear();
         m_count = 0;
     }
 
@@ -191,6 +216,7 @@ private:
     }
 
     std::vector<std::byte> m_data;
+    std::vector<uint32_t> m_changed_ticks;   // per-element last-changed tick
     size_t m_count = 0;
     size_t m_element_size = 0;
     size_t m_element_align = 0;
