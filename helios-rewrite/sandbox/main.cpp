@@ -127,11 +127,11 @@ void orbit_camera_system(Res<RawInput> input,
         orbit->pitch = glm::clamp(orbit->pitch, -max_pitch, max_pitch);
     }
 
-    // Scroll zoom (always active)
+    // Scroll zoom — proportional to distance so it feels consistent
     float scroll = input->scroll_delta();
     if (scroll != 0.0f) {
-        orbit->distance -= scroll * orbit->zoom_speed;
-        orbit->distance = glm::clamp(orbit->distance, 0.5f, 20.0f);
+        orbit->distance *= 1.0f - scroll * orbit->zoom_speed;
+        orbit->distance = glm::clamp(orbit->distance, 0.2f, 30.0f);
     }
 
     // Compute camera position from spherical coordinates

@@ -110,7 +110,35 @@ const GPUMaterial* GPUResourceCache::get_or_upload_material(
 
     rhi::Texture* albedo_tex = resolve_texture(asset.albedo, default_white);
     rhi::Texture* normal_tex = resolve_texture(asset.normal, default_blue);
-    rhi::Texture* mr_tex = resolve_texture(asset.metallic_roughness, default_white);
+
+    // For MR: if no texture, bake the material's scalar factors into a 1x1 pixel
+    // (G = roughness, B = metallic) instead of defaulting to white (full metallic)
+    rhi::Texture* mr_tex = nullptr;
+    if (asset.metallic_roughness) {
+        mr_tex = resolve_texture(asset.metallic_roughness, default_white);
+    } else {
+        uint64_t mr_key = key ^ 0xDEAD'BEEF'0000'0001;  // unique per-material
+        auto mr_it = m_textures.find(mr_key);
+        if (mr_it != m_textures.end()) {
+            mr_tex = mr_it->second.get();
+        } else {
+            uint8_t mr_pixel[4] = {
+                0,                                                         // R (unused)
+                static_cast<uint8_t>(asset.roughness * 255.0f),           // G = roughness
+                static_cast<uint8_t>(asset.metallic * 255.0f),            // B = metallic
+                255                                                        // A
+            };
+            rhi::TextureDesc mr_desc;
+            mr_desc.width = 1; mr_desc.height = 1;
+            mr_desc.format = rhi::TextureFormat::RGBA8;
+            mr_desc.usage = rhi::TextureUsage::Sampled;
+            mr_desc.debug_name = "MR_default";
+            auto tex = device.create_texture(mr_desc, mr_pixel);
+            mr_tex = tex.get();
+            m_textures[mr_key] = std::move(tex);
+        }
+    }
+
     rhi::Texture* emissive_tex = resolve_texture(asset.emissive, default_black);
     rhi::Texture* env_tex = env_cubemap ? env_cubemap : const_cast<rhi::Texture*>(&default_white);
 
