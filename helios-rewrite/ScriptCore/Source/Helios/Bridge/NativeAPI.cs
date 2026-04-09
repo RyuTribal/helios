@@ -35,7 +35,7 @@ public static unsafe class NativeAPI
         => Api->Despawn(Api->WorldContext, entityId);
 
     internal static bool IsAlive(ulong entityId)
-        => Api->IsAlive(Api->WorldContext, entityId);
+        => Api->IsAlive(Api->WorldContext, entityId) != 0;
 
     // -- Component (generic) --------------------------------------------------
 
@@ -43,7 +43,7 @@ public static unsafe class NativeAPI
     {
         var bytes = Encoding.UTF8.GetBytes(componentName + '\0');
         fixed (byte* ptr = bytes)
-            return Api->HasComponent(Api->WorldContext, entityId, ptr);
+            return Api->HasComponent(Api->WorldContext, entityId, ptr) != 0;
     }
 
     // -- Transform shortcuts --------------------------------------------------
@@ -81,10 +81,10 @@ public static unsafe class NativeAPI
     // -- Input ----------------------------------------------------------------
 
     internal static bool IsKeyPressed(int keycode)
-        => Api->IsKeyPressed(Api->WorldContext, keycode);
+        => Api->IsKeyPressed(Api->WorldContext, keycode) != 0;
 
     internal static bool IsMouseButtonPressed(int button)
-        => Api->IsMouseButtonPressed(Api->WorldContext, button);
+        => Api->IsMouseButtonPressed(Api->WorldContext, button) != 0;
 
     internal static Vector2 GetMousePosition()
     {

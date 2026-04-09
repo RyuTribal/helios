@@ -19,10 +19,10 @@ public unsafe struct NativeEngineAPI
     // Entity
     public delegate* unmanaged<void*, ulong> Spawn;
     public delegate* unmanaged<void*, ulong, void> Despawn;
-    public delegate* unmanaged<void*, ulong, bool> IsAlive;
+    public delegate* unmanaged<void*, ulong, byte> IsAlive;
 
     // Component (generic)
-    public delegate* unmanaged<void*, ulong, byte*, bool> HasComponent;
+    public delegate* unmanaged<void*, ulong, byte*, byte> HasComponent;
 
     // Transform shortcuts
     public delegate* unmanaged<void*, ulong, float*, void> TransformGetTranslation;
@@ -33,7 +33,7 @@ public unsafe struct NativeEngineAPI
     public delegate* unmanaged<void*, ulong, float*, void> TransformSetScale;
 
     // Input
-    public delegate* unmanaged<void*, int, bool> IsKeyPressed;
-    public delegate* unmanaged<void*, int, bool> IsMouseButtonPressed;
+    public delegate* unmanaged<void*, int, byte> IsKeyPressed;
+    public delegate* unmanaged<void*, int, byte> IsMouseButtonPressed;
     public delegate* unmanaged<void*, float*, float*, void> GetMousePosition;
 }

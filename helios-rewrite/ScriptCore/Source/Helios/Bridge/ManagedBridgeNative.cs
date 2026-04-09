@@ -16,7 +16,7 @@ public unsafe struct ManagedBridgeNative
     // Class discovery
     public delegate* unmanaged<int> GetEntityClassCount;
     public delegate* unmanaged<int, byte*, int, void> GetEntityClassName;
-    public delegate* unmanaged<byte*, bool> EntityClassExists;
+    public delegate* unmanaged<byte*, byte> EntityClassExists;
     public delegate* unmanaged<byte*, uint> GetScriptTypeId;
 
     // Instance lifecycle

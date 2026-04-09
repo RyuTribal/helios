@@ -124,15 +124,15 @@ public static unsafe class ScriptHostBridge
     }
 
     [UnmanagedCallersOnly]
-    private static bool BridgeEntityClassExists(byte* fullNamePtr)
+    private static byte BridgeEntityClassExists(byte* fullNamePtr)
     {
         string fullName = PtrToString(fullNamePtr);
         foreach (var type in s_ScriptClasses)
         {
             if (type.FullName == fullName || type.Name == fullName)
-                return true;
+                return 1;
         }
-        return false;
+        return 0;
     }
 
     [UnmanagedCallersOnly]

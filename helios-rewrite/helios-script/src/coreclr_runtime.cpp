@@ -21,10 +21,9 @@ using hostfxr_close_fn = int32_t(*)(hostfxr_handle host_context_handle);
 
 // hdt_load_assembly_and_get_function_pointer = 5
 static constexpr int HDT_LOAD_ASSEMBLY = 5;
-// UNMANAGEDCALLERSONLY_METHOD sentinel
-static constexpr const char* UNMANAGEDCALLERSONLY =
-    "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute, "
-    "System.Runtime.InteropServices";
+// UNMANAGEDCALLERSONLY_METHOD sentinel — the hosting API expects (const char*)-1
+// to indicate [UnmanagedCallersOnly] methods, not a type name string.
+static const char* UNMANAGEDCALLERSONLY = reinterpret_cast<const char*>(static_cast<intptr_t>(-1));
 
 namespace helios {
 
