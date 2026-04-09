@@ -185,10 +185,8 @@ void forward_plus_draw(ResMut<RenderContext> ctx,
         const float vp_w = view.viewport_w * sw_w;
         const float vp_h = view.viewport_h * sw_h;
 
-        // Draw skybox for cameras with SolidColor clear mode (they own their region)
-        if (view.clear_mode == renderer::CameraClearMode::SolidColor) {
-            draw_skybox_for_view(cmd, *skybox, view, vp_x, vp_y, vp_w, vp_h);
-        }
+        // Draw skybox for every camera (each camera gets its own background)
+        draw_skybox_for_view(cmd, *skybox, view, vp_x, vp_y, vp_w, vp_h);
 
         draw_meshes_for_view(cmd, device, *pbr, *skybox, *cache,
                              asset_server, *packet, view,
