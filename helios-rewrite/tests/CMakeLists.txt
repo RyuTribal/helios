@@ -33,6 +33,7 @@ add_executable(helios-tests
     assets/test_asset_extensions.cpp
     assets/test_importers.cpp
     scene/test_scene_manager.cpp
+    scene/test_scene_plugin.cpp
     serialization/test_binary_serialization.cpp
     serialization/test_yaml_serialization.cpp
 )
