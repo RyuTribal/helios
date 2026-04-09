@@ -135,12 +135,16 @@ inline void physics_auto_create(
 }
 
 // Schedule: PreUpdate (after auto_create)
-// Push ECS Transform -> physics body for Kinematic bodies.
-// This lets game code drive kinematic bodies by setting Transform.position/rotation.
+// Push ECS GlobalTransform -> physics body for Kinematic bodies.
+// Only syncs bodies whose GlobalTransform actually changed (via propagation).
+// Game code drives kinematic bodies by setting Transform; the propagation
+// system computes GlobalTransform, and on the next frame this sync pushes it
+// to the physics world.
 inline void sync_ecs_to_physics(
     helios::Res<std::unique_ptr<PhysicsWorld>> world,
     helios::Res<PhysicsBodyMap>                body_map,
-    helios::Query<const helios::Transform>     transforms)
+    helios::Query<const helios::GlobalTransform,
+                  helios::Changed<helios::GlobalTransform>> changed_globals)
 {
     if (!*world) return;
 
@@ -152,11 +156,14 @@ inline void sync_ecs_to_physics(
         entity.index      = static_cast<uint32_t>(k & 0xFFFF'FFFFu);
         entity.generation = static_cast<uint32_t>(k >> 32);
 
-        auto result = transforms.get(entity);
+        auto result = changed_globals.get(entity);
         if (!result.has_value()) continue;
 
-        const auto& [t] = *result;
-        (*world)->set_transform(entry.handle, t.position, t.rotation);
+        const auto& [gt] = *result;
+        // Decompose the GlobalTransform matrix into position and rotation.
+        glm::vec3 pos = glm::vec3(gt.matrix[3]);
+        glm::quat rot = glm::quat_cast(glm::mat3(gt.matrix));
+        (*world)->set_transform(entry.handle, pos, rot);
     }
 }
 
