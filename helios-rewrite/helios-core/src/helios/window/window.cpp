@@ -106,16 +106,10 @@ struct Window::Impl {
                 data->new_height = static_cast<uint32_t>(height);
             });
 
-        glfwSetWindowCloseCallback(glfw_window,
-            [](GLFWwindow* win) {
-                auto* data = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(win));
-                data->close_requested = true;
-                // Prevent GLFW from auto-setting should_close. We handle
-                // close ourselves via the callback data + WindowClosePolicy.
-                // On Wayland, some compositors spuriously trigger the close
-                // callback during fullscreen/workspace transitions.
-                glfwSetWindowShouldClose(win, GLFW_FALSE);
-            });
+        // No close callback — we poll glfwWindowShouldClose() each frame
+        // and reset it before polling, so only fresh close events from the
+        // current poll cycle are detected. This avoids Hyprland's spurious
+        // close events during fullscreen/workspace transitions persisting.
 
         // Update desc with actual framebuffer size (may differ on HiDPI).
         int fb_w, fb_h;
@@ -174,6 +168,10 @@ const WindowCallbackData& Window::callback_data() const {
 
 void Window::clear_callback_data() {
     m_impl->cb_data.clear();
+}
+
+void Window::reset_close_flag() {
+    glfwSetWindowShouldClose(m_impl->glfw_window, GLFW_FALSE);
 }
 
 void* Window::native_handle() const {

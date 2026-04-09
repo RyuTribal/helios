@@ -36,10 +36,18 @@ void poll_window_events(ResMut<Windows> windows,
                         EventWriter<WindowResized> resize_writer,
                         EventWriter<WindowClosed>  close_writer)
 {
+    // Reset close flags BEFORE polling. This way only close events from
+    // the current glfwPollEvents() cycle trigger should_close. Stale flags
+    // from compositor state transitions (Hyprland sends spurious close
+    // during fullscreen/workspace changes) are cleared before they're read.
+    for (auto& [id, window] : *windows) {
+        window.reset_close_flag();
+    }
+
     // Poll GLFW events for all windows.
     windows->poll_all();
 
-    // Check for closing windows.
+    // Check for closing windows (only detects close events from THIS poll).
     auto closing = windows->closing_windows();
     for (auto id : closing) {
         HELIOS_LOG(Window, Info, "Window {} close requested", id);
