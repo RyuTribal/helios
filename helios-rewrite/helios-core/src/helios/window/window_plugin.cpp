@@ -40,17 +40,22 @@ void poll_window_events(ResMut<Windows> windows,
     windows->poll_all();
 
     // Check for closing windows and emit events.
+    // Ignore close requests that arrive on the same frame as a resize —
+    // Wayland compositors spuriously fire close during fullscreen/workspace
+    // transitions alongside resize events.
     auto closing = windows->closing_windows();
     for (auto id : closing) {
+        const auto& cb = windows->get(id).callback_data();
+        if (cb.resized) {
+            continue;  // spurious close during resize — ignore
+        }
+
         close_writer.send(WindowClosed{ .window_id = id });
 
         if (windows->should_app_exit_on_close(id)) {
-            // Mark the window plugin's "should quit" flag.
-            // The app checks this after PreUpdate.
             windows->request_quit();
         }
 
-        // Destroy the window (unless it's the last and we're quitting)
         if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
             windows->destroy(id);
         }
