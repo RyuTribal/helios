@@ -329,7 +329,9 @@ std::unique_ptr<rhi::CommandBuffer> VulkanDevice::create_command_buffer()
 
 std::unique_ptr<rhi::Swapchain> VulkanDevice::create_swapchain(const SwapchainDesc& desc)
 {
-    return std::make_unique<VulkanSwapchain>(*this, desc);
+    auto sc = std::make_unique<VulkanSwapchain>(*this, desc);
+    if (sc->vk_swapchain() == VK_NULL_HANDLE) return nullptr;
+    return sc;
 }
 
 std::unique_ptr<rhi::DescriptorSetLayout> VulkanDevice::create_descriptor_set_layout(
