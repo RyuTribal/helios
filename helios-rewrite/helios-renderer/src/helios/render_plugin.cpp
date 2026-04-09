@@ -204,6 +204,10 @@ void RenderPlugin::build(App& app) {
     // Without this, the swapchain is created at the requested size, but
     // the compositor immediately sends a different size on the first frame.
     glfwPollEvents();
+    // Clear any spurious events from the initial poll (Hyprland can fire
+    // close/resize events during the first configure).
+    windows.primary().clear_callback_data();
+    glfwSetWindowShouldClose(native, GLFW_FALSE);
 
     int fb_w, fb_h;
     glfwGetFramebufferSize(native, &fb_w, &fb_h);
