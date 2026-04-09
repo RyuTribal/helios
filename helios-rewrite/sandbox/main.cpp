@@ -147,10 +147,10 @@ void orbit_camera_system(Res<RawInput> input,
 }
 
 
-void helmet_controls(Query<Transform, const Tag, const physics::PhysicsBody> bodies,
+void helmet_controls(Query<Transform, const Tag> entities,
                      Res<RawInput> input,
                      Res<Time> time) {
-    for (auto [t, tag, pb] : bodies) {
+    for (auto [t, tag] : entities) {
         if (tag.name != "damaged_helmet") continue;
 
         // R key: reset to starting position
