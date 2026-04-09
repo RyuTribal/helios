@@ -77,6 +77,12 @@ struct QueryComponentAccess<Optional<const T>> {
     static constexpr AccessMode mode = AccessMode::Read;
 };
 
+template <typename T>
+struct QueryComponentAccess<Changed<T>> {
+    using type = T;
+    static constexpr AccessMode mode = AccessMode::Read;
+};
+
 // Collect accesses from a pack of query component types
 template <typename... Ts>
 std::vector<AccessDescriptor> query_accesses() {

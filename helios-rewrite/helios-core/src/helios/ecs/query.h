@@ -74,6 +74,28 @@ private:
         return std::tuple_cat(fetch_one<Params>(arch, row, current_tick)...);
     }
 
+    /// True at compile time when any Params are Changed<T>.
+    static constexpr bool has_changed_filter = (is_changed_v<Params> || ...);
+
+    /// Per-entity check: returns true if all Changed<T> filters pass.
+    /// A Changed<T> filter passes when the component's tick is > last_run_tick
+    /// (i.e. the component was modified since the owning system last ran).
+    template <typename P>
+    static bool check_changed_one([[maybe_unused]] Archetype& arch,
+                                  [[maybe_unused]] size_t row,
+                                  [[maybe_unused]] uint32_t last_run_tick) {
+        if constexpr (is_changed_v<P>) {
+            using Inner = filter_inner_t<P>;
+            return arch.get_column<Inner>().changed_tick(row) > last_run_tick;
+        } else {
+            return true;
+        }
+    }
+
+    static bool passes_changed_filters(Archetype& arch, size_t row, uint32_t last_run_tick) {
+        return (check_changed_one<Params>(arch, row, last_run_tick) && ...);
+    }
+
 public:
     // -----------------------------------------------------------------------
     // Iterator
@@ -94,7 +116,7 @@ public:
             , m_last_run_tick(last_run_tick)
             , m_current_tick(current_tick)
         {
-            skip_empty();
+            advance_to_valid();
         }
 
         ResultTuple operator*() const {
@@ -103,12 +125,8 @@ public:
         }
 
         Iterator& operator++() {
-            ++m_row;
-            if (m_row >= (*m_archetypes)[m_arch_idx]->size()) {
-                m_row = 0;
-                ++m_arch_idx;
-                skip_empty();
-            }
+            advance_one();
+            advance_to_valid();
             return *this;
         }
 
@@ -133,10 +151,36 @@ public:
         uint32_t m_last_run_tick = 0;
         uint32_t m_current_tick = 0;
 
-        void skip_empty() {
-            while (m_arch_idx < m_archetypes->size() &&
-                   (*m_archetypes)[m_arch_idx]->empty()) {
+        /// Move to the next position (row+1, wrapping to next archetype).
+        void advance_one() {
+            ++m_row;
+            if (m_row >= (*m_archetypes)[m_arch_idx]->size()) {
+                m_row = 0;
                 ++m_arch_idx;
+            }
+        }
+
+        /// Skip empty archetypes and, when Changed<T> filters are present,
+        /// skip rows that do not pass the per-entity tick check.
+        void advance_to_valid() {
+            while (m_arch_idx < m_archetypes->size()) {
+                auto* arch = (*m_archetypes)[m_arch_idx];
+                if (arch->empty()) {
+                    ++m_arch_idx;
+                    m_row = 0;
+                    continue;
+                }
+                if constexpr (has_changed_filter) {
+                    if (m_row < arch->size() &&
+                        !passes_changed_filters(*arch, m_row, m_last_run_tick)) {
+                        advance_one();
+                        continue;
+                    }
+                }
+                if (m_row < arch->size()) break;
+                // Exhausted this archetype.
+                ++m_arch_idx;
+                m_row = 0;
             }
         }
     };
@@ -160,7 +204,7 @@ public:
             , m_last_run_tick(last_run_tick)
             , m_current_tick(current_tick)
         {
-            skip_empty();
+            advance_to_valid();
         }
 
         EntityResultTuple operator*() const {
@@ -170,12 +214,8 @@ public:
         }
 
         EntityIterator& operator++() {
-            ++m_row;
-            if (m_row >= (*m_archetypes)[m_arch_idx]->size()) {
-                m_row = 0;
-                ++m_arch_idx;
-                skip_empty();
-            }
+            advance_one();
+            advance_to_valid();
             return *this;
         }
 
@@ -200,10 +240,32 @@ public:
         uint32_t m_last_run_tick = 0;
         uint32_t m_current_tick = 0;
 
-        void skip_empty() {
-            while (m_arch_idx < m_archetypes->size() &&
-                   (*m_archetypes)[m_arch_idx]->empty()) {
+        void advance_one() {
+            ++m_row;
+            if (m_row >= (*m_archetypes)[m_arch_idx]->size()) {
+                m_row = 0;
                 ++m_arch_idx;
+            }
+        }
+
+        void advance_to_valid() {
+            while (m_arch_idx < m_archetypes->size()) {
+                auto* arch = (*m_archetypes)[m_arch_idx];
+                if (arch->empty()) {
+                    ++m_arch_idx;
+                    m_row = 0;
+                    continue;
+                }
+                if constexpr (has_changed_filter) {
+                    if (m_row < arch->size() &&
+                        !passes_changed_filters(*arch, m_row, m_last_run_tick)) {
+                        advance_one();
+                        continue;
+                    }
+                }
+                if (m_row < arch->size()) break;
+                ++m_arch_idx;
+                m_row = 0;
             }
         }
     };
@@ -299,7 +361,11 @@ private:
     /// Per-parameter archetype check.
     template <typename P>
     static bool check_param(const Archetype& arch) {
-        if constexpr (is_with_v<P>) {
+        if constexpr (is_changed_v<P>) {
+            // Changed<T> requires the component to be present (like With<T>).
+            // Per-entity tick filtering happens in the iterator.
+            return arch.has_component(component_id<filter_inner_t<P>>());
+        } else if constexpr (is_with_v<P>) {
             return arch.has_component(component_id<filter_inner_t<P>>());
         } else if constexpr (is_without_v<P>) {
             return !arch.has_component(component_id<filter_inner_t<P>>());

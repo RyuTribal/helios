@@ -20,6 +20,12 @@ struct Without {};
 template <typename T>
 struct Optional {};
 
+/// Non-archetypal filter: only yield entities where component T was modified
+/// since the owning system last ran.  This is a per-entity check in the
+/// iterator, not an archetype-level filter.
+template <typename T>
+struct Changed {};
+
 // ---------------------------------------------------------------------------
 // Type traits: detect filter wrappers
 // ---------------------------------------------------------------------------
@@ -36,10 +42,14 @@ template <typename T> struct is_optional : std::false_type {};
 template <typename T> struct is_optional<Optional<T>> : std::true_type {};
 template <typename T> inline constexpr bool is_optional_v = is_optional<T>::value;
 
-/// True when the parameter is a filter (With/Without) that should NOT appear
-/// in the result tuple.
+template <typename T> struct is_changed : std::false_type {};
+template <typename T> struct is_changed<Changed<T>> : std::true_type {};
+template <typename T> inline constexpr bool is_changed_v = is_changed<T>::value;
+
+/// True when the parameter is a filter (With/Without/Changed) that should
+/// NOT appear in the result tuple.
 template <typename T>
-inline constexpr bool is_filter_v = is_with_v<T> || is_without_v<T>;
+inline constexpr bool is_filter_v = is_with_v<T> || is_without_v<T> || is_changed_v<T>;
 
 /// True when the parameter contributes a value to the result tuple
 /// (plain component or Optional).
@@ -51,10 +61,11 @@ inline constexpr bool is_fetch_v = !is_filter_v<T>;
 // ---------------------------------------------------------------------------
 
 /// Extract the inner component type from any filter/optional wrapper.
-template <typename T> struct filter_inner        { using type = T; };
-template <typename T> struct filter_inner<With<T>>    { using type = T; };
-template <typename T> struct filter_inner<Without<T>> { using type = T; };
-template <typename T> struct filter_inner<Optional<T>>{ using type = T; };
+template <typename T> struct filter_inner          { using type = T; };
+template <typename T> struct filter_inner<With<T>>     { using type = T; };
+template <typename T> struct filter_inner<Without<T>>  { using type = T; };
+template <typename T> struct filter_inner<Optional<T>> { using type = T; };
+template <typename T> struct filter_inner<Changed<T>>  { using type = T; };
 template <typename T> using filter_inner_t = typename filter_inner<T>::type;
 
 /// Strip const and filter wrappers to get the raw component type.
