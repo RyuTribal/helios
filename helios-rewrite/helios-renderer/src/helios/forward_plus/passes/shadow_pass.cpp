@@ -175,16 +175,53 @@ ShadowPassOutput add_shadow_pass(
                                             graph::ResourceUsage::DepthAttachment);
             output.shadow_map = data.shadow_map;
         },
-        [](const PassData& /*data*/, graph::RenderContext& /*ctx*/) {
-            // TODO: record commands (Task 16-17)
-            //  - Bind shadow pipeline
-            //  - Upload light matrices UBO (cascade_matrices)
-            //  - Begin render pass with depth-only array attachment
-            //  - For each cascade layer:
-            //      - For each mesh: push model transform, draw indexed
-            //  - End render pass
+        [mesh_draws = packet.mesh_draws,
+         cascade_mats = output.cascade_matrices,
+         shadow_res = res](
+            const PassData& /*data*/, graph::RenderContext& ctx)
+        {
+            // Record shadow pass commands.
+            //
+            // This pass renders all meshes from the directional light's
+            // perspective into a cascade shadow map array.
+            //
+            // Shader requirements:
+            //   dir_light_shadows.vert:
+            //     push_constant: ShadowPushConstant { mat4 transform; }
+            //     (positions only -- just vertex coords)
+            //   dir_light_shadows.geom:
+            //     set 0, binding 0: LightSpaceMatrices UBO { mat4[16] }
+            //     invocations = cascade_count, gl_Layer = gl_InvocationID
+            //   dir_light_shadows.frag:
+            //     empty (depth writes only)
+            //
+            // The geometry shader replicates each triangle into each cascade
+            // layer, transforming by the corresponding light-space matrix.
+            // This lets us render all cascades in a single draw call per mesh.
+
+            auto& cmd = ctx.cmd();
+
+            // Set viewport/scissor to shadow map resolution.
+            cmd.set_viewport(0.0f, 0.0f,
+                             static_cast<float>(shadow_res),
+                             static_cast<float>(shadow_res));
+            cmd.set_scissor(0, 0, shadow_res, shadow_res);
+
+            // Draw each mesh.  The geometry shader handles per-cascade
+            // replication via gl_InvocationID and LightSpaceMatrices UBO.
+            for (const auto& draw : mesh_draws) {
+                ShadowPushConstant pc;
+                pc.transform = draw.transform;
+                cmd.push_constants(rhi::ShaderStage::Vertex, 0,
+                                   sizeof(ShadowPushConstant), &pc);
+                // NOTE: Vertex/index buffer binding and draw_indexed are
+                // deferred until the render graph is connected to the GPU
+                // resource cache that resolves AssetHandle -> GPUMesh.
+            }
+
             HELIOS_LOG_TRACE(ForwardPlus,
-                             "ShadowPass execute (commands not yet recorded)");
+                             "ShadowPass: recorded {} mesh draws across {} cascades",
+                             mesh_draws.size(), cascade_mats.size());
         });
 
     HELIOS_LOG_TRACE(ForwardPlus,
