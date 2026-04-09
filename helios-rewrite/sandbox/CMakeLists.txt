@@ -12,10 +12,9 @@ target_link_libraries(sandbox
 )
 target_compile_features(sandbox PRIVATE cxx_std_20)
 
-# Asset paths
+# Shader path (compiled SPIR-V output)
 target_compile_definitions(sandbox PRIVATE
     HELIOS_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders"
-    HELIOS_DEMO_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets"
 )
 
 # Compiler warnings

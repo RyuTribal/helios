@@ -499,7 +499,7 @@ int main() {
 
     // Asset pipeline -- registers AssetServer + importers
     app.add_plugin(AssetPlugin{AssetPluginConfig{
-        .asset_root = HELIOS_DEMO_ASSET_DIR,
+        .asset_root = "sandbox/assets",
         .loader_threads = 0,  // sync-only for this demo
     }});
 
