@@ -47,7 +47,7 @@ void SceneManager::preload(SceneHandle handle, AssetServer& server) {
     scene->state = SceneState::Preloading;
 
     for (const auto& path : scene->asset_paths) {
-        auto asset_handle = server.load_by_extension(path);
+        auto asset_handle = server.load_sync_by_extension(path);
         if (asset_handle) {
             scene->acquired_assets.push_back(asset_handle);
         }
