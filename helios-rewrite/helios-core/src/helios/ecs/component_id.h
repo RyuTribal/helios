@@ -10,13 +10,17 @@
 
 namespace helios {
 
-// Components must be aggregates: no user-declared constructors, no virtual
-// functions, no private/protected data members. This is required for:
-//   1. Automatic reflection via qlibs/reflect
-//   2. Cache-friendly archetype storage
-//   3. Safe type-erased column operations
+// Components must be movable, destructible, and non-polymorphic.
+// Aggregates are preferred but not required -- RAII types like Handle<T>
+// (with user-declared constructors/destructors) are allowed.
+//   1. Move-constructible: required for archetype column relocation
+//   2. Destructible: required for column cleanup
+//   3. Non-polymorphic: blocks virtual/inherited types that break
+//      type-erased storage (no vtable in columns)
 template <typename T>
-concept Component = std::is_aggregate_v<T> && std::is_move_constructible_v<T> && std::is_destructible_v<T>;
+concept Component = std::is_move_constructible_v<T>
+                 && std::is_destructible_v<T>
+                 && !std::is_polymorphic_v<T>;
 
 using ComponentId = std::type_index;
 using ArchetypeId = std::vector<ComponentId>;

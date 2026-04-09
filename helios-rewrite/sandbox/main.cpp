@@ -96,7 +96,7 @@ struct OrbitCamera {
 void orbit_camera_system(Res<RawInput> input,
                          ResMut<Windows> windows,
                          ResMut<OrbitCamera> orbit,
-                         Query<Transform, With<ActiveCamera>> cameras)
+                         Query<Transform, const Tag, With<ActiveCamera>> cameras)
 {
     if (!windows->has_primary()) return;
     auto& win = windows->primary();
@@ -131,7 +131,7 @@ void orbit_camera_system(Res<RawInput> input,
         orbit->distance = glm::clamp(orbit->distance, 0.2f, 30.0f);
     }
 
-    // Compute camera position from spherical coordinates
+    // Compute main camera position from spherical coordinates
     glm::vec3 offset;
     offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw);
     offset.y = orbit->distance * std::sin(orbit->pitch);
@@ -139,10 +139,21 @@ void orbit_camera_system(Res<RawInput> input,
 
     glm::vec3 cam_pos = orbit->target + offset;
 
-    for (auto [t] : cameras) {
-        t.position = cam_pos;
-        glm::mat4 look = glm::lookAt(cam_pos, orbit->target, glm::vec3(0, 1, 0));
-        t.rotation = glm::conjugate(glm::quat_cast(look));
+    for (auto [t, tag] : cameras) {
+        if (tag.name == "main_camera") {
+            t.position = cam_pos;
+            glm::mat4 look = glm::lookAt(cam_pos, orbit->target, glm::vec3(0, 1, 0));
+            t.rotation = glm::conjugate(glm::quat_cast(look));
+        } else if (tag.name == "side_camera") {
+            // 90-degree offset around Y from the main camera
+            glm::vec3 side_offset;
+            side_offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw + glm::half_pi<float>());
+            side_offset.y = orbit->distance * std::sin(orbit->pitch);
+            side_offset.z = orbit->distance * std::cos(orbit->pitch) * std::cos(orbit->yaw + glm::half_pi<float>());
+            glm::vec3 side_pos = orbit->target + side_offset;
+            t.position = side_pos;
+            t.rotation = glm::conjugate(glm::quat_cast(glm::lookAt(side_pos, orbit->target, glm::vec3(0, 1, 0))));
+        }
     }
 }
 
@@ -456,12 +467,38 @@ struct DemoScenePlugin {
     void build(App& app) {
         auto& world = app.world();
 
-        // Camera -- looking at the helmet from the front
+        // Left camera (primary) -- covers left half of the window
         world.spawn(
             Transform{ .position = glm::vec3{0.0f, 0.0f, 3.0f} },
-            Camera{ .fov_degrees = 60.0f, .near_plane = 0.1f, .far_plane = 100.0f },
+            Camera{
+                .fov_degrees = 60.0f,
+                .near_plane = 0.1f,
+                .far_plane = 100.0f,
+                .order = 0,
+                .viewport_x = 0.0f,
+                .viewport_y = 0.0f,
+                .viewport_w = 0.5f,
+                .viewport_h = 1.0f,
+            },
             ActiveCamera{},
             Tag{ .name = "main_camera" });
+
+        // Right camera (side view) -- covers right half, 90-degree offset
+        world.spawn(
+            Transform{ .position = glm::vec3{3.0f, 0.0f, 0.0f} },
+            Camera{
+                .fov_degrees = 60.0f,
+                .near_plane = 0.1f,
+                .far_plane = 100.0f,
+                .order = 1,
+                .viewport_x = 0.5f,
+                .viewport_y = 0.0f,
+                .viewport_w = 0.5f,
+                .viewport_h = 1.0f,
+                .clear_mode = Camera::ClearMode::None,
+            },
+            ActiveCamera{},
+            Tag{ .name = "side_camera" });
 
         // Directional light (sun)
         world.spawn(
@@ -470,7 +507,7 @@ struct DemoScenePlugin {
             DirectionalLight{ .color = glm::vec3{1.0f, 0.95f, 0.8f}, .intensity = 3.0f },
             Tag{ .name = "sun" });
 
-        HELIOS_LOG(Scene, Info, "Scene: camera + sun spawned (no mesh yet -- states handle that)");
+        HELIOS_LOG(Scene, Info, "Scene: split-screen cameras + sun spawned (no mesh yet -- states handle that)");
     }
 };
 

@@ -171,8 +171,8 @@ TEST(WorldComponents, SpawnWithTransformAndQuery) {
 TEST(WorldComponents, SpawnMultipleAndQueryMeshRenderer) {
     World world;
     MeshRenderer mr;
-    mr.mesh     = Handle<MeshAsset>{10, 1};
-    mr.material = Handle<MaterialAsset>{20, 1};
+    mr.mesh     = Handle<MeshAsset>::from(AssetHandle{10, 1});
+    mr.material = Handle<MaterialAsset>::from(AssetHandle{20, 1});
 
     world.spawn(Transform{}, mr);
     world.spawn(Transform{}, mr, PointLight{});
@@ -271,10 +271,11 @@ struct GoodComponent { float x; int y; std::string name; };
 struct MarkerComponent {};
 
 struct BadVirtual { virtual void update() {} float x; };
-struct BadConstructor { BadConstructor(int v) : val(v) {} int val; };
-struct BadPrivate { float x; private: int secret; };
+struct BadDerived : BadVirtual { void update() override {} };
+struct HasConstructor { HasConstructor(int v) : val(v) {} int val; };
+struct HasPrivate { float x; private: int secret; };
 
-// These should satisfy the Component concept
+// These should satisfy the Component concept (movable, destructible, non-polymorphic)
 static_assert(helios::Component<GoodComponent>);
 static_assert(helios::Component<MarkerComponent>);
 static_assert(helios::Component<helios::Transform>);
@@ -284,9 +285,12 @@ static_assert(helios::Component<helios::Disabled>);
 static_assert(helios::Component<helios::MeshRenderer>);
 static_assert(helios::Component<helios::Camera>);
 
-// These should NOT satisfy the Component concept
+// Non-aggregate types with constructors/private members are now allowed
+static_assert(helios::Component<HasConstructor>, "User constructors are allowed");
+static_assert(helios::Component<HasPrivate>, "Private members are allowed");
+
+// Polymorphic types are NOT allowed (virtual functions, inheritance)
 static_assert(!helios::Component<BadVirtual>, "Virtual methods disallowed");
-static_assert(!helios::Component<BadConstructor>, "User constructors disallowed");
-static_assert(!helios::Component<BadPrivate>, "Private members disallowed");
+static_assert(!helios::Component<BadDerived>, "Polymorphic derived types disallowed");
 
 } // namespace

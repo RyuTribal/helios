@@ -3,6 +3,8 @@
 #include "helios/forward_plus/forward_plus_log_channel.h"
 #include "helios/rhi/rhi_swapchain.h"
 
+#include <algorithm>
+
 namespace helios {
 
 void extract_render_data(
@@ -15,16 +17,41 @@ void extract_render_data(
 {
     packet->clear();
 
-    // Compute aspect ratio from actual swapchain dimensions
-    const float aspect = (render_ctx->swapchain && render_ctx->swapchain->height() > 0)
-        ? static_cast<float>(render_ctx->swapchain->width()) / static_cast<float>(render_ctx->swapchain->height())
-        : 16.0f / 9.0f;
+    // Full swapchain dimensions (used for default aspect if viewport is full-window)
+    const float sw_w = (render_ctx->swapchain)
+        ? static_cast<float>(render_ctx->swapchain->width()) : 1920.0f;
+    const float sw_h = (render_ctx->swapchain)
+        ? static_cast<float>(render_ctx->swapchain->height()) : 1080.0f;
 
-    // --- Active camera ---
-    // Only one active camera is expected; take the first match.
-    bool camera_found = false;
+    // --- Active cameras (multi-camera) ---
+    // Collect all cameras with ActiveCamera tag, then sort by order.
+    struct CamEntry {
+        Transform transform;
+        Camera cam;
+    };
+    std::vector<CamEntry> cam_entries;
     for (auto [t, cam] : cameras) {
-        packet->camera = renderer::CameraData{
+        cam_entries.push_back({t, cam});
+    }
+
+    // Sort by render order (lower first)
+    std::sort(cam_entries.begin(), cam_entries.end(),
+              [](const CamEntry& a, const CamEntry& b) {
+                  return a.cam.order < b.cam.order;
+              });
+
+    packet->camera_views.reserve(cam_entries.size());
+    for (const auto& entry : cam_entries) {
+        const auto& t = entry.transform;
+        const auto& cam = entry.cam;
+
+        // Aspect ratio comes from the camera's viewport, not the full window
+        const float vp_pixel_w = cam.viewport_w * sw_w;
+        const float vp_pixel_h = cam.viewport_h * sw_h;
+        const float aspect = (vp_pixel_h > 0.0f) ? (vp_pixel_w / vp_pixel_h) : (16.0f / 9.0f);
+
+        renderer::CameraView cv;
+        cv.camera = renderer::CameraData{
             .view         = glm::inverse(t.to_mat4()),
             .projection   = (cam.projection == ProjectionType::Perspective)
                 ? glm::perspective(
@@ -42,11 +69,21 @@ void extract_render_data(
             .fov_y        = cam.fov_degrees,
             .aspect_ratio = aspect,
         };
-        camera_found = true;
-        break;
+        cv.viewport_x = cam.viewport_x;
+        cv.viewport_y = cam.viewport_y;
+        cv.viewport_w = cam.viewport_w;
+        cv.viewport_h = cam.viewport_h;
+        cv.clear_mode = (cam.clear_mode == Camera::ClearMode::SolidColor)
+            ? renderer::CameraClearMode::SolidColor
+            : renderer::CameraClearMode::None;
+
+        packet->camera_views.push_back(cv);
     }
 
-    if (!camera_found) {
+    // Backward compat: primary camera is the first in sorted order
+    if (!packet->camera_views.empty()) {
+        packet->camera = packet->camera_views.front().camera;
+    } else {
         HELIOS_LOG_WARN(ForwardPlus, "No active camera found; frame will use default camera");
     }
 

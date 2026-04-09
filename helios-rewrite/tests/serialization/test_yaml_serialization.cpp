@@ -239,8 +239,8 @@ TEST(YamlSerializerTest, CameraRoundTrip) {
 
 TEST(YamlSerializerTest, MeshRendererRoundTrip) {
     MeshRenderer original;
-    original.mesh     = Handle<MeshAsset>{1, 2};
-    original.material = Handle<MaterialAsset>{3, 4};
+    original.mesh     = Handle<MeshAsset>::from(AssetHandle{1, 2});
+    original.material = Handle<MaterialAsset>::from(AssetHandle{3, 4});
     original.flags    = MeshFlags::CastShadows;
 
     auto yaml = emit_to_string([&](YAML::Emitter& out) {
@@ -249,10 +249,10 @@ TEST(YamlSerializerTest, MeshRendererRoundTrip) {
     YAML::Node node = YAML::Load(yaml);
     auto result = deserialize_yaml_mesh_renderer(node);
 
-    EXPECT_EQ(result.mesh.index, 1u);
-    EXPECT_EQ(result.mesh.generation, 2u);
-    EXPECT_EQ(result.material.index, 3u);
-    EXPECT_EQ(result.material.generation, 4u);
+    EXPECT_EQ(result.mesh.index(), 1u);
+    EXPECT_EQ(result.mesh.generation(), 2u);
+    EXPECT_EQ(result.material.index(), 3u);
+    EXPECT_EQ(result.material.generation(), 4u);
     EXPECT_EQ(result.flags, MeshFlags::CastShadows);
 }
 
@@ -419,7 +419,8 @@ TEST(SceneSerializerTest, SaveAndLoadRoundTrip) {
             Transform{glm::vec3(0, 0, 0),
                       glm::quat(1, 0, 0, 0),
                       glm::vec3(1, 1, 1)},
-            MeshRenderer{Handle<MeshAsset>{1, 1}, Handle<MaterialAsset>{2, 1},
+            MeshRenderer{Handle<MeshAsset>::from(AssetHandle{1, 1}),
+                         Handle<MaterialAsset>::from(AssetHandle{2, 1}),
                          MeshFlags::CastShadows | MeshFlags::ReceiveShadows}
         );
 
@@ -472,8 +473,8 @@ TEST(SceneSerializerTest, SaveAndLoadRoundTrip) {
                     found_player = true;
                     ASSERT_TRUE(arch.has_component(component_id<MeshRenderer>()));
                     auto& mr = arch.get<MeshRenderer>(row);
-                    EXPECT_EQ(mr.mesh.index, 1u);
-                    EXPECT_EQ(mr.material.index, 2u);
+                    EXPECT_EQ(mr.mesh.index(), 1u);
+                    EXPECT_EQ(mr.material.index(), 2u);
                 }
             }
         });

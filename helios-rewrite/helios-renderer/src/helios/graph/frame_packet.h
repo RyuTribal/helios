@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 
 namespace helios::renderer {
 
@@ -87,8 +88,27 @@ struct SkyboxData {
 // No World pointers, no entity handles, no ECS references.
 // ---------------------------------------------------------------------------
 
-struct FramePacket {
+// ---------------------------------------------------------------------------
+// CameraView -- per-camera data for multi-camera rendering.
+// Contains view/projection, viewport rect, and clear behavior.
+// ---------------------------------------------------------------------------
+
+enum class CameraClearMode : uint8_t { SolidColor, None };
+
+struct CameraView {
     CameraData camera;
+    float viewport_x = 0.0f;
+    float viewport_y = 0.0f;
+    float viewport_w = 1.0f;
+    float viewport_h = 1.0f;
+    CameraClearMode clear_mode = CameraClearMode::SolidColor;
+};
+
+struct FramePacket {
+    CameraData camera;  // primary camera (backward compat: first in camera_views)
+
+    // Multiple cameras sorted by render order
+    std::vector<CameraView> camera_views;
 
     std::vector<MeshDraw> mesh_draws;
     std::vector<PointLightData> point_lights;
@@ -108,6 +128,7 @@ struct FramePacket {
 
     void clear() {
         camera = CameraData{};
+        camera_views.clear();
         mesh_draws.clear();
         point_lights.clear();
         dir_lights.clear();

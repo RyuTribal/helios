@@ -83,6 +83,14 @@ struct MeshRenderer {
     Handle<MeshAsset> mesh;
     Handle<MaterialAsset> material;  // override material (if null, uses mesh's default)
     uint32_t flags = MeshFlags::CastShadows | MeshFlags::ReceiveShadows;
+
+    MeshRenderer() = default;
+    explicit MeshRenderer(Handle<MeshAsset> m)
+        : mesh(std::move(m)) {}
+    MeshRenderer(Handle<MeshAsset> m, Handle<MaterialAsset> mat)
+        : mesh(std::move(m)), material(std::move(mat)) {}
+    MeshRenderer(Handle<MeshAsset> m, Handle<MaterialAsset> mat, uint32_t f)
+        : mesh(std::move(m)), material(std::move(mat)), flags(f) {}
 };
 
 struct PointLight {
@@ -102,6 +110,20 @@ struct Camera {
     float near_plane          = 0.1f;
     float far_plane           = 1000.0f;
     float ortho_size          = 10.0f;
+
+    // Multi-camera support
+    int32_t order = 0;           // render order: lower first, higher on top
+
+    // Viewport: normalized [0,1] rect within the render target
+    // Default covers the full window
+    float viewport_x = 0.0f;
+    float viewport_y = 0.0f;
+    float viewport_w = 1.0f;
+    float viewport_h = 1.0f;
+
+    // Clear behavior
+    enum class ClearMode { SolidColor, None };  // None = render on top of previous camera
+    ClearMode clear_mode = ClearMode::SolidColor;
 };
 
 /// Tag component: marks one camera as the active/primary camera.

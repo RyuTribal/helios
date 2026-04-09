@@ -20,17 +20,8 @@ void World::despawn(Entity entity) {
     if (!m_allocator.is_alive(entity)) return;
     HELIOS_LOG(ECS, Trace, "Despawning entity {{index={}, gen={}}}", entity.index, entity.generation);
 
-    // Call registered despawn hooks before removal
-    for (auto& hook : m_despawn_hooks) {
-        hook(*this, entity);
-    }
-
     m_archetypes.remove_entity(entity);
     m_allocator.deallocate(entity);
-}
-
-void World::register_despawn_hook(DespawnHook hook) {
-    m_despawn_hooks.push_back(std::move(hook));
 }
 
 bool World::is_alive(Entity entity) const {
