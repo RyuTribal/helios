@@ -39,6 +39,7 @@ target_sources(helios-core
         src/helios/assets/importers/shader_importer.cpp
         src/helios/serialization/yaml_serializer.cpp
         src/helios/serialization/scene_serializer.cpp
+        src/helios/scene/scene_manager.cpp
 )
 
 # Headers and sources co-located under src/ — #include "helios/ecs/entity.h" works
