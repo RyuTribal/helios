@@ -18,6 +18,7 @@ add_executable(helios-tests
     ecs/test_app.cpp
     ecs/test_fixed_update.cpp
     ecs/test_integration.cpp
+    ecs/test_change_detection.cpp
     core/test_uuid.cpp
     core/test_logging.cpp
     core/test_log_channel_registry.cpp

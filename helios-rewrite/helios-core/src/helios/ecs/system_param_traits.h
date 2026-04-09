@@ -151,7 +151,7 @@ struct SystemParam<Query<Ts...>> {
     }
 
     static Query<Ts...> fetch(World& world, uint32_t last_run_tick) {
-        return world.query<Ts...>(last_run_tick);
+        return world.query<Ts...>(last_run_tick, world.current_tick());
     }
 };
 
