@@ -136,8 +136,10 @@ struct ActiveCamera {};
 struct RigidBody {
     BodyType body_type = BodyType::Dynamic;
     BodyHandle handle;
-    float    mass  = 1.0f;
-    uint32_t flags = RigidBodyFlags::UseGravity;
+    float    mass        = 1.0f;
+    float    friction    = 0.5f;
+    float    restitution = 0.3f;
+    uint32_t flags       = RigidBodyFlags::UseGravity;
 };
 
 struct BoxCollider {

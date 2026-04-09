@@ -173,9 +173,11 @@ inline void serialize_yaml(YAML::Emitter& out, const ActiveCamera&) {
 
 inline void serialize_yaml(YAML::Emitter& out, const RigidBody& rb) {
     out << YAML::BeginMap;
-    out << YAML::Key << "body_type" << YAML::Value; serialize_yaml(out, rb.body_type);
-    out << YAML::Key << "mass"      << YAML::Value << rb.mass;
-    out << YAML::Key << "flags"     << YAML::Value << rb.flags;
+    out << YAML::Key << "body_type"    << YAML::Value; serialize_yaml(out, rb.body_type);
+    out << YAML::Key << "mass"         << YAML::Value << rb.mass;
+    out << YAML::Key << "friction"     << YAML::Value << rb.friction;
+    out << YAML::Key << "restitution"  << YAML::Value << rb.restitution;
+    out << YAML::Key << "flags"        << YAML::Value << rb.flags;
     out << YAML::EndMap;
 }
 
@@ -364,9 +366,11 @@ inline ActiveCamera deserialize_yaml_active_camera(const YAML::Node& /*node*/) {
 
 inline RigidBody deserialize_yaml_rigid_body(const YAML::Node& node) {
     RigidBody rb;
-    if (node["body_type"]) rb.body_type = deserialize_yaml_body_type(node["body_type"]);
-    if (node["mass"])      rb.mass      = node["mass"].as<float>();
-    if (node["flags"])     rb.flags     = node["flags"].as<uint32_t>();
+    if (node["body_type"])    rb.body_type    = deserialize_yaml_body_type(node["body_type"]);
+    if (node["mass"])         rb.mass         = node["mass"].as<float>();
+    if (node["friction"])     rb.friction     = node["friction"].as<float>();
+    if (node["restitution"])  rb.restitution  = node["restitution"].as<float>();
+    if (node["flags"])        rb.flags        = node["flags"].as<uint32_t>();
     return rb;
 }
 

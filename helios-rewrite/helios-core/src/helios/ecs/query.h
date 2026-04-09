@@ -25,6 +25,8 @@ template <typename... Params>
 class Query {
 public:
     using ResultTuple = fetch_tuple_t<Params...>;
+    using EntityResultTuple = decltype(std::tuple_cat(
+        std::declval<std::tuple<Entity>>(), std::declval<ResultTuple>()));
 
     explicit Query(ArchetypeStorage& storage)
         : m_storage(&storage)
@@ -125,6 +127,85 @@ public:
     };
 
     // -----------------------------------------------------------------------
+    // EntityIterator — yields (Entity, components...) tuples
+    // -----------------------------------------------------------------------
+    class EntityIterator {
+    public:
+        using value_type = EntityResultTuple;
+        using difference_type = std::ptrdiff_t;
+
+        EntityIterator() = default;
+
+        EntityIterator(const std::vector<Archetype*>& archetypes,
+                       size_t arch_idx, size_t row)
+            : m_archetypes(&archetypes)
+            , m_arch_idx(arch_idx)
+            , m_row(row)
+        {
+            skip_empty();
+        }
+
+        EntityResultTuple operator*() const {
+            Archetype& arch = *(*m_archetypes)[m_arch_idx];
+            Entity entity = arch.entities[m_row];
+            return std::tuple_cat(std::make_tuple(entity), fetch_from(arch, m_row));
+        }
+
+        EntityIterator& operator++() {
+            ++m_row;
+            if (m_row >= (*m_archetypes)[m_arch_idx]->size()) {
+                m_row = 0;
+                ++m_arch_idx;
+                skip_empty();
+            }
+            return *this;
+        }
+
+        EntityIterator operator++(int) {
+            EntityIterator copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        bool operator==(const EntityIterator& other) const {
+            return m_arch_idx == other.m_arch_idx && m_row == other.m_row;
+        }
+
+        bool operator!=(const EntityIterator& other) const {
+            return !(*this == other);
+        }
+
+    private:
+        const std::vector<Archetype*>* m_archetypes = nullptr;
+        size_t m_arch_idx = 0;
+        size_t m_row = 0;
+
+        void skip_empty() {
+            while (m_arch_idx < m_archetypes->size() &&
+                   (*m_archetypes)[m_arch_idx]->empty()) {
+                ++m_arch_idx;
+            }
+        }
+    };
+
+    // -----------------------------------------------------------------------
+    // EntityView — lightweight range returned by with_entity()
+    // -----------------------------------------------------------------------
+    class EntityView {
+    public:
+        explicit EntityView(const std::vector<Archetype*>& cached) : m_cached(&cached) {}
+
+        EntityIterator begin() const {
+            return EntityIterator(*m_cached, 0, 0);
+        }
+        EntityIterator end() const {
+            return EntityIterator(*m_cached, m_cached->size(), 0);
+        }
+    private:
+        const std::vector<Archetype*>* m_cached;
+    };
+
+    // -----------------------------------------------------------------------
     // Range interface
     // -----------------------------------------------------------------------
 
@@ -134,6 +215,11 @@ public:
 
     Iterator end() const {
         return Iterator(m_cached, m_cached.size(), 0);
+    }
+
+    /// Return a view that yields (Entity, components...) tuples.
+    EntityView with_entity() const {
+        return EntityView(m_cached);
     }
 
     // -----------------------------------------------------------------------
