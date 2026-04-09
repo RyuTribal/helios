@@ -46,6 +46,15 @@ struct NativeEngineAPI {
     bool (*IsKeyPressed)(void* world_ctx, int keycode)                                    = nullptr;
     bool (*IsMouseButtonPressed)(void* world_ctx, int button)                             = nullptr;
     void (*GetMousePosition)(void* world_ctx, float* out_x, float* out_y)                = nullptr;
+
+    // -- Physics --------------------------------------------------------------
+    void (*PhysicsApplyForce)(void* world_ctx, uint64_t entity_id, float* force_xyz)      = nullptr;
+    void (*PhysicsApplyImpulse)(void* world_ctx, uint64_t entity_id, float* impulse_xyz)  = nullptr;
+    void (*PhysicsApplyTorque)(void* world_ctx, uint64_t entity_id, float* torque_xyz)    = nullptr;
+    void (*PhysicsSetLinearVelocity)(void* world_ctx, uint64_t entity_id, float* vel_xyz) = nullptr;
+    void (*PhysicsGetLinearVelocity)(void* world_ctx, uint64_t entity_id, float* out_xyz) = nullptr;
+    void (*PhysicsSetAngularVelocity)(void* world_ctx, uint64_t entity_id, float* vel_xyz)= nullptr;
+    void (*PhysicsGetAngularVelocity)(void* world_ctx, uint64_t entity_id, float* out_xyz)= nullptr;
 };
 
 } // namespace helios

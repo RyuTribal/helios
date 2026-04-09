@@ -36,4 +36,13 @@ public unsafe struct NativeEngineAPI
     public delegate* unmanaged<void*, int, byte> IsKeyPressed;
     public delegate* unmanaged<void*, int, byte> IsMouseButtonPressed;
     public delegate* unmanaged<void*, float*, float*, void> GetMousePosition;
+
+    // Physics
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyForce;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyImpulse;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyTorque;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsSetLinearVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsGetLinearVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsSetAngularVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsGetAngularVelocity;
 }

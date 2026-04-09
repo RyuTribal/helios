@@ -53,8 +53,12 @@ public:
     // --- Velocity / forces ---
 
     virtual void set_velocity(BodyHandle handle, const glm::vec3& linear) = 0;
+    virtual glm::vec3 get_velocity(BodyHandle handle) const = 0;
+    virtual void set_angular_velocity(BodyHandle handle, const glm::vec3& angular) = 0;
+    virtual glm::vec3 get_angular_velocity(BodyHandle handle) const = 0;
     virtual void apply_force(BodyHandle handle, const glm::vec3& force) = 0;
     virtual void apply_impulse(BodyHandle handle, const glm::vec3& impulse) = 0;
+    virtual void apply_torque(BodyHandle handle, const glm::vec3& torque) = 0;
 
     // --- Simulation ---
 

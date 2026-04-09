@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace Helios;
 
@@ -25,4 +26,22 @@ public class Entity
     }
 
     public bool IsAlive() => NativeAPI.IsAlive(ID);
+
+    // -- Physics --------------------------------------------------------------
+
+    public void ApplyForce(Vector3 force) => NativeAPI.PhysicsApplyForce(ID, force);
+    public void ApplyImpulse(Vector3 impulse) => NativeAPI.PhysicsApplyImpulse(ID, impulse);
+    public void ApplyTorque(Vector3 torque) => NativeAPI.PhysicsApplyTorque(ID, torque);
+
+    public Vector3 LinearVelocity
+    {
+        get => NativeAPI.PhysicsGetLinearVelocity(ID);
+        set => NativeAPI.PhysicsSetLinearVelocity(ID, value);
+    }
+
+    public Vector3 AngularVelocity
+    {
+        get => NativeAPI.PhysicsGetAngularVelocity(ID);
+        set => NativeAPI.PhysicsSetAngularVelocity(ID, value);
+    }
 }

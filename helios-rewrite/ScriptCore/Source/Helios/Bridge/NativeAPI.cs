@@ -92,4 +92,35 @@ public static unsafe class NativeAPI
         Api->GetMousePosition(Api->WorldContext, &x, &y);
         return new Vector2(x, y);
     }
+
+    // -- Physics --------------------------------------------------------------
+
+    internal static void PhysicsApplyForce(ulong entityId, Vector3 force)
+        => Api->PhysicsApplyForce(Api->WorldContext, entityId, (float*)&force);
+
+    internal static void PhysicsApplyImpulse(ulong entityId, Vector3 impulse)
+        => Api->PhysicsApplyImpulse(Api->WorldContext, entityId, (float*)&impulse);
+
+    internal static void PhysicsApplyTorque(ulong entityId, Vector3 torque)
+        => Api->PhysicsApplyTorque(Api->WorldContext, entityId, (float*)&torque);
+
+    internal static void PhysicsSetLinearVelocity(ulong entityId, Vector3 velocity)
+        => Api->PhysicsSetLinearVelocity(Api->WorldContext, entityId, (float*)&velocity);
+
+    internal static Vector3 PhysicsGetLinearVelocity(ulong entityId)
+    {
+        Vector3 v;
+        Api->PhysicsGetLinearVelocity(Api->WorldContext, entityId, (float*)&v);
+        return v;
+    }
+
+    internal static void PhysicsSetAngularVelocity(ulong entityId, Vector3 velocity)
+        => Api->PhysicsSetAngularVelocity(Api->WorldContext, entityId, (float*)&velocity);
+
+    internal static Vector3 PhysicsGetAngularVelocity(ulong entityId)
+    {
+        Vector3 v;
+        Api->PhysicsGetAngularVelocity(Api->WorldContext, entityId, (float*)&v);
+        return v;
+    }
 }

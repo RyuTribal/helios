@@ -16,6 +16,7 @@ target_include_directories(helios-script
 
 target_link_libraries(helios-script
     PUBLIC  helios-core
+    PRIVATE helios-physics
     PRIVATE ${CMAKE_DL_LIBS}   # dlopen/dlsym on Linux
 )
 

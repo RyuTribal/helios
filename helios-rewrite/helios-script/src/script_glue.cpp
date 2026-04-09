@@ -3,6 +3,7 @@
 #include <helios/ecs/world.h>
 #include <helios/components/components.h>
 #include <helios/input/raw_input.h>
+#include "interface/physics_plugin.h"
 #include "script_log.h"
 
 namespace helios {
@@ -147,6 +148,80 @@ void GlueGetMousePosition(void* world_ctx, float* out_x, float* out_y) {
     *out_y = pos.y;
 }
 
+// -- Physics ------------------------------------------------------------------
+
+void GluePhysicsApplyForce(void* world_ctx, uint64_t id, float* force) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) return;
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) return;
+    (*physics)->apply_force(pb->handle, glm::vec3(force[0], force[1], force[2]));
+}
+
+void GluePhysicsApplyImpulse(void* world_ctx, uint64_t id, float* impulse) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) return;
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) return;
+    (*physics)->apply_impulse(pb->handle, glm::vec3(impulse[0], impulse[1], impulse[2]));
+}
+
+void GluePhysicsApplyTorque(void* world_ctx, uint64_t id, float* torque) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) return;
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) return;
+    (*physics)->apply_torque(pb->handle, glm::vec3(torque[0], torque[1], torque[2]));
+}
+
+void GluePhysicsSetLinearVelocity(void* world_ctx, uint64_t id, float* vel) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) return;
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) return;
+    (*physics)->set_velocity(pb->handle, glm::vec3(vel[0], vel[1], vel[2]));
+}
+
+void GluePhysicsGetLinearVelocity(void* world_ctx, uint64_t id, float* out) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) { out[0] = out[1] = out[2] = 0; return; }
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) { out[0] = out[1] = out[2] = 0; return; }
+    auto v = (*physics)->get_velocity(pb->handle);
+    out[0] = v.x; out[1] = v.y; out[2] = v.z;
+}
+
+void GluePhysicsSetAngularVelocity(void* world_ctx, uint64_t id, float* vel) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) return;
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) return;
+    (*physics)->set_angular_velocity(pb->handle, glm::vec3(vel[0], vel[1], vel[2]));
+}
+
+void GluePhysicsGetAngularVelocity(void* world_ctx, uint64_t id, float* out) {
+    auto& w = world_from(world_ctx);
+    auto entity = entity_from_raw(id);
+    auto* pb = w.try_get<physics::PhysicsBody>(entity);
+    if (!pb) { out[0] = out[1] = out[2] = 0; return; }
+    auto* physics = w.try_resource<std::unique_ptr<physics::PhysicsWorld>>();
+    if (!physics || !*physics) { out[0] = out[1] = out[2] = 0; return; }
+    auto v = (*physics)->get_angular_velocity(pb->handle);
+    out[0] = v.x; out[1] = v.y; out[2] = v.z;
+}
+
 } // anonymous namespace
 
 // -- Public entry point -------------------------------------------------------
@@ -177,6 +252,15 @@ void ScriptGlue::fill(NativeEngineAPI& api, World& world) {
     api.IsKeyPressed         = GlueIsKeyPressed;
     api.IsMouseButtonPressed = GlueIsMouseButtonPressed;
     api.GetMousePosition     = GlueGetMousePosition;
+
+    // Physics
+    api.PhysicsApplyForce          = GluePhysicsApplyForce;
+    api.PhysicsApplyImpulse        = GluePhysicsApplyImpulse;
+    api.PhysicsApplyTorque         = GluePhysicsApplyTorque;
+    api.PhysicsSetLinearVelocity   = GluePhysicsSetLinearVelocity;
+    api.PhysicsGetLinearVelocity   = GluePhysicsGetLinearVelocity;
+    api.PhysicsSetAngularVelocity  = GluePhysicsSetAngularVelocity;
+    api.PhysicsGetAngularVelocity  = GluePhysicsGetAngularVelocity;
 }
 
 } // namespace helios

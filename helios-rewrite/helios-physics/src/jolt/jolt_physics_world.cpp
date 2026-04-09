@@ -292,6 +292,27 @@ void JoltPhysicsWorld::set_velocity(BodyHandle handle, const glm::vec3& linear) 
     body_interface().SetLinearVelocity(it->second, jolt::to_jph(linear));
 }
 
+glm::vec3 JoltPhysicsWorld::get_velocity(BodyHandle handle) const {
+    auto it = m_handle_to_body.find(handle);
+    if (it == m_handle_to_body.end()) return glm::vec3(0.0f);
+
+    return jolt::to_glm(body_interface().GetLinearVelocity(it->second));
+}
+
+void JoltPhysicsWorld::set_angular_velocity(BodyHandle handle, const glm::vec3& angular) {
+    auto it = m_handle_to_body.find(handle);
+    if (it == m_handle_to_body.end()) return;
+
+    body_interface().SetAngularVelocity(it->second, jolt::to_jph(angular));
+}
+
+glm::vec3 JoltPhysicsWorld::get_angular_velocity(BodyHandle handle) const {
+    auto it = m_handle_to_body.find(handle);
+    if (it == m_handle_to_body.end()) return glm::vec3(0.0f);
+
+    return jolt::to_glm(body_interface().GetAngularVelocity(it->second));
+}
+
 void JoltPhysicsWorld::apply_force(BodyHandle handle, const glm::vec3& force) {
     auto it = m_handle_to_body.find(handle);
     if (it == m_handle_to_body.end()) return;
@@ -304,6 +325,13 @@ void JoltPhysicsWorld::apply_impulse(BodyHandle handle, const glm::vec3& impulse
     if (it == m_handle_to_body.end()) return;
 
     body_interface().AddImpulse(it->second, jolt::to_jph(impulse));
+}
+
+void JoltPhysicsWorld::apply_torque(BodyHandle handle, const glm::vec3& torque) {
+    auto it = m_handle_to_body.find(handle);
+    if (it == m_handle_to_body.end()) return;
+
+    body_interface().AddTorque(it->second, jolt::to_jph(torque));
 }
 
 // --- Simulation ---

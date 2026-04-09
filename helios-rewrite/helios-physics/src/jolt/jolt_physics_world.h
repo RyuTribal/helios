@@ -88,8 +88,12 @@ public:
     glm::quat  get_rotation(BodyHandle handle) const override;
 
     void       set_velocity(BodyHandle handle, const glm::vec3& linear) override;
+    glm::vec3  get_velocity(BodyHandle handle) const override;
+    void       set_angular_velocity(BodyHandle handle, const glm::vec3& angular) override;
+    glm::vec3  get_angular_velocity(BodyHandle handle) const override;
     void       apply_force(BodyHandle handle, const glm::vec3& force) override;
     void       apply_impulse(BodyHandle handle, const glm::vec3& impulse) override;
+    void       apply_torque(BodyHandle handle, const glm::vec3& torque) override;
 
     void       step(float dt) override;
     std::vector<ContactEvent> drain_contacts() override;
