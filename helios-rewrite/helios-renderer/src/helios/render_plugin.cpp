@@ -192,9 +192,17 @@ void RenderPlugin::build(App& app) {
     auto device = rhi::create_device(backend, app_name.c_str(), native, gpu_index, enable_validation);
     HELIOS_ASSERT(device != nullptr, "Failed to create RHI device");
 
+    // Poll events once to let Wayland's initial configure settle.
+    // Without this, the swapchain is created at the requested size, but
+    // the compositor immediately sends a different size on the first frame.
+    glfwPollEvents();
+
+    int fb_w, fb_h;
+    glfwGetFramebufferSize(native, &fb_w, &fb_h);
+
     rhi::SwapchainDesc sc_desc;
-    sc_desc.width = windows.primary().width();
-    sc_desc.height = windows.primary().height();
+    sc_desc.width = (fb_w > 0) ? static_cast<uint32_t>(fb_w) : windows.primary().width();
+    sc_desc.height = (fb_h > 0) ? static_cast<uint32_t>(fb_h) : windows.primary().height();
     auto swapchain = device->create_swapchain(sc_desc);
     auto cmd = device->create_command_buffer();
 
