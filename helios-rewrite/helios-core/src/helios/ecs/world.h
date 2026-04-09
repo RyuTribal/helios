@@ -55,8 +55,8 @@ public:
         Archetype& arch = m_archetypes.get_or_create(id);
         m_archetypes.add_entity(arch, e);
 
-        // Push each component into its column.
-        (arch.get_column<std::remove_cvref_t<Ts>>().push(&components), ...);
+        // Push each component into its column, stamped with current tick.
+        (arch.get_column<std::remove_cvref_t<Ts>>().push(&components, m_current_tick), ...);
 
         return e;
     }
@@ -134,9 +134,10 @@ public:
 
         Archetype& from = *loc->archetype;
 
-        // Already has this component -- overwrite in place.
+        // Already has this component -- overwrite in place and stamp tick.
         if (from.has_component(component_id<T>())) {
             from.get<T>(loc->row) = std::move(component);
+            from.get_column<T>().stamp(loc->row, m_current_tick);
             return;
         }
 
@@ -145,8 +146,8 @@ public:
 
         m_archetypes.move_entity(entity, from, to);
 
-        // Push the new component into the destination column.
-        to.get_column<T>().push(&component);
+        // Push the new component into the destination column, stamped with current tick.
+        to.get_column<T>().push(&component, m_current_tick);
     }
 
     /// Remove a component from an existing entity, moving it to a new archetype.
@@ -248,6 +249,17 @@ public:
     void apply_and_clear_pending_commands();
 
     // -----------------------------------------------------------------
+    // Change detection tick
+    // -----------------------------------------------------------------
+
+    /// Return the current world tick (monotonically increasing).
+    uint32_t current_tick() const { return m_current_tick; }
+
+    /// Advance the world tick by one. Called by the Scheduler before each
+    /// system runs so that every system sees a unique tick value.
+    void advance_tick() { ++m_current_tick; }
+
+    // -----------------------------------------------------------------
     // Internal access
     // -----------------------------------------------------------------
 
@@ -273,6 +285,7 @@ private:
     ResourceStorage m_resources;
     EventStorage m_events;
     std::unordered_set<ComponentId> m_registered_components;
+    uint32_t m_current_tick = 1;  // 0 = "never changed"
 
     // Lazily constructed pending commands buffer. Systems that take Commands
     // as a parameter write into this; the scheduler applies and clears it
