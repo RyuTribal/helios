@@ -33,27 +33,35 @@ AssetHandle AssetServer::load_internal(std::type_index type,
                                        const std::string& path,
                                        bool sync) {
     // Check cache first
-    AssetHandle cached_handle{};
+    AssetHandle pending_sync_handle{};
+    std::filesystem::path pending_sync_path;
     {
         std::lock_guard lock(m_mutex);
         auto cached = find_cached(type, path);
         if (cached) {
-            if (sync) {
-                uint64_t key = cached.packed();
-                auto asset_it = m_assets.find(key);
-                if (asset_it != m_assets.end() &&
-                    asset_it->second.status == AssetStatus::Loaded) {
-                    cached_handle = cached;
+            uint64_t key = cached.packed();
+            auto asset_it = m_assets.find(key);
+            if (asset_it != m_assets.end()) {
+                if (asset_it->second.status == AssetStatus::Loaded) {
+                    return cached;
                 }
-            } else {
-                cached_handle = cached;
+                if (sync && asset_it->second.status == AssetStatus::Loading) {
+                    // Sync requested but entry still Loading (e.g., queued by
+                    // async preload with no worker threads). Will execute on
+                    // calling thread after releasing the lock.
+                    pending_sync_handle = cached;
+                    pending_sync_path = m_root / path;
+                }
+            }
+            if (!sync) {
+                return cached;
             }
         }
     }
-    // Return cached handle without acquiring -- callers (Handle<T> ctor or
-    // load_by_extension) are responsible for acquiring.
-    if (cached_handle) {
-        return cached_handle;
+    // Execute outside lock scope to avoid deadlock
+    if (pending_sync_handle) {
+        execute_load(LoadRequest{pending_sync_handle, pending_sync_path, type});
+        return pending_sync_handle;
     }
 
     // Create entry
