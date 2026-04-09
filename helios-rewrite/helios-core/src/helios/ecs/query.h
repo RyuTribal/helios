@@ -327,6 +327,9 @@ public:
         return count() == 0;
     }
 
+    /// The world tick at the time this query was created.
+    uint32_t current_tick() const { return m_current_tick; }
+
     /// Retrieve components for a specific entity.
     /// Returns std::nullopt if the entity is not in a matching archetype.
     std::optional<ResultTuple> get(Entity entity) const {

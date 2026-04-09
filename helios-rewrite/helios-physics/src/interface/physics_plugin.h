@@ -52,6 +52,7 @@ struct PhysicsBody {
 struct PhysicsBodyMapEntry {
     BodyHandle  handle    = 0;
     BodyType    body_type = BodyType::Static;
+    uint32_t    last_physics_write_tick = 0;  // tick when physics last wrote Transform
 };
 
 struct PhysicsBodyMap {
@@ -135,23 +136,26 @@ inline void physics_auto_create(
 }
 
 // Schedule: PreUpdate (after auto_create)
-// Push ECS GlobalTransform -> physics body for Kinematic bodies.
-// Only syncs bodies whose GlobalTransform actually changed (via propagation).
-// Game code drives kinematic bodies by setting Transform; the propagation
-// system computes GlobalTransform, and on the next frame this sync pushes it
-// to the physics world.
+// Push ECS GlobalTransform -> physics body when the user (not physics) changed it.
+// Handles both Kinematic and Dynamic bodies:
+//   - Kinematic: always push when GlobalTransform changed (user drives these)
+//   - Dynamic: only push when the change was NOT from physics writeback
+//     (detected by comparing Transform changed_tick vs last_physics_write_tick)
+//
+// For Dynamic bodies, this also resets linear velocity to zero when the user
+// teleports the body (e.g., R-key reset), preventing the body from continuing
+// with its old momentum.
 inline void sync_ecs_to_physics(
-    helios::Res<std::unique_ptr<PhysicsWorld>> world,
-    helios::Res<PhysicsBodyMap>                body_map,
+    helios::ResMut<std::unique_ptr<PhysicsWorld>> world,
+    helios::Res<PhysicsBodyMap>                   body_map,
     helios::Query<const helios::GlobalTransform,
                   helios::Changed<helios::GlobalTransform>> changed_globals)
 {
     if (!*world) return;
 
     for (const auto& [k, entry] : body_map->entries) {
-        if (entry.body_type != BodyType::Kinematic) continue;
+        if (entry.body_type == BodyType::Static) continue;
 
-        // Reconstruct entity from map key
         helios::Entity entity;
         entity.index      = static_cast<uint32_t>(k & 0xFFFF'FFFFu);
         entity.generation = static_cast<uint32_t>(k >> 32);
@@ -159,24 +163,43 @@ inline void sync_ecs_to_physics(
         auto result = changed_globals.get(entity);
         if (!result.has_value()) continue;
 
+        // For Dynamic bodies: skip if the change was from physics writeback
+        if (entry.body_type == BodyType::Dynamic) {
+            // The GlobalTransform changed, but was it because propagation picked up
+            // the physics writeback's Transform change? If the Transform's tick matches
+            // last_physics_write_tick, physics caused this — skip to avoid feedback.
+            // We use a simple heuristic: if the write tick is recent (within last 2 ticks),
+            // it's from physics. Otherwise, the user explicitly moved the body.
+            if (entry.last_physics_write_tick > 0 &&
+                changed_globals.current_tick() - entry.last_physics_write_tick <= 2) {
+                continue;  // physics caused this change, skip
+            }
+        }
+
         const auto& [gt] = *result;
-        // Decompose the GlobalTransform matrix into position and rotation.
         glm::vec3 pos = glm::vec3(gt.matrix[3]);
         glm::quat rot = glm::quat_cast(glm::mat3(gt.matrix));
         (*world)->set_transform(entry.handle, pos, rot);
+
+        // If user teleported a dynamic body, zero velocity to prevent old momentum
+        if (entry.body_type == BodyType::Dynamic) {
+            (*world)->set_velocity(entry.handle, glm::vec3{0.0f});
+        }
     }
 }
 
 // Schedule: PostUpdate
 // Read physics body position/rotation -> ECS Transform for Dynamic bodies.
+// Records the write tick so sync_ecs_to_physics can distinguish user changes
+// from physics writeback (prevents feedback loop).
 inline void sync_physics_to_ecs(
     helios::Res<std::unique_ptr<PhysicsWorld>> world,
-    helios::Res<PhysicsBodyMap>                body_map,
+    helios::ResMut<PhysicsBodyMap>             body_map,
     helios::Query<helios::Transform>           transforms)
 {
     if (!*world) return;
 
-    for (const auto& [k, entry] : body_map->entries) {
+    for (auto& [k, entry] : body_map->entries) {
         if (entry.body_type != BodyType::Dynamic) continue;
 
         helios::Entity entity;
@@ -189,6 +212,9 @@ inline void sync_physics_to_ecs(
         auto& [t] = *result;
         t.position = (*world)->get_position(entry.handle);
         t.rotation = (*world)->get_rotation(entry.handle);
+        // The mutable query access auto-stamps Transform's changed_tick.
+        // Record that tick so sync_ecs_to_physics knows this was physics-caused.
+        entry.last_physics_write_tick = transforms.current_tick();
     }
 }
 
