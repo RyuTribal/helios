@@ -70,6 +70,11 @@ public:
                        float delta) override;
     void invoke_destroy(uint64_t entity_id, uint64_t managed_handle) override;
     void destroy_all_instances() override;
+    void invoke_on_collision(uint64_t entity_id,
+                             uint64_t other_entity_id,
+                             float px, float py, float pz,
+                             float nx, float ny, float nz,
+                             float impulse) override;
 
     void request_reload() override;
     bool reload_requested() const override;

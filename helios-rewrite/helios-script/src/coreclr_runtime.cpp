@@ -303,6 +303,19 @@ void CoreCLRRuntime::destroy_all_instances() {
     if (m_bridge.DestroyAllInstances) m_bridge.DestroyAllInstances();
 }
 
+void CoreCLRRuntime::invoke_on_collision(
+    uint64_t entity_id,
+    uint64_t other_entity_id,
+    float px, float py, float pz,
+    float nx, float ny, float nz,
+    float impulse)
+{
+    if (m_bridge.InvokeOnCollision) {
+        m_bridge.InvokeOnCollision(entity_id, other_entity_id,
+                                   px, py, pz, nx, ny, nz, impulse);
+    }
+}
+
 // -- Hot reload ---------------------------------------------------------------
 
 void CoreCLRRuntime::request_reload() {

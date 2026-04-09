@@ -215,6 +215,11 @@ public:
     }
 
     template <typename T>
+    bool has_event() const {
+        return m_events.has_channel<T>();
+    }
+
+    template <typename T>
     EventWriter<T> event_writer() {
         return m_events.writer<T>();
     }

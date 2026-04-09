@@ -87,6 +87,11 @@ void ScriptingPlugin::build(App& app) {
         [w]() { script_execution_system(*w); },
         "script_execution_system");
 
+    // Collision dispatch (reads ContactEvent, calls OnCollisionEnter on scripts)
+    app.add_system(Schedule::Update,
+        [w]() { script_collision_dispatch_system(*w); },
+        "script_collision_dispatch");
+
     // Cleanup on despawn
     app.add_system(Schedule::PostUpdate,
         [w]() { script_destroy_system(*w); },

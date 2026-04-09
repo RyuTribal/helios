@@ -16,4 +16,8 @@ void script_create_system(World& world);
 /// Runs in Schedule::PostUpdate.
 void script_destroy_system(World& world);
 
+/// ECS system: reads ContactEvent and dispatches OnCollisionEnter to scripts.
+/// Runs in Schedule::Update, after script_execution_system.
+void script_collision_dispatch_system(World& world);
+
 } // namespace helios

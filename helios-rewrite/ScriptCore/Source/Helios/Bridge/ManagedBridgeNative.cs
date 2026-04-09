@@ -28,4 +28,7 @@ public unsafe struct ManagedBridgeNative
 
     // Method invocation (generic)
     public delegate* unmanaged<ulong, byte*, void*, int, void> InvokeMethod;
+
+    // Collision callbacks
+    public delegate* unmanaged<ulong, ulong, float, float, float, float, float, float, float, void> InvokeOnCollision;
 }

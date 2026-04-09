@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace Helios;
 
@@ -25,10 +26,11 @@ public abstract class ScriptBehaviour
     public virtual void OnDestroy() { }
 
     /// <summary>Called when this entity collides with another.</summary>
-    public virtual void OnCollisionEnter(ulong otherEntityId) { }
-
-    /// <summary>Called every frame while colliding with another entity.</summary>
-    public virtual void OnCollisionStay(ulong otherEntityId) { }
+    /// <param name="otherEntityId">The entity ID of the other body.</param>
+    /// <param name="contactPoint">Contact point in world space.</param>
+    /// <param name="normal">Contact normal (from this entity toward other).</param>
+    /// <param name="impulse">Normal impulse magnitude.</param>
+    public virtual void OnCollisionEnter(ulong otherEntityId, Vector3 contactPoint, Vector3 normal, float impulse) { }
 
     /// <summary>Called when this entity stops colliding with another.</summary>
     public virtual void OnCollisionExit(ulong otherEntityId) { }

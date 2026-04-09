@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -32,6 +33,7 @@ public static unsafe class ScriptHostBridge
         outBridge->InvokeOnDestroy = &BridgeInvokeOnDestroy;
         outBridge->DestroyAllInstances = &BridgeDestroyAllInstances;
         outBridge->InvokeMethod = &BridgeInvokeMethod;
+        outBridge->InvokeOnCollision = &BridgeInvokeOnCollision;
     }
 
     // -- Helper: UTF-8 byte* to string ----------------------------------------
@@ -228,12 +230,23 @@ public static unsafe class ScriptHostBridge
         if (!s_Instances.TryGetValue(entityId, out var instance)) return;
         string methodName = PtrToString(methodNamePtr);
 
-        // For collision callbacks, args is a uint64 (other entity ID)
-        if (methodName == "OnCollisionEnter" && argsSizeBytes >= 8)
-            instance.OnCollisionEnter(*(ulong*)args);
-        else if (methodName == "OnCollisionStay" && argsSizeBytes >= 8)
-            instance.OnCollisionStay(*(ulong*)args);
-        else if (methodName == "OnCollisionExit" && argsSizeBytes >= 8)
+        // For collision exit, args is a uint64 (other entity ID)
+        if (methodName == "OnCollisionExit" && argsSizeBytes >= 8)
             instance.OnCollisionExit(*(ulong*)args);
+    }
+
+    [UnmanagedCallersOnly]
+    private static void BridgeInvokeOnCollision(
+        ulong entityId, ulong otherEntityId,
+        float px, float py, float pz,
+        float nx, float ny, float nz,
+        float impulse)
+    {
+        if (!s_Instances.TryGetValue(entityId, out var instance)) return;
+        instance.OnCollisionEnter(
+            otherEntityId,
+            new Vector3(px, py, pz),
+            new Vector3(nx, ny, nz),
+            impulse);
     }
 }

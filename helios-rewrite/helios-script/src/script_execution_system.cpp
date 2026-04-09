@@ -6,6 +6,7 @@
 #include <helios/ecs/time.h>
 #include <helios/script/script_runtime.h>
 #include <helios/script/script_instance.h>
+#include "interface/contact_event.h"
 #include "script_log.h"
 
 #include <unordered_map>
@@ -112,6 +113,48 @@ void script_destroy_system(World& /*world*/) {
     // For the initial implementation, ScriptingPlugin will register a
     // pre-despawn hook that calls invoke_destroy before the entity is removed.
     // Placeholder: no-op for now.
+}
+
+// -- script_collision_dispatch_system -----------------------------------------
+
+void script_collision_dispatch_system(World& world) {
+    auto* runtime = world.try_resource<std::unique_ptr<ScriptRuntime>>();
+    if (!runtime || !*runtime) return;
+
+    // Check if contact events are registered (physics plugin may not be loaded)
+    if (!world.has_event<physics::ContactEvent>()) return;
+
+    auto reader = world.event_reader<physics::ContactEvent>();
+    if (reader.is_empty()) return;
+
+    // Build a set of entity IDs that have script instances for fast lookup
+    auto q = world.query<const ScriptInstance, With<ScriptInitialized>>();
+    std::unordered_map<uint64_t, bool> scripted_entities;
+    for (auto [entity, script] : q.with_entity()) {
+        if (script.managed_handle != 0)
+            scripted_entities[entity_to_raw(entity)] = true;
+    }
+
+    if (scripted_entities.empty()) return;
+
+    // For each contact event, dispatch to scripted entities on both sides
+    for (const auto& contact : reader) {
+        if (scripted_entities.count(contact.entity_a)) {
+            (*runtime)->invoke_on_collision(
+                contact.entity_a, contact.entity_b,
+                contact.world_point.x, contact.world_point.y, contact.world_point.z,
+                contact.normal.x, contact.normal.y, contact.normal.z,
+                contact.impulse);
+        }
+        if (scripted_entities.count(contact.entity_b)) {
+            // For entity_b, the normal is reversed (points from B toward A)
+            (*runtime)->invoke_on_collision(
+                contact.entity_b, contact.entity_a,
+                contact.world_point.x, contact.world_point.y, contact.world_point.z,
+                -contact.normal.x, -contact.normal.y, -contact.normal.z,
+                contact.impulse);
+        }
+    }
 }
 
 } // namespace helios

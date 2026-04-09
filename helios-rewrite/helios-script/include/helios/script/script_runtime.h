@@ -63,6 +63,13 @@ public:
     /// Destroy all managed instances (e.g., on scene unload).
     virtual void destroy_all_instances() = 0;
 
+    /// Invoke OnCollisionEnter on the script instance for entity_id.
+    virtual void invoke_on_collision(uint64_t entity_id,
+                                     uint64_t other_entity_id,
+                                     float px, float py, float pz,
+                                     float nx, float ny, float nz,
+                                     float impulse) = 0;
+
     // -- Hot reload support ---------------------------------------------------
 
     /// Request a reload on the next check_script_reload tick.

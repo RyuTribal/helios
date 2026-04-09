@@ -50,6 +50,15 @@ struct ManagedBridge {
                          const char* method_name,
                          const void* args,
                          int args_size_bytes)                              = nullptr;
+
+    // -- Collision callbacks ---------------------------------------------------
+    /// Invoke OnCollisionEnter on the script instance for entity_id.
+    /// px/py/pz: contact point, nx/ny/nz: normal, impulse: magnitude.
+    void (*InvokeOnCollision)(uint64_t entity_id,
+                              uint64_t other_entity_id,
+                              float px, float py, float pz,
+                              float nx, float ny, float nz,
+                              float impulse)                               = nullptr;
 };
 
 } // namespace helios
