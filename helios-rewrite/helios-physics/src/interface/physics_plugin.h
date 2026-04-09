@@ -8,7 +8,6 @@
 
 #include "interface/physics_world.h"
 #include "interface/contact_event.h"
-#include "stub/stub_physics_world.h"
 
 #include <helios/ecs/schedule.h>
 #include <helios/ecs/system_params.h>
@@ -255,9 +254,7 @@ inline void physics_auto_destroy(
 
 // Backend concept: must derive from PhysicsWorld.
 //
-// Example backends:
-//   StubPhysicsWorld  -- no-op (no external dependency)
-//   JoltPhysicsWorld  -- production (Jolt Physics, if available)
+// Use JoltPhysicsWorld (the only backend) or DefaultPhysicsPlugin for convenience.
 
 template<typename Backend>
 struct PhysicsPlugin {
@@ -296,8 +293,5 @@ struct PhysicsPlugin {
         app.add_system(helios::Schedule::PostUpdate, physics_auto_destroy, "physics_auto_destroy");
     }
 };
-
-// Convenience alias for stub use
-using StubPhysicsPlugin = PhysicsPlugin<StubPhysicsWorld>;
 
 } // namespace helios::physics

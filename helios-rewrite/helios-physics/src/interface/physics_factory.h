@@ -1,8 +1,8 @@
 // helios-physics/src/interface/physics_factory.h
 //
-// Factory function that creates the best available PhysicsWorld backend.
-// This header only exposes the base interface; backend selection happens
-// inside the .cpp that the library compiles (where Jolt headers are available).
+// Factory function that creates a JoltPhysicsWorld.
+// This header only exposes the base interface; Jolt headers are included
+// only in the .cpp.
 #pragma once
 
 #include <memory>
@@ -10,8 +10,7 @@
 
 namespace helios::physics {
 
-/// Create a PhysicsWorld using the best available backend.
-/// Returns JoltPhysicsWorld when HELIOS_HAS_JOLT, otherwise StubPhysicsWorld.
+/// Create a PhysicsWorld backed by Jolt Physics.
 std::unique_ptr<PhysicsWorld> create_physics_world(const PhysicsConfig& config = {});
 
 } // namespace helios::physics

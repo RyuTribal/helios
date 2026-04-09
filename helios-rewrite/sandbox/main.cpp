@@ -30,7 +30,7 @@
 
 // Physics & Audio plugins
 #include "interface/physics_factory.h"
-#include "interface/audio_plugin.h"
+#include "interface/audio_factory.h"
 #include "interface/audio_utils.h"
 
 #include <cmath>
@@ -435,7 +435,7 @@ struct GamePlugin {
     void build(App& app) {
         // Physics & audio backends (create world + device as resources, register step/update systems)
         app.add_plugin(physics::DefaultPhysicsPlugin{});
-        app.add_plugin(audio::StubAudioPlugin{});
+        app.add_plugin(audio::DefaultAudioPlugin{});
 
         app.insert_resource(OrbitCamera{});
         app.insert_resource(SceneAudio{});

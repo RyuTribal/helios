@@ -1,8 +1,8 @@
 // helios-audio/src/interface/audio_factory.h
 //
-// Factory function that creates the best available AudioDevice backend.
-// This header only exposes the base interface; backend selection happens
-// inside the .cpp that the library compiles (where SoLoud headers are available).
+// Factory function that creates a SoLoudDevice.
+// This header only exposes the base interface; SoLoud headers are included
+// only in the .cpp.
 #pragma once
 
 #include <memory>
@@ -10,8 +10,23 @@
 
 namespace helios::audio {
 
-/// Create an AudioDevice using the best available backend.
-/// Returns SoLoudDevice when HELIOS_HAS_SOLOUD, otherwise StubAudioDevice.
+/// Create an AudioDevice backed by SoLoud.
 std::unique_ptr<AudioDevice> create_audio_device();
+
+} // namespace helios::audio
+
+#include "interface/audio_plugin.h"
+
+namespace helios::audio {
+
+/// Plugin that wires up SoLoud automatically.
+/// No backend knowledge needed — just add_plugin(DefaultAudioPlugin{}).
+struct DefaultAudioPlugin {
+    void build(auto& app) {
+        app.template insert_resource<std::unique_ptr<AudioDevice>>(
+            create_audio_device());
+        app.add_system(helios::Schedule::PostUpdate, audio_update, "audio_update");
+    }
+};
 
 } // namespace helios::audio

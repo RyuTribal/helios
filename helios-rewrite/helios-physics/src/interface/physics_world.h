@@ -24,9 +24,7 @@ struct PhysicsConfig {
 
 // Abstract physics world interface.
 //
-// Implementations:
-//   JoltPhysicsWorld -- production Jolt backend
-//   StubPhysicsWorld -- no-op stub for when Jolt is unavailable
+// Implementation: JoltPhysicsWorld (Jolt Physics backend).
 //
 // Ownership: created by the plugin, stored as a World resource via
 //   std::unique_ptr<PhysicsWorld>.

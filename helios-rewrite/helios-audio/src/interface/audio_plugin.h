@@ -5,7 +5,6 @@
 #include <type_traits>
 
 #include "interface/audio_device.h"
-#include "stub/stub_audio_device.h"
 
 #include <helios/ecs/schedule.h>
 #include <helios/ecs/system_params.h>
@@ -30,9 +29,7 @@ inline void audio_update(helios::ResMut<std::unique_ptr<AudioDevice>> device) {
 
 // Backend concept: must derive from AudioDevice.
 //
-// Example backends:
-//   StubAudioDevice  -- no-op (no external dependency)
-//   SoLoudDevice     -- production (SoLoud, if available)
+// Use SoLoudDevice (the only backend) or AudioPlugin<SoLoudDevice> directly.
 
 template<typename Backend>
 struct AudioPlugin {
@@ -51,8 +48,5 @@ struct AudioPlugin {
         // app.add_system(helios::Schedule::PostUpdate, update_spatial_sources, "update_spatial_sources");
     }
 };
-
-// Convenience alias for stub use
-using StubAudioPlugin = AudioPlugin<StubAudioDevice>;
 
 } // namespace helios::audio

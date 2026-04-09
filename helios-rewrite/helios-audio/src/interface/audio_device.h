@@ -12,9 +12,7 @@ namespace helios::audio {
 
 // Abstract audio device interface.
 //
-// Implementations:
-//   SoLoudDevice     -- production backend using SoLoud + miniaudio
-//   StubAudioDevice  -- no-op stub for headless/test use
+// Implementation: SoLoudDevice (SoLoud + miniaudio backend).
 //
 // Ownership: created by the plugin, stored as a World resource via
 //   std::unique_ptr<AudioDevice>.
