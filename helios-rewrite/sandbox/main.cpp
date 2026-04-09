@@ -47,12 +47,6 @@ HELIOS_DEFINE_LOG_CHANNEL(Scene);
 HELIOS_DEFINE_LOG_CHANNEL(Physics);
 HELIOS_DEFINE_LOG_CHANNEL(Audio);
 
-// ============================================================
-// Scene-specific audio state.
-// Physics bodies are now created automatically by the plugin
-// from RigidBody + Collider components.
-// ============================================================
-
 struct SceneAudio {
     std::vector<uint8_t> bounce_wav;
 };
@@ -153,31 +147,25 @@ void orbit_camera_system(Res<RawInput> input,
 }
 
 
-// ============================================================
-// Physics update system — handles R key reset only.
-// Transform sync is automatic: setting Transform triggers
-// propagation -> GlobalTransform update -> physics auto-sync.
-// ============================================================
+void helmet_controls(Query<Transform, const Tag, const physics::PhysicsBody> bodies,
+                     Res<RawInput> input,
+                     Res<Time> time) {
+    for (auto [t, tag, pb] : bodies) {
+        if (tag.name != "damaged_helmet") continue;
 
-void physics_update_system(ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
-                           Query<Transform, const Tag, const physics::PhysicsBody> bodies,
-                           Res<RawInput> input) {
-    if (!*physics) return;
-
-    // R key: reset helmet to starting position.
-    // Just set Transform — the propagation system updates GlobalTransform,
-    // and sync_ecs_to_physics detects Changed<GlobalTransform> next frame.
-    if (input->key_just_pressed(KeyCode::R)) {
-        for (auto [t, tag, pb] : bodies) {
-            if (tag.name == "damaged_helmet") {
-                HELIOS_LOG(Physics, Info, "Resetting helmet to starting position");
-                t.position = glm::vec3{0.0f, 3.0f, 0.0f};
-                t.rotation = glm::quat(glm::vec3(
-                    glm::radians(90.0f), glm::radians(180.0f), 0.0f));
-                (*physics)->set_velocity(pb.handle, glm::vec3{0.0f});
-                break;
-            }
+        // R key: reset to starting position
+        if (input->key_just_pressed(KeyCode::R)) {
+            t.position = glm::vec3{0.0f, 3.0f, 0.0f};
+            t.rotation = glm::quat(glm::vec3(
+                glm::radians(90.0f), glm::radians(180.0f), 0.0f));
         }
+
+        // E key: lift upward
+        if (input->key_pressed(KeyCode::E)) {
+            t.position.y += 3.0f * time->delta();
+        }
+
+        break;
     }
 }
 
@@ -449,7 +437,7 @@ struct GamePlugin {
         app.insert_resource(OrbitCamera{});
         app.insert_resource(SceneAudio{});
         app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
-        app.add_system(Schedule::Update, physics_update_system, "physics_update");
+        app.add_system(Schedule::Update, helmet_controls, "helmet_controls");
         app.add_system(Schedule::Update, on_collision, "on_collision");
         HELIOS_LOG(Game, Info, "GamePlugin initialized");
     }
@@ -559,7 +547,7 @@ int main() {
     );
 
     HELIOS_LOG(Core, Info, "All plugins loaded. Starting engine...");
-    HELIOS_LOG(Game, Info, "Controls: 1 = Scene1 (Helmet+Physics), 2 = Scene2 (Lion), R = re-drop helmet, RMB = orbit camera");
+    HELIOS_LOG(Game, Info, "Controls: 1 = Scene1, 2 = Scene2, R = reset, E = lift, RMB = orbit, Scroll = zoom");
 
     app.run();
 
