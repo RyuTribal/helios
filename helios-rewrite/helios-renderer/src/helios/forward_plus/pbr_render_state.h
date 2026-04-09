@@ -16,6 +16,16 @@ struct PBRRenderState {
     std::unique_ptr<rhi::Pipeline> pipeline;
     std::unique_ptr<rhi::DescriptorSetLayout> camera_layout;   // set 0: CameraUBO
     std::unique_ptr<rhi::DescriptorSetLayout> material_layout;  // set 1: textures
+
+    // Per-camera UBOs and descriptor sets (one per active camera view).
+    // Grown on demand by the draw system.
+    struct CameraSlot {
+        std::unique_ptr<rhi::Buffer> ubo;
+        std::unique_ptr<rhi::DescriptorSet> ds;
+    };
+    std::vector<CameraSlot> camera_slots;
+
+    // Legacy single-camera (kept for backward compat, used when camera_slots is empty)
     std::unique_ptr<rhi::DescriptorSet> camera_ds;
     std::unique_ptr<rhi::Buffer> camera_ubo;
 

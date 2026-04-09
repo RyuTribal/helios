@@ -145,7 +145,6 @@ void orbit_camera_system(Res<RawInput> input,
             glm::mat4 look = glm::lookAt(cam_pos, orbit->target, glm::vec3(0, 1, 0));
             t.rotation = glm::conjugate(glm::quat_cast(look));
         } else if (tag.name == "side_camera") {
-            // 90-degree offset around Y from the main camera
             glm::vec3 side_offset;
             side_offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw + glm::half_pi<float>());
             side_offset.y = orbit->distance * std::sin(orbit->pitch);

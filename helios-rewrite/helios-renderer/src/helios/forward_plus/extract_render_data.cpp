@@ -80,6 +80,7 @@ void extract_render_data(
         packet->camera_views.push_back(cv);
     }
 
+
     // Backward compat: primary camera is the first in sorted order
     if (!packet->camera_views.empty()) {
         packet->camera = packet->camera_views.front().camera;

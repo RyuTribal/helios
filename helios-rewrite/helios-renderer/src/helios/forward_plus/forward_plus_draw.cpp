@@ -49,11 +49,11 @@ static void draw_meshes_for_view(
     AssetServer* asset_server,
     const renderer::FramePacket& packet,
     const renderer::CameraView& view,
-    float vp_x, float vp_y, float vp_w, float vp_h)
+    float vp_x, float vp_y, float vp_w, float vp_h,
+    PBRRenderState::CameraSlot* slot = nullptr)
 {
     if (!pbr.valid || !pbr.pipeline || packet.mesh_draws.empty()) return;
 
-    // Update PBR camera UBO with this camera's matrices
     PBRCameraUBO cam_data;
     cam_data.view       = view.camera.view;
     cam_data.projection = view.camera.projection;
@@ -70,14 +70,18 @@ static void draw_meshes_for_view(
         cam_data.light_intensity = 2.0f;
     }
     cam_data._pad1 = 0.0f;
-    pbr.camera_ubo->set_data(&cam_data, sizeof(cam_data));
+
+    // Use per-camera UBO slot if available, otherwise fall back to shared
+    rhi::Buffer* ubo = slot ? slot->ubo.get() : pbr.camera_ubo.get();
+    rhi::DescriptorSet* ds = slot ? slot->ds.get() : pbr.camera_ds.get();
+    ubo->set_data(&cam_data, sizeof(cam_data));
 
     cmd.bind_pipeline(*pbr.pipeline);
     cmd.set_viewport(vp_x, vp_y, vp_w, vp_h);
     cmd.set_scissor(
         static_cast<uint32_t>(vp_x), static_cast<uint32_t>(vp_y),
         static_cast<uint32_t>(vp_w), static_cast<uint32_t>(vp_h));
-    cmd.bind_descriptor_set(0, *pbr.camera_ds);
+    cmd.bind_descriptor_set(0, *ds);
 
     // Environment cubemap for IBL (from skybox if available)
     rhi::Texture* env_cubemap = skybox.env_cubemap ? skybox.env_cubemap.get() : nullptr;
@@ -176,21 +180,43 @@ void forward_plus_draw(ResMut<RenderContext> ctx,
         return;
     }
 
-    // Multi-camera path: iterate over each camera view in order.
-    // frame_begin already cleared the framebuffer.  Each camera sets its
-    // own viewport/scissor and draws into its region.
-    for (const auto& view : packet->camera_views) {
+    // Multi-camera path: ensure we have enough per-camera UBO slots.
+    while (pbr->camera_slots.size() < packet->camera_views.size()) {
+        PBRRenderState::CameraSlot slot;
+        rhi::BufferDesc ubo_desc;
+        ubo_desc.size = sizeof(PBRCameraUBO);
+        ubo_desc.usage = rhi::BufferUsage::Uniform;
+        ubo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
+        ubo_desc.debug_name = "PBRCameraUBO_" + std::to_string(pbr->camera_slots.size());
+        slot.ubo = device.create_buffer(ubo_desc);
+
+        slot.ds = device.allocate_descriptor_set(*pbr->camera_layout);
+        device.update_descriptor_set(*slot.ds, {
+            rhi::DescriptorWrite{
+                .binding = 0,
+                .type = rhi::DescriptorType::UniformBuffer,
+                .buffer_handle = slot.ubo.get(),
+                .range = sizeof(PBRCameraUBO),
+            },
+        });
+        pbr->camera_slots.push_back(std::move(slot));
+    }
+
+    // Iterate over each camera view in order.
+    for (size_t i = 0; i < packet->camera_views.size(); i++) {
+        const auto& view = packet->camera_views[i];
         const float vp_x = view.viewport_x * sw_w;
         const float vp_y = view.viewport_y * sw_h;
         const float vp_w = view.viewport_w * sw_w;
         const float vp_h = view.viewport_h * sw_h;
 
-        // Draw skybox for every camera (each camera gets its own background)
         draw_skybox_for_view(cmd, *skybox, view, vp_x, vp_y, vp_w, vp_h);
 
+        // Use this camera's dedicated UBO slot
         draw_meshes_for_view(cmd, device, *pbr, *skybox, *cache,
                              asset_server, *packet, view,
-                             vp_x, vp_y, vp_w, vp_h);
+                             vp_x, vp_y, vp_w, vp_h,
+                             &pbr->camera_slots[i]);
     }
 }
 
