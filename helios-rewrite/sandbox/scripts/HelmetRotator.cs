@@ -5,8 +5,8 @@ using Helios;
 namespace SandboxScripts;
 
 /// <summary>
-/// Simple script that rotates the helmet entity each frame.
-/// Demonstrates the ScriptBehaviour lifecycle and Transform access.
+/// Simple script that rotates the helmet entity each frame using physics torque.
+/// Demonstrates the ScriptBehaviour lifecycle, physics API, and collision callbacks.
 /// </summary>
 public class HelmetRotator : ScriptBehaviour
 {
@@ -22,17 +22,17 @@ public class HelmetRotator : ScriptBehaviour
     {
         _totalTime += delta;
 
-        var transform = Entity.GetComponent<TransformComponent>();
-        if (transform == null) return;
-
-        // Rotate around Y axis
-        var rotation = transform.Rotation;
-        rotation.Y += _rotationSpeed * delta;
-        transform.Rotation = rotation;
+        // Apply torque around Y axis for physics-driven rotation
+        Entity.ApplyTorque(new Vector3(0, _rotationSpeed, 0));
     }
 
     public override void OnDestroy()
     {
         Log.Info($"HelmetRotator destroyed on entity {EntityId}");
+    }
+
+    public override void OnCollisionEnter(ulong otherEntityId, Vector3 point, Vector3 normal, float impulse)
+    {
+        Log.Info($"Helmet collided with entity {otherEntityId} at {point}, impulse={impulse}");
     }
 }
