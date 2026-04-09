@@ -147,24 +147,27 @@ void orbit_camera_system(Res<RawInput> input,
 }
 
 
-void helmet_controls(Query<Transform, const Tag> entities,
-                     Res<RawInput> input,
-                     Res<Time> time) {
-    bool r_pressed = input->key_just_pressed(KeyCode::R);
-    bool e_pressed = input->key_pressed(KeyCode::E);
-    if (!r_pressed && !e_pressed) return;  // early out — no mutable iteration
+void helmet_controls(Query<const Tag, const physics::PhysicsBody> bodies,
+                     ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
+                     Res<RawInput> input) {
+    if (!*physics) return;
 
-    for (auto&& [t, tag] : entities) {
+    for (auto&& [tag, pb] : bodies) {
         if (tag.name != "damaged_helmet") continue;
 
-        if (r_pressed) {
-            t.position = glm::vec3{0.0f, 3.0f, 0.0f};
-            t.rotation = glm::quat(glm::vec3(
-                glm::radians(90.0f), glm::radians(180.0f), 0.0f));
+        // R: reset position (teleport via physics)
+        if (input->key_just_pressed(KeyCode::R)) {
+            (*physics)->set_transform(pb.handle,
+                glm::vec3{0.0f, 3.0f, 0.0f},
+                glm::quat(glm::vec3(glm::radians(90.0f), glm::radians(180.0f), 0.0f)));
+            (*physics)->set_velocity(pb.handle, glm::vec3{0.0f});
         }
-        if (e_pressed) {
-            t.position.y += 3.0f * time->delta();
+
+        // E: apply upward impulse
+        if (input->key_pressed(KeyCode::E)) {
+            (*physics)->apply_force(pb.handle, glm::vec3{0.0f, 30.0f, 0.0f});
         }
+
         break;
     }
 }
