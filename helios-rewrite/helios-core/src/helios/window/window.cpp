@@ -106,10 +106,11 @@ struct Window::Impl {
                 data->new_height = static_cast<uint32_t>(height);
             });
 
-        // No close callback — we poll glfwWindowShouldClose() each frame
-        // and reset it before polling, so only fresh close events from the
-        // current poll cycle are detected. This avoids Hyprland's spurious
-        // close events during fullscreen/workspace transitions persisting.
+        glfwSetWindowCloseCallback(glfw_window,
+            [](GLFWwindow* win) {
+                auto* data = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(win));
+                data->close_requested = true;
+            });
 
         // Update desc with actual framebuffer size (may differ on HiDPI).
         int fb_w, fb_h;

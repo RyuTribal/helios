@@ -36,41 +36,12 @@ void poll_window_events(ResMut<Windows> windows,
                         EventWriter<WindowResized> resize_writer,
                         EventWriter<WindowClosed>  close_writer)
 {
-    // Reset close flags before polling so we only see fresh events.
-    for (auto& [id, window] : *windows) {
-        window.reset_close_flag();
-    }
-
     // Poll GLFW events for all windows.
     windows->poll_all();
 
-    // Emit resize events FIRST (needed to detect same-poll close+resize).
-    for (auto& [id, window] : *windows) {
-        const auto& cb = window.callback_data();
-        if (cb.resized) {
-            resize_writer.send(WindowResized{
-                .window_id = id,
-                .width     = cb.new_width,
-                .height    = cb.new_height,
-            });
-        }
-    }
-
-    // Check for closing windows. If a close arrives in the SAME poll as
-    // a resize, it's a spurious Hyprland event (the compositor fires close
-    // during fullscreen/workspace transitions alongside configure events).
+    // Check for closing windows and emit events.
     auto closing = windows->closing_windows();
     for (auto id : closing) {
-        const auto& cb = windows->get(id).callback_data();
-        if (cb.resized) {
-            HELIOS_LOG(Window, Debug,
-                "Ignoring spurious close on window {} (arrived with resize)", id);
-            // Reset the flag so it doesn't persist to next frame
-            windows->get(id).reset_close_flag();
-            continue;
-        }
-
-        HELIOS_LOG(Window, Info, "Window {} close requested", id);
         close_writer.send(WindowClosed{ .window_id = id });
 
         if (windows->should_app_exit_on_close(id)) {
@@ -79,6 +50,18 @@ void poll_window_events(ResMut<Windows> windows,
 
         if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
             windows->destroy(id);
+        }
+    }
+
+    // Emit resize events.
+    for (auto& [id, window] : *windows) {
+        const auto& cb = window.callback_data();
+        if (cb.resized) {
+            resize_writer.send(WindowResized{
+                .window_id = id,
+                .width     = cb.new_width,
+                .height    = cb.new_height,
+            });
         }
     }
 
