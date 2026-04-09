@@ -165,7 +165,6 @@ void orbit_camera_system(Res<RawInput> input,
 
 void physics_update_system(ResMut<ScenePhysics> scene,
                            ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
-                           ResMut<std::unique_ptr<audio::AudioDevice>> audio,
                            Res<RawInput> input,
                            Query<Transform, const Tag> tagged) {
     if (!scene->active || !*physics) return;
@@ -191,18 +190,18 @@ void physics_update_system(ResMut<ScenePhysics> scene,
             t.position = pos;
         }
     }
+}
 
-    // Drain contact events and play bounce sounds
-    auto contacts = (*physics)->drain_contacts();
-    for (auto& contact : contacts) {
-        HELIOS_LOG(Physics, Debug, "Contact at ({:.2f}, {:.2f}, {:.2f}) impulse={:.2f}",
-                   contact.world_point.x, contact.world_point.y, contact.world_point.z,
-                   contact.impulse);
-
+// Separate system: react to collision events from the physics plugin.
+// Any system can read these — decoupled from the physics update.
+void on_collision(EventReader<physics::ContactEvent> contacts,
+                  Res<ScenePhysics> scene,
+                  ResMut<std::unique_ptr<audio::AudioDevice>> audio) {
+    for (const auto& c : contacts) {
         if (*audio && !scene->bounce_wav.empty()) {
             (*audio)->play_at(
                 scene->bounce_wav.data(), scene->bounce_wav.size(),
-                contact.world_point);
+                c.world_point);
         }
     }
 }
@@ -458,6 +457,7 @@ struct GamePlugin {
         app.insert_resource(ScenePhysics{});
         app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
         app.add_system(Schedule::Update, physics_update_system, "physics_update");
+        app.add_system(Schedule::Update, on_collision, "on_collision");
         HELIOS_LOG(Game, Info, "GamePlugin initialized");
     }
 };

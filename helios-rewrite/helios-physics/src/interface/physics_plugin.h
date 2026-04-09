@@ -5,10 +5,12 @@
 #include <type_traits>
 
 #include "interface/physics_world.h"
+#include "interface/contact_event.h"
 #include "stub/stub_physics_world.h"
 
 #include <helios/ecs/schedule.h>
 #include <helios/ecs/system_params.h>
+#include <helios/ecs/event_storage.h>
 
 namespace helios::physics {
 
@@ -17,17 +19,18 @@ namespace helios::physics {
 // ============================================================
 
 // Schedule: FixedUpdate
-// Step the physics simulation by the configured fixed timestep.
+// Step the simulation and emit contact events for the current tick.
 inline void physics_step(helios::ResMut<std::unique_ptr<PhysicsWorld>> world,
-                         helios::Res<PhysicsConfig> config) {
-    if (*world) {
-        (*world)->step(config->fixed_timestep);
+                         helios::Res<PhysicsConfig> config,
+                         helios::EventWriter<ContactEvent> contacts_out) {
+    if (!*world) return;
+
+    (*world)->step(config->fixed_timestep);
+
+    auto contacts = (*world)->drain_contacts();
+    for (auto& c : contacts) {
+        contacts_out.send(c);
     }
-    // Drain contacts -- in full ECS integration these become CollisionEvents:
-    // auto contacts = (*world)->drain_contacts();
-    // for (auto& c : contacts) {
-    //     collisions.send(CollisionEvent{c.entity_a, c.entity_b, c.world_point, c.normal, c.impulse});
-    // }
 }
 
 // ============================================================
@@ -56,7 +59,7 @@ struct PhysicsPlugin {
         app.template insert_resource<std::unique_ptr<PhysicsWorld>>(std::move(world));
 
         // Register collision event type
-        // app.template add_event<CollisionEvent>();
+        app.template add_event<ContactEvent>();
 
         // Step the physics world each fixed-update tick
         app.add_system(helios::Schedule::FixedUpdate, physics_step, "physics_step");
