@@ -48,7 +48,13 @@ void frame_end(ResMut<RenderContext> ctx) {
     ctx->swapchain->end_rendering(*ctx->cmd);
     ctx->cmd->end();
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
-    ctx->swapchain->present();
+
+    if (!ctx->swapchain->present()) {
+        // Present failed (out of date). Wait for GPU to finish,
+        // then let the resize handler recreate next frame.
+        ctx->device->wait_idle();
+    }
+
     ctx->frame_active = false;
 }
 
@@ -59,39 +65,60 @@ void handle_swapchain_resize(
     EventReader<WindowResized> resize_events)
 {
     for (const auto& e : resize_events) {
-        if (e.width == 0 || e.height == 0) continue;
         if (!windows->has_primary()) continue;
         if (e.window_id != windows->primary_id()) continue;
 
+        // Re-query actual framebuffer size -- the event values can be stale
+        // on Wayland (TOCTOU race acknowledged by Khronos).
+        auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+        int fb_w, fb_h;
+        glfwGetFramebufferSize(glfw_win, &fb_w, &fb_h);
+
+        if (fb_w <= 0 || fb_h <= 0) continue;  // minimized
+
+        uint32_t w = static_cast<uint32_t>(fb_w);
+        uint32_t h = static_cast<uint32_t>(fb_h);
+
         // Skip if size hasn't actually changed (Wayland sends duplicates)
         if (ctx->swapchain &&
-            ctx->swapchain->width() == e.width &&
-            ctx->swapchain->height() == e.height) {
+            ctx->swapchain->width() == w &&
+            ctx->swapchain->height() == h) {
             continue;
         }
 
-        HELIOS_LOG(Render, Info, "Swapchain resize: {}x{}", e.width, e.height);
+        HELIOS_LOG(Render, Info, "Swapchain resize: {}x{}", w, h);
         ctx->device->wait_idle();
 
         rhi::SwapchainDesc desc;
-        desc.width = e.width;
-        desc.height = e.height;
+        desc.width = w;
+        desc.height = h;
         auto new_swapchain = ctx->device->create_swapchain(desc);
+
+        // Retry once with fresh dimensions if creation failed
+        if (!new_swapchain) {
+            glfwGetFramebufferSize(glfw_win, &fb_w, &fb_h);
+            if (fb_w > 0 && fb_h > 0) {
+                desc.width = static_cast<uint32_t>(fb_w);
+                desc.height = static_cast<uint32_t>(fb_h);
+                new_swapchain = ctx->device->create_swapchain(desc);
+            }
+        }
+
         if (new_swapchain) {
             ctx->swapchain = std::move(new_swapchain);
 
             // Recreate depth buffer to match the new swapchain size
             if (ctx->depth_texture) {
                 rhi::TextureDesc depth_desc;
-                depth_desc.width = e.width;
-                depth_desc.height = e.height;
+                depth_desc.width = desc.width;
+                depth_desc.height = desc.height;
                 depth_desc.format = rhi::TextureFormat::Depth32F;
                 depth_desc.usage = rhi::TextureUsage::DepthAttachment;
                 depth_desc.debug_name = "DepthBuffer";
                 ctx->depth_texture = ctx->device->create_texture(depth_desc);
             }
         } else {
-            HELIOS_LOG(Render, Warn, "Swapchain recreation failed for {}x{}, will retry", e.width, e.height);
+            HELIOS_LOG(Render, Warn, "Swapchain recreation failed for {}x{}, will retry", desc.width, desc.height);
         }
     }
 }

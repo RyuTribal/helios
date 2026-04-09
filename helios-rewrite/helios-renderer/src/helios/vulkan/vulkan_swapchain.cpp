@@ -115,7 +115,7 @@ bool VulkanSwapchain::acquire_next_image()
     return true;
 }
 
-void VulkanSwapchain::present()
+bool VulkanSwapchain::present()
 {
     HELIOS_ASSERT(m_device != nullptr, "Swapchain not initialized");
 
@@ -128,17 +128,15 @@ void VulkanSwapchain::present()
     present_info.pImageIndices      = &m_current_image_index;
 
     VkResult result = vkQueuePresentKHR(m_device->graphics_queue(), &present_info);
+    m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         HELIOS_LOG_WARN(Renderer, "Swapchain out of date on present, will recreate");
-        // Flush all GPU work immediately. On Wayland, a failed present can
-        // leave the surface in a state that causes wl_display_flush() to fail
-        // on the next glfwPollEvents(), which GLFW interprets as a disconnect
-        // and closes all windows.
-        vkDeviceWaitIdle(m_device->device());
+        return false;  // caller should wait_idle and let resize handler recreate
     }
     // VK_SUBOPTIMAL_KHR is normal on Wayland/some compositors -- don't log every frame
 
-    m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+    return true;
 }
 
 // =========================================================================

@@ -18,7 +18,7 @@ public:
     Swapchain& operator=(const Swapchain&) = delete;
 
     virtual bool acquire_next_image() = 0;
-    virtual void present() = 0;
+    virtual bool present() = 0;  // returns false if swapchain needs recreation
 
     virtual uint32_t image_count() const = 0;
     virtual uint32_t current_image_index() const = 0;

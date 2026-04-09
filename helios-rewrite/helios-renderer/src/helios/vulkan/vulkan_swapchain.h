@@ -32,7 +32,7 @@ public:
 
     // Frame operations
     bool acquire_next_image() override;
-    void present() override;
+    bool present() override;
 
     // Accessors
     uint32_t image_count() const override { return static_cast<uint32_t>(m_images.size()); }

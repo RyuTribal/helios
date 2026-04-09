@@ -98,7 +98,7 @@ struct Window::Impl {
                 data->scroll_y += yoff;
             });
 
-        glfwSetWindowSizeCallback(glfw_window,
+        glfwSetFramebufferSizeCallback(glfw_window,
             [](GLFWwindow* win, int width, int height) {
                 auto* data = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(win));
                 data->resized = true;
