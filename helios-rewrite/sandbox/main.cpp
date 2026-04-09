@@ -27,6 +27,8 @@
 #include <helios/assets/asset_plugin.h>
 #include <helios/assets/mesh_asset.h>
 #include <helios/assets/handle.h>
+#include <helios/scene/scene_manager.h>
+#include <helios/scene/scene_plugin.h>
 
 // Physics
 #include "interface/physics_world.h"
@@ -70,12 +72,14 @@ struct PhysicsDemo {
 // State enum
 // ============================================================
 
-enum class SceneState { Loading, Scene1, Scene2 };
+enum class DemoScene { Loading, Scene1, Scene2 };
 
 /// Which scene we want to transition to next (set by input handling).
+/// Also carries the SceneHandle created during loading.
 struct PendingScene {
-    SceneState target = SceneState::Scene1;
+    DemoScene target = DemoScene::Scene1;
     bool pending = false;
+    SceneHandle scene_handle;  // set by LoadingState, consumed by Scene*State
 };
 
 // ============================================================
@@ -217,7 +221,7 @@ class Scene2State;
 // LoadingState -- loads assets via AssetServer, then transitions
 // ============================================================
 
-class LoadingState : public State<SceneState> {
+class LoadingState : public State<DemoScene> {
 public:
     explicit LoadingState(World& world) : m_world(&world) {
         auto& pending = world.resource<PendingScene>();
@@ -225,29 +229,55 @@ public:
         pending.pending = false;
 
         HELIOS_LOG(Scene, Info, "Loading assets for {}...",
-                   m_target == SceneState::Scene1 ? "Scene1 (Helmet)" : "Scene2 (Lion)");
+                   m_target == DemoScene::Scene1 ? "Scene1 (Helmet)" : "Scene2 (Lion)");
 
         auto& server = *world.resource<std::shared_ptr<AssetServer>>();
+        auto& scenes = world.resource<SceneManager>();
 
-        // Load mesh asset synchronously (importer auto-loads textures + materials)
-        if (m_target == SceneState::Scene1) {
-            m_mesh_handle = server.load_sync<MeshAsset>(
-                "Meshes/damaged_helmet_source_glb/scene.gltf");
+        // Create scene and add entity blueprints
+        m_scene = scenes.create(
+            m_target == DemoScene::Scene1 ? "helmet_scene" : "lion_scene");
+
+        if (m_target == DemoScene::Scene1) {
+            std::string mesh_path = "Meshes/damaged_helmet_source_glb/scene.gltf";
+            scenes.add_asset(m_scene, mesh_path);
+            scenes.add_entity_fn(m_scene, "damaged_helmet",
+                [mesh_path](World& w, Entity e, AssetServer& s) {
+                    auto mesh = s.load_sync<MeshAsset>(mesh_path);
+                    w.add(e, Transform{
+                        .position = glm::vec3{0.0f, 3.0f, 0.0f},
+                        .rotation = glm::quat(glm::vec3(
+                            glm::radians(90.0f), glm::radians(180.0f), 0.0f))
+                    });
+                    w.add(e, MeshRenderer{mesh});
+                    w.add(e, Tag{.name = "damaged_helmet"});
+                });
         } else {
-            m_mesh_handle = server.load_sync<MeshAsset>(
-                "Meshes/lion/scene.gltf");
+            std::string mesh_path = "Meshes/lion/scene.gltf";
+            scenes.add_asset(m_scene, mesh_path);
+            scenes.add_entity_fn(m_scene, "lion",
+                [mesh_path](World& w, Entity e, AssetServer& s) {
+                    auto mesh = s.load_sync<MeshAsset>(mesh_path);
+                    w.add(e, Transform{
+                        .position = glm::vec3{0.0f, -0.5f, 0.0f},
+                        .rotation = glm::quat(glm::vec3(
+                            glm::radians(0.0f), glm::radians(180.0f), 0.0f)),
+                        .scale = glm::vec3{0.01f}
+                    });
+                    w.add(e, MeshRenderer{mesh});
+                    w.add(e, Tag{.name = "lion"});
+                });
         }
 
-        if (m_mesh_handle) {
-            HELIOS_LOG(Scene, Info, "Loaded mesh asset (handle {}/{})",
-                       m_mesh_handle.index(), m_mesh_handle.generation());
-        } else {
-            HELIOS_LOG(Scene, Error, "Failed to load mesh asset");
-        }
+        // Preload assets (sync for this demo since loader_threads=0)
+        scenes.preload(m_scene, server);
+
+        // Pass the scene handle to the next state via PendingScene
+        pending.scene_handle = m_scene;
 
         m_loaded = true;
         HELIOS_LOG(Scene, Info, "Loading complete for {}",
-                   m_target == SceneState::Scene1 ? "Scene1" : "Scene2");
+                   m_target == DemoScene::Scene1 ? "Scene1" : "Scene2");
     }
 
     ~LoadingState() = default;
@@ -257,9 +287,9 @@ public:
         s.system(&LoadingState::check_complete);
     }
 
-    void check_complete(ResMut<GameFlow<SceneState>> flow) {
+    void check_complete(ResMut<GameFlow<DemoScene>> flow) {
         if (m_loaded) {
-            if (m_target == SceneState::Scene1) {
+            if (m_target == DemoScene::Scene1) {
                 flow->switch_to<Scene1State>();
             } else {
                 flow->switch_to<Scene2State>();
@@ -269,8 +299,8 @@ public:
 
 private:
     World* m_world = nullptr;
-    SceneState m_target = SceneState::Scene1;
-    Handle<MeshAsset> m_mesh_handle;
+    DemoScene m_target = DemoScene::Scene1;
+    SceneHandle m_scene;
     bool m_loaded = false;
 };
 
@@ -278,28 +308,20 @@ private:
 // Scene1State -- DamagedHelmet
 // ============================================================
 
-class Scene1State : public State<SceneState> {
+class Scene1State : public State<DemoScene> {
 public:
     explicit Scene1State(World& world) : m_world(&world) {
         HELIOS_LOG(Scene, Info, "Scene1: Entering (DamagedHelmet + Physics)");
 
         auto& server = *world.resource<std::shared_ptr<AssetServer>>();
+        auto& scenes = world.resource<SceneManager>();
 
-        // Find the loaded helmet mesh handle
-        m_mesh_handle = server.load_sync<MeshAsset>(
-            "Meshes/damaged_helmet_source_glb/scene.gltf");
+        // Retrieve the scene handle created during loading
+        m_scene = world.resource<PendingScene>().scene_handle;
 
-        // Spawn helmet entity at Y=3 (physics will move it)
-        m_helmet = spawn_tracked(world);
-        world.add(m_helmet, Transform{
-            .position = glm::vec3{0.0f, 3.0f, 0.0f},
-            .rotation = glm::quat(glm::vec3(
-                glm::radians(90.0f), glm::radians(180.0f), 0.0f))
-        });
-        world.add(m_helmet, MeshRenderer{m_mesh_handle});
-        world.add(m_helmet, Tag{.name = "damaged_helmet"});
-
-        HELIOS_LOG(Scene, Info, "Scene1: Spawned helmet entity");
+        // Spawn the scene entities
+        scenes.spawn(m_scene, world, server);
+        HELIOS_LOG(Scene, Info, "Scene1: Spawned scene entities");
 
         // --- Set up physics ---
         auto& demo = world.resource<PhysicsDemo>();
@@ -342,6 +364,12 @@ public:
 
     ~Scene1State() {
         HELIOS_LOG(Scene, Info, "Scene1: Exiting (DamagedHelmet)");
+
+        // Despawn scene entities via SceneManager
+        auto& scenes = m_world->resource<SceneManager>();
+        scenes.despawn(m_scene, *m_world);
+        scenes.unload(m_scene);
+
         // Clean up physics bodies (keep the world alive for re-entry)
         auto& demo = m_world->resource<PhysicsDemo>();
         if (demo.physics) {
@@ -351,7 +379,6 @@ public:
             demo.floor_body  = 0;
         }
         demo.active = false;
-        // m_mesh_handle releases automatically via Handle RAII
     }
 
     static void describe(StateBuilder<Scene1State>& s) {
@@ -360,11 +387,11 @@ public:
     }
 
     void handle_input(Res<RawInput> input,
-                      ResMut<GameFlow<SceneState>> flow,
+                      ResMut<GameFlow<DemoScene>> flow,
                       ResMut<PendingScene> pending) {
         if (input->key_just_pressed(KeyCode::Num2)) {
             HELIOS_LOG(Scene, Info, "Switching to Scene2 (Lion)...");
-            pending->target = SceneState::Scene2;
+            pending->target = DemoScene::Scene2;
             pending->pending = true;
             flow->switch_to<LoadingState>();
         }
@@ -372,41 +399,36 @@ public:
 
 private:
     World* m_world = nullptr;
-    Entity m_helmet{};
-    Handle<MeshAsset> m_mesh_handle;
+    SceneHandle m_scene;
 };
 
 // ============================================================
 // Scene2State -- Lion
 // ============================================================
 
-class Scene2State : public State<SceneState> {
+class Scene2State : public State<DemoScene> {
 public:
     explicit Scene2State(World& world) : m_world(&world) {
         HELIOS_LOG(Scene, Info, "Scene2: Entering (Lion)");
 
         auto& server = *world.resource<std::shared_ptr<AssetServer>>();
+        auto& scenes = world.resource<SceneManager>();
 
-        // Find the loaded lion mesh handle
-        m_mesh_handle = server.load_sync<MeshAsset>("Meshes/lion/scene.gltf");
+        // Retrieve the scene handle created during loading
+        m_scene = world.resource<PendingScene>().scene_handle;
 
-        // Spawn lion entity -- rotated to face camera
-        m_lion = spawn_tracked(world);
-        world.add(m_lion, Transform{
-            .position = glm::vec3{0.0f, -0.5f, 0.0f},
-            .rotation = glm::quat(glm::vec3(
-                glm::radians(0.0f), glm::radians(180.0f), 0.0f)),
-            .scale = glm::vec3{0.01f}  // lion model is large, scale down
-        });
-        world.add(m_lion, MeshRenderer{m_mesh_handle});
-        world.add(m_lion, Tag{.name = "lion"});
-
-        HELIOS_LOG(Scene, Info, "Scene2: Spawned lion entity");
+        // Spawn the scene entities
+        scenes.spawn(m_scene, world, server);
+        HELIOS_LOG(Scene, Info, "Scene2: Spawned scene entities");
     }
 
     ~Scene2State() {
         HELIOS_LOG(Scene, Info, "Scene2: Exiting (Lion)");
-        // m_mesh_handle releases automatically via Handle RAII
+
+        // Despawn scene entities via SceneManager
+        auto& scenes = m_world->resource<SceneManager>();
+        scenes.despawn(m_scene, *m_world);
+        scenes.unload(m_scene);
     }
 
     static void describe(StateBuilder<Scene2State>& s) {
@@ -415,11 +437,11 @@ public:
     }
 
     void handle_input(Res<RawInput> input,
-                      ResMut<GameFlow<SceneState>> flow,
+                      ResMut<GameFlow<DemoScene>> flow,
                       ResMut<PendingScene> pending) {
         if (input->key_just_pressed(KeyCode::Num1)) {
             HELIOS_LOG(Scene, Info, "Switching to Scene1 (Helmet)...");
-            pending->target = SceneState::Scene1;
+            pending->target = DemoScene::Scene1;
             pending->pending = true;
             flow->switch_to<LoadingState>();
         }
@@ -427,8 +449,7 @@ public:
 
 private:
     World* m_world = nullptr;
-    Entity m_lion{};
-    Handle<MeshAsset> m_mesh_handle;
+    SceneHandle m_scene;
 };
 
 // ============================================================
@@ -445,7 +466,7 @@ struct GamePlugin {
     }
 };
 
-struct ScenePlugin {
+struct DemoScenePlugin {
     void build(App& app) {
         auto& world = app.world();
 
@@ -501,17 +522,24 @@ int main() {
         .skybox_hdr_path = "Textures/default_skybox.hdr",
     }});
 
-    app.insert_resource(PendingScene{.target = SceneState::Scene1, .pending = true});
+    app.insert_resource(PendingScene{
+        .target = DemoScene::Scene1,
+        .pending = true,
+        .scene_handle = {}
+    });
+
+    // Scene management
+    app.add_plugin(SceneManagerPlugin{});
 
     // Game plugins (camera, etc.)
     app.add_plugin(GamePlugin{});
-    app.add_plugin(ScenePlugin{});
+    app.add_plugin(DemoScenePlugin{});
 
     // State management
-    app.add_plugin(GameFlowPlugin<SceneState>{}
-        .state<LoadingState>(SceneState::Loading)
-        .state<Scene1State>(SceneState::Scene1)
-        .state<Scene2State>(SceneState::Scene2)
+    app.add_plugin(GameFlowPlugin<DemoScene>{}
+        .state<LoadingState>(DemoScene::Loading)
+        .state<Scene1State>(DemoScene::Scene1)
+        .state<Scene2State>(DemoScene::Scene2)
         .initial<LoadingState>()
     );
 
