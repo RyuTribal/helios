@@ -1,6 +1,7 @@
 // helios-core/src/helios/ecs/app.cpp
 #include "helios/ecs/app.h"
 #include "helios/ecs/time.h"
+#include "helios/ecs/transform_propagation.h"
 #include "helios/window/windows.h"
 #include "helios/core/engine_log_channels.h"
 
@@ -65,6 +66,12 @@ void App::tick() {
     }
 
     m_scheduler.run(m_world, Schedule::PostUpdate);
+
+    // Propagate Transform hierarchy after all gameplay and physics sync
+    // but before rendering. This is a direct World call (not a regular system)
+    // because the recursive parent-child walk needs direct World access.
+    propagate_transforms(m_world);
+
     m_scheduler.run(m_world, Schedule::PreRender);
 
     // Submit render data to the render thread (if a render plugin installed the hook).

@@ -13,6 +13,7 @@ target_sources(helios-core
         src/helios/ecs/thread_pool.cpp
         src/helios/ecs/dag_builder.cpp
         src/helios/ecs/scheduler.cpp
+        src/helios/ecs/transform_propagation.cpp
         src/helios/ecs/app.cpp
         src/helios/app/state.cpp
         src/helios/core/uuid.cpp
