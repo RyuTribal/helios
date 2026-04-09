@@ -48,16 +48,13 @@ HELIOS_DEFINE_LOG_CHANNEL(Physics);
 HELIOS_DEFINE_LOG_CHANNEL(Audio);
 
 // ============================================================
-// Scene-specific physics state (body handles + audio clips)
-// The PhysicsWorld and AudioDevice are now provided by plugins.
+// Scene-specific audio state.
+// Physics bodies are now created automatically by the plugin
+// from RigidBody + Collider components.
 // ============================================================
 
-struct ScenePhysics {
-    physics::BodyHandle floor_body  = 0;
-    physics::BodyHandle helmet_body = 0;
-    helios::Entity      helmet_entity;         // registered in PhysicsBodyMap
+struct SceneAudio {
     std::vector<uint8_t> bounce_wav;
-    bool active = false;
 };
 
 // ============================================================
@@ -161,40 +158,36 @@ void orbit_camera_system(Res<RawInput> input,
 // Transform sync is automatic via PhysicsPlugin's sync systems.
 // ============================================================
 
-void physics_update_system(ResMut<ScenePhysics> scene,
-                           ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
-                           ResMut<physics::PhysicsBodyMap> body_map,
+void physics_update_system(ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
+                           Query<Transform, const Tag, const physics::PhysicsBody> bodies,
                            Res<RawInput> input) {
-    if (!scene->active || !*physics) return;
+    if (!*physics) return;
 
     // R key: reset helmet to starting position
     if (input->key_just_pressed(KeyCode::R)) {
-        HELIOS_LOG(Physics, Info, "Resetting helmet to starting position");
-
-        // Unregister old body, destroy it, create a fresh one and re-register
-        body_map->unregister_body(scene->helmet_entity);
-        (*physics)->destroy_body(scene->helmet_body);
-
-        physics::BodyDesc helmet_desc;
-        helmet_desc.type        = physics::BodyType::Dynamic;
-        helmet_desc.position    = {0.0f, 3.0f, 0.0f};
-        helmet_desc.shape       = physics::SphereShape{1.0f};
-        helmet_desc.mass        = 2.0f;
-        helmet_desc.restitution = 0.6f;
-        scene->helmet_body = (*physics)->create_body(helmet_desc, 2);
-        body_map->register_body(scene->helmet_entity, scene->helmet_body, physics::BodyType::Dynamic);
+        for (auto [t, tag, pb] : bodies) {
+            if (tag.name == "damaged_helmet") {
+                HELIOS_LOG(Physics, Info, "Resetting helmet to starting position");
+                t.position = glm::vec3{0.0f, 3.0f, 0.0f};
+                t.rotation = glm::quat(glm::vec3(
+                    glm::radians(90.0f), glm::radians(180.0f), 0.0f));
+                (*physics)->set_transform(pb.handle, t.position, t.rotation);
+                (*physics)->set_velocity(pb.handle, glm::vec3{0.0f});
+                break;
+            }
+        }
     }
 }
 
 // Separate system: react to collision events from the physics plugin.
 // Any system can read these — decoupled from the physics update.
 void on_collision(EventReader<physics::ContactEvent> contacts,
-                  Res<ScenePhysics> scene,
+                  Res<SceneAudio> scene_audio,
                   ResMut<std::unique_ptr<audio::AudioDevice>> audio) {
     for (const auto& c : contacts) {
-        if (*audio && !scene->bounce_wav.empty()) {
+        if (*audio && !scene_audio->bounce_wav.empty()) {
             (*audio)->play_at(
-                scene->bounce_wav.data(), scene->bounce_wav.size(),
+                scene_audio->bounce_wav.data(), scene_audio->bounce_wav.size(),
                 c.world_point);
         }
     }
@@ -314,79 +307,59 @@ public:
         scenes.spawn(m_scene, world, server);
         HELIOS_LOG(Scene, Info, "Scene1: Spawned scene entities");
 
-        // --- Set up physics bodies (using plugin-provided world) ---
-        auto& physics = world.resource<std::unique_ptr<physics::PhysicsWorld>>();
-        auto& scene = world.resource<ScenePhysics>();
-
-        // Static floor (large box at Y=-2)
-        physics::BodyDesc floor_desc;
-        floor_desc.type        = physics::BodyType::Static;
-        floor_desc.position    = {0.0f, -2.0f, 0.0f};
-        floor_desc.shape       = physics::BoxShape{{50.0f, 0.5f, 50.0f}};
-        scene.floor_body = physics->create_body(floor_desc, 1);
-
-        // Dynamic helmet sphere at Y=3
-        physics::BodyDesc helmet_desc;
-        helmet_desc.type        = physics::BodyType::Dynamic;
-        helmet_desc.position    = {0.0f, 3.0f, 0.0f};
-        helmet_desc.shape       = physics::SphereShape{1.0f};
-        helmet_desc.mass        = 2.0f;
-        helmet_desc.restitution = 0.6f;
-        scene.helmet_body = physics->create_body(helmet_desc, 2);
-
-        HELIOS_LOG(Physics, Info, "Floor body={} helmet body={}", scene.floor_body, scene.helmet_body);
-
-        // Register the helmet entity in the PhysicsBodyMap so that
-        // sync_physics_to_ecs (PostUpdate) automatically writes the dynamic body
-        // position back into the entity's Transform each frame.
-        auto& body_map = world.resource<physics::PhysicsBodyMap>();
+        // --- Add physics components to scene entities ---
+        // The physics plugin auto-creates bodies from RigidBody + Collider.
         auto q = world.query<const Tag>();
         for (Entity e : scenes.spawned_entities(m_scene)) {
             auto result = q.get(e);
             if (result.has_value()) {
                 const auto& [tag] = *result;
                 if (tag.name == "damaged_helmet") {
-                    scene.helmet_entity = e;
-                    body_map.register_body(e, scene.helmet_body, physics::BodyType::Dynamic);
-                    HELIOS_LOG(Physics, Info, "Registered helmet entity in PhysicsBodyMap");
-                    break;
+                    world.add(e, RigidBody{
+                        .body_type   = BodyType::Dynamic,
+                        .handle      = {},
+                        .mass        = 2.0f,
+                        .restitution = 0.6f,
+                    });
+                    world.add(e, physics::Collider{
+                        .shape = physics::SphereShape{1.0f}
+                    });
+                    HELIOS_LOG(Physics, Info, "Added RigidBody + Collider to helmet entity");
                 }
             }
         }
 
+        // Spawn a static floor entity with physics components
+        m_floor = world.spawn(
+            Transform{.position = {0.0f, -2.0f, 0.0f}},
+            RigidBody{.body_type = BodyType::Static, .handle = {}},
+            physics::Collider{.shape = physics::BoxShape{{50.0f, 0.5f, 50.0f}}},
+            Tag{.name = "floor"}
+        );
+        HELIOS_LOG(Physics, Info, "Spawned floor entity with physics components");
+
         // --- Set up audio clip ---
-        if (scene.bounce_wav.empty()) {
-            scene.bounce_wav = audio::generate_bounce_wav();
-            HELIOS_LOG(Audio, Info, "Generated bounce WAV ({} bytes)", scene.bounce_wav.size());
+        auto& scene_audio = world.resource<SceneAudio>();
+        if (scene_audio.bounce_wav.empty()) {
+            scene_audio.bounce_wav = audio::generate_bounce_wav();
+            HELIOS_LOG(Audio, Info, "Generated bounce WAV ({} bytes)", scene_audio.bounce_wav.size());
         }
 
-        scene.active = true;
-        HELIOS_LOG(Scene, Info, "Scene1: Physics and audio ready. Press R to re-drop helmet.");
+        HELIOS_LOG(Scene, Info, "Scene1: Physics components attached. Press R to re-drop helmet.");
     }
 
     ~Scene1State() {
         HELIOS_LOG(Scene, Info, "Scene1: Exiting (DamagedHelmet)");
 
-        // Despawn scene entities via SceneManager
+        // Despawn scene entities via SceneManager (auto-destroy cleans up bodies)
         auto& scenes = m_world->resource<SceneManager>();
         scenes.despawn(m_scene, *m_world);
         scenes.unload(m_scene);
 
-        // Clean up physics bodies (the world itself lives in the plugin resource)
-        auto& physics = m_world->resource<std::unique_ptr<physics::PhysicsWorld>>();
-        auto& scene   = m_world->resource<ScenePhysics>();
-        auto& body_map = m_world->resource<physics::PhysicsBodyMap>();
-        if (physics) {
-            if (scene.helmet_body) {
-                body_map.unregister_body(scene.helmet_entity);
-                physics->destroy_body(scene.helmet_body);
-            }
-            if (scene.floor_body)  physics->destroy_body(scene.floor_body);
-            scene.helmet_body   = 0;
-            scene.floor_body    = 0;
-            scene.helmet_entity = Entity{};
+        // Despawn the floor entity (auto-destroy cleans up its body)
+        if (m_world->is_alive(m_floor)) {
+            m_world->despawn(m_floor);
         }
-        scene.active = false;
     }
 
     static void describe(StateBuilder<Scene1State>& s) {
@@ -408,6 +381,7 @@ public:
 private:
     World* m_world = nullptr;
     SceneHandle m_scene;
+    Entity m_floor;
 };
 
 // ============================================================
@@ -471,7 +445,7 @@ struct GamePlugin {
         app.add_plugin(audio::StubAudioPlugin{});
 
         app.insert_resource(OrbitCamera{});
-        app.insert_resource(ScenePhysics{});
+        app.insert_resource(SceneAudio{});
         app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
         app.add_system(Schedule::Update, physics_update_system, "physics_update");
         app.add_system(Schedule::Update, on_collision, "on_collision");
