@@ -55,8 +55,11 @@ static void recreate_swapchain(RenderContext& ctx, GLFWwindow* glfw_win) {
             ctx.depth_texture = ctx.device->create_texture(depth_desc);
         }
 
+        ctx.swapchain_just_recreated = true;
         HELIOS_LOG(Render, Info, "Swapchain recreated: {}x{}",
                    ctx.swapchain->width(), ctx.swapchain->height());
+    } else {
+        HELIOS_LOG(Render, Error, "recreate_swapchain FAILED for {}x{}", w, h);
     }
 }
 
@@ -65,14 +68,23 @@ void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
     ctx->frame_active = false;
     HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
     HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
-    if (!ctx->swapchain) return;
     if (!windows->has_primary()) return;
 
+    if (!ctx->swapchain) return;
+
+    // Skip rendering for one frame after swapchain recreation to let the
+    // Wayland surface stabilize. Presenting into a just-recreated swapchain
+    // causes wl_display_flush to fail and hang glfwPollEvents.
+    if (ctx->swapchain_just_recreated) {
+        ctx->swapchain_just_recreated = false;
+        return;  // skip this frame, render next frame
+    }
+
     if (!ctx->swapchain->acquire_next_image()) {
-        // Acquire failed — recreate swapchain immediately (like old engine)
+        HELIOS_LOG(Render, Warn, "Acquire failed, recreating swapchain");
         auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
         recreate_swapchain(*ctx, glfw_win);
-        return;  // skip this frame, render next frame with new swapchain
+        return;
     }
 
     ctx->frame_active = true;
@@ -97,12 +109,7 @@ void frame_end(ResMut<RenderContext> ctx) {
     ctx->cmd->end();
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
 
-    if (!ctx->swapchain->present()) {
-        // Present failed (out of date). Don't try to recreate here —
-        // the surface may be in a transient state. The next frame's
-        // acquire will fail and frame_begin will recreate then.
-        HELIOS_LOG(Render, Debug, "Present out of date, will recreate on next acquire");
-    }
+    ctx->swapchain->present();
 
     ctx->frame_active = false;
 }
@@ -155,6 +162,7 @@ void handle_swapchain_resize(
 
         if (new_swapchain) {
             ctx->swapchain = std::move(new_swapchain);
+            ctx->swapchain_just_recreated = true;
 
             // Recreate depth buffer to match the new swapchain size
             if (ctx->depth_texture) {

@@ -45,6 +45,7 @@ void poll_window_events(ResMut<Windows> windows,
         close_writer.send(WindowClosed{ .window_id = id });
 
         if (windows->should_app_exit_on_close(id)) {
+            HELIOS_LOG(Window, Warn, "Requesting app quit due to window {} close", id);
             windows->request_quit();
         }
 
