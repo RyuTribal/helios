@@ -150,20 +150,21 @@ void orbit_camera_system(Res<RawInput> input,
 void helmet_controls(Query<Transform, const Tag> entities,
                      Res<RawInput> input,
                      Res<Time> time) {
+    bool r_pressed = input->key_just_pressed(KeyCode::R);
+    bool e_pressed = input->key_pressed(KeyCode::E);
+    if (!r_pressed && !e_pressed) return;  // early out — no mutable iteration
+
     for (auto&& [t, tag] : entities) {
         if (tag.name != "damaged_helmet") continue;
 
-        if (input->key_just_pressed(KeyCode::R)) {
+        if (r_pressed) {
             t.position = glm::vec3{0.0f, 3.0f, 0.0f};
             t.rotation = glm::quat(glm::vec3(
                 glm::radians(90.0f), glm::radians(180.0f), 0.0f));
         }
-
-        // E key: lift upward
-        if (input->key_pressed(KeyCode::E)) {
+        if (e_pressed) {
             t.position.y += 3.0f * time->delta();
         }
-
         break;
     }
 }
