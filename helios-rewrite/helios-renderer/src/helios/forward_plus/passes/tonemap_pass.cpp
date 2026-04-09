@@ -42,19 +42,37 @@ graph::TextureHandle add_tonemap_pass(
                                      graph::ResourceUsage::ShaderWrite);
             result = data.ldr;
         },
-        [exposure = config.exposure](
-            const PassData& /*data*/, graph::RenderContext& /*ctx*/) {
-            // TODO: record commands (Task 16-17)
-            //  - Bind compute pipeline "tonemap_compute"
-            //  - Bind descriptor set:
-            //      binding 0: HDR input (CombinedImageSampler)
-            //      binding 1: LDR output (StorageImage)
-            //  - Push TonemapPushConstants{.exposure = exposure}
-            //  - Dispatch((w + 15) / 16, (h + 15) / 16, 1)
-            //    (workgroup size 16x16 matches tonemap.comp)
-            (void)exposure;
+        [exposure = config.exposure,
+         vp_w     = w,
+         vp_h     = h](
+            const PassData& /*data*/, graph::RenderContext& ctx)
+        {
+            // Record tonemap compute commands.
+            //
+            // Shader: tonemap.comp (16x16 workgroup)
+            //   set 0, binding 0: sampler2D u_HDRInput
+            //   set 0, binding 1: image2D u_LDROutput (rgba8, writeonly)
+            //   push_constant:    TonemapPushConstants { float exposure; }
+            //
+            // Applies exposure-based tone mapping:
+            //   color = 1.0 - exp(-color * exposure)
+
+            auto& cmd = ctx.cmd();
+
+            // Push exposure value.
+            TonemapPushConstants pc;
+            pc.exposure = exposure;
+            cmd.push_constants(rhi::ShaderStage::Compute, 0,
+                               sizeof(TonemapPushConstants), &pc);
+
+            // Dispatch: one workgroup per 16x16 tile covering the viewport.
+            uint32_t groups_x = (vp_w + 15) / 16;
+            uint32_t groups_y = (vp_h + 15) / 16;
+            cmd.dispatch(groups_x, groups_y, 1);
+
             HELIOS_LOG_TRACE(ForwardPlus,
-                             "TonemapPass execute (commands not yet recorded)");
+                             "TonemapPass: dispatched {}x{} (exposure={})",
+                             groups_x, groups_y, exposure);
         });
 
     HELIOS_LOG_TRACE(ForwardPlus,
