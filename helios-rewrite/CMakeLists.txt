@@ -80,6 +80,9 @@ add_subdirectory(helios-physics)
 # Audio library
 add_subdirectory(helios-audio)
 
+# Scripting library (C# via CoreCLR/HostFXR)
+add_subdirectory(helios-script)
+
 # Sandbox (user-facing example application)
 add_subdirectory(sandbox)
 
