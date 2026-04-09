@@ -127,8 +127,8 @@ void orbit_camera_system(Res<RawInput> input,
         orbit->pitch = glm::clamp(orbit->pitch, -max_pitch, max_pitch);
     }
 
-    // Scroll zoom — proportional to distance so it feels consistent
-    float scroll = input->scroll_delta();
+    // Scroll zoom — proportional, clamped per tick to avoid jumps
+    float scroll = glm::clamp(input->scroll_delta(), -1.0f, 1.0f);
     if (scroll != 0.0f) {
         orbit->distance *= 1.0f - scroll * orbit->zoom_speed;
         orbit->distance = glm::clamp(orbit->distance, 0.2f, 30.0f);
