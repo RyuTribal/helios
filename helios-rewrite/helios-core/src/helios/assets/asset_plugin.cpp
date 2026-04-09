@@ -2,9 +2,11 @@
 
 #include "helios/assets/asset_server.h"
 #include "helios/assets/mesh_asset.h"
+#include "helios/assets/shader_asset.h"
 #include "helios/assets/importers/texture_importer.h"
 #include "helios/assets/importers/mesh_importer.h"
 #include "helios/assets/importers/audio_importer.h"
+#include "helios/assets/importers/shader_importer.h"
 #include "helios/ecs/app.h"
 #include "helios/ecs/schedule.h"
 #include "helios/ecs/system_params.h"
@@ -26,6 +28,7 @@ void AssetPlugin::build(App& app) {
     server.register_importer<MeshData>(MeshImporter::import);
     server.register_importer<MeshAsset>(MeshImporter::import_mesh_asset);
     server.register_importer<AudioData>(AudioImporter::import);
+    server.register_importer<ShaderAsset>(ShaderImporter::import);
 
     // 3. Register AssetLoaded event type.
     app.add_event<AssetLoaded>();

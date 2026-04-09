@@ -30,11 +30,13 @@ target_sources(helios-core
         src/helios/input/input_systems.cpp
         src/helios/input/input_plugin.cpp
         src/helios/assets/asset_server.cpp
+        src/helios/assets/handle.cpp
         src/helios/assets/load_batch.cpp
         src/helios/assets/asset_plugin.cpp
         src/helios/assets/importers/texture_importer.cpp
         src/helios/assets/importers/mesh_importer.cpp
         src/helios/assets/importers/audio_importer.cpp
+        src/helios/assets/importers/shader_importer.cpp
         src/helios/serialization/yaml_serializer.cpp
         src/helios/serialization/scene_serializer.cpp
 )
