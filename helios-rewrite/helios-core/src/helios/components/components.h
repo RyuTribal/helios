@@ -169,9 +169,8 @@ struct AudioSource {
 // Scripting
 // ---------------------------------------------------------------------------
 
-struct ScriptInstance {
-    AssetHandle script;
-};
+// ScriptInstance is defined in helios-script (helios/script/script_instance.h)
+// to keep the scripting system self-contained.
 
 // ---------------------------------------------------------------------------
 // Hierarchy
