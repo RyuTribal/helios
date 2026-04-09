@@ -6,6 +6,8 @@
 #include "helios/ecs/app.h"
 #include "helios/core/log_macros.h"
 
+#include <chrono>
+
 // Reuse the Window log channel (defined in window.cpp).
 HELIOS_DECLARE_LOG_CHANNEL(Window);
 
@@ -39,27 +41,11 @@ void poll_window_events(ResMut<Windows> windows,
     // Poll GLFW events for all windows.
     windows->poll_all();
 
-    // Check for closing windows and emit events.
-    // Ignore close requests that arrive on the same frame as a resize —
-    // Wayland compositors spuriously fire close during fullscreen/workspace
-    // transitions alongside resize events.
-    auto closing = windows->closing_windows();
-    for (auto id : closing) {
-        const auto& cb = windows->get(id).callback_data();
-        if (cb.resized) {
-            continue;  // spurious close during resize — ignore
-        }
-
-        close_writer.send(WindowClosed{ .window_id = id });
-
-        if (windows->should_app_exit_on_close(id)) {
-            windows->request_quit();
-        }
-
-        if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
-            windows->destroy(id);
-        }
-    }
+    // Track recent resizes to suppress spurious Wayland close events.
+    // Some compositors fire close callbacks during fullscreen/workspace
+    // transitions. We ignore close requests within 1 second of a resize.
+    static auto last_resize_time = std::chrono::steady_clock::time_point{};
+    bool had_resize = false;
 
     // Emit resize events.
     for (auto& [id, window] : *windows) {
@@ -70,6 +56,34 @@ void poll_window_events(ResMut<Windows> windows,
                 .width     = cb.new_width,
                 .height    = cb.new_height,
             });
+            had_resize = true;
+        }
+    }
+
+    if (had_resize) {
+        last_resize_time = std::chrono::steady_clock::now();
+    }
+
+    // Check for closing windows.
+    auto closing = windows->closing_windows();
+    for (auto id : closing) {
+        // Suppress close events within 1 second of a resize (Wayland workaround)
+        auto now = std::chrono::steady_clock::now();
+        auto since_resize = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - last_resize_time).count();
+        if (since_resize < 1000) {
+            HELIOS_LOG(Window, Debug, "Ignoring spurious close event ({}ms after resize)", since_resize);
+            continue;
+        }
+
+        close_writer.send(WindowClosed{ .window_id = id });
+
+        if (windows->should_app_exit_on_close(id)) {
+            windows->request_quit();
+        }
+
+        if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
+            windows->destroy(id);
         }
     }
 
