@@ -155,7 +155,8 @@ void orbit_camera_system(Res<RawInput> input,
 
 // ============================================================
 // Physics update system — handles R key reset only.
-// Transform sync is automatic via PhysicsPlugin's sync systems.
+// Transform sync is automatic: setting Transform triggers
+// propagation -> GlobalTransform update -> physics auto-sync.
 // ============================================================
 
 void physics_update_system(ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
@@ -163,7 +164,9 @@ void physics_update_system(ResMut<std::unique_ptr<physics::PhysicsWorld>> physic
                            Res<RawInput> input) {
     if (!*physics) return;
 
-    // R key: reset helmet to starting position
+    // R key: reset helmet to starting position.
+    // Just set Transform — the propagation system updates GlobalTransform,
+    // and sync_ecs_to_physics detects Changed<GlobalTransform> next frame.
     if (input->key_just_pressed(KeyCode::R)) {
         for (auto [t, tag, pb] : bodies) {
             if (tag.name == "damaged_helmet") {
@@ -171,7 +174,6 @@ void physics_update_system(ResMut<std::unique_ptr<physics::PhysicsWorld>> physic
                 t.position = glm::vec3{0.0f, 3.0f, 0.0f};
                 t.rotation = glm::quat(glm::vec3(
                     glm::radians(90.0f), glm::radians(180.0f), 0.0f));
-                (*physics)->set_transform(pb.handle, t.position, t.rotation);
                 (*physics)->set_velocity(pb.handle, glm::vec3{0.0f});
                 break;
             }
