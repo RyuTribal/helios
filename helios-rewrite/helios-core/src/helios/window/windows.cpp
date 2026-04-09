@@ -99,7 +99,7 @@ bool Windows::should_app_exit_on_close(WindowId closed_id) const {
 std::vector<WindowId> Windows::closing_windows() const {
     std::vector<WindowId> result;
     for (const auto& [id, window] : m_windows) {
-        if (window.should_close()) {
+        if (window.callback_data().close_requested) {
             result.push_back(id);
         }
     }

@@ -12,7 +12,12 @@
       "Bash(vendor/premake/premake5 gmake2:*)",
       "Bash(timeout 12 ../bin/Debug-linux-x86_64/Editor/Editor)",
       "Bash(echo \"Exit: $?\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(cmake --build build)",
+      "Bash(cmake:*)",
+      "Bash(ctest:*)",
+      "Bash(./build/bin/sandbox:*)",
+      "Bash(./build/bin/helios-tests)"
     ]
   }
 }

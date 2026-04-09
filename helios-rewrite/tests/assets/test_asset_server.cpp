@@ -114,10 +114,10 @@ TEST_F(AssetServerTest, SyncLoadSucceeds) {
 
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
-    EXPECT_EQ(server.status(handle), AssetStatus::Loaded);
-    EXPECT_TRUE(server.is_loaded(handle));
+    EXPECT_EQ(server.status(handle.untyped()), AssetStatus::Loaded);
+    EXPECT_TRUE(server.is_loaded(handle.untyped()));
 
-    const TestAsset* asset = server.get<TestAsset>(handle);
+    const TestAsset* asset = server.get<TestAsset>(handle.untyped());
     ASSERT_NE(asset, nullptr);
     EXPECT_EQ(asset->content, "hello world");
 }
@@ -149,14 +149,14 @@ TEST_F(AssetServerTest, AsyncLoadCompletesAndResolves) {
     ASSERT_TRUE(static_cast<bool>(handle));
 
     auto start = std::chrono::steady_clock::now();
-    while (!server.is_loaded(handle)) {
+    while (!server.is_loaded(handle.untyped())) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         auto elapsed = std::chrono::steady_clock::now() - start;
         ASSERT_LT(elapsed, std::chrono::seconds(5))
             << "Async load timed out";
     }
 
-    const TestAsset* asset = server.get<TestAsset>(handle);
+    const TestAsset* asset = server.get<TestAsset>(handle.untyped());
     ASSERT_NE(asset, nullptr);
     EXPECT_EQ(asset->content, "hello world");
 }
@@ -168,7 +168,7 @@ TEST_F(AssetServerTest, AsyncLoadEmitsCompletedEvent) {
     auto handle = server.load<TestAsset>("test.txt");
 
     auto start = std::chrono::steady_clock::now();
-    while (!server.is_loaded(handle)) {
+    while (!server.is_loaded(handle.untyped())) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         auto elapsed = std::chrono::steady_clock::now() - start;
         ASSERT_LT(elapsed, std::chrono::seconds(5));
@@ -179,7 +179,7 @@ TEST_F(AssetServerTest, AsyncLoadEmitsCompletedEvent) {
 
     bool found = false;
     for (const auto& event : completed) {
-        if (event.handle == handle) {
+        if (event.handle == handle.untyped()) {
             found = true;
             EXPECT_TRUE(event.success);
         }
@@ -194,14 +194,14 @@ TEST_F(AssetServerTest, AsyncLoadFailureStatus) {
     auto handle = server.load<TestAsset>("does_not_exist.txt");
 
     auto start = std::chrono::steady_clock::now();
-    while (server.status(handle) == AssetStatus::Loading) {
+    while (server.status(handle.untyped()) == AssetStatus::Loading) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         auto elapsed = std::chrono::steady_clock::now() - start;
         ASSERT_LT(elapsed, std::chrono::seconds(5));
     }
 
-    EXPECT_EQ(server.status(handle), AssetStatus::Failed);
-    EXPECT_EQ(server.get<TestAsset>(handle), nullptr);
+    EXPECT_EQ(server.status(handle.untyped()), AssetStatus::Failed);
+    EXPECT_EQ(server.get<TestAsset>(handle.untyped()), nullptr);
 }
 
 // ----- Cache deduplication -----
@@ -289,7 +289,7 @@ TEST_F(AssetServerTest, GetWithWrongTypeReturnsNull) {
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
 
-    const OtherAsset* wrong = server.get<OtherAsset>(handle);
+    const OtherAsset* wrong = server.get<OtherAsset>(handle.untyped());
     EXPECT_EQ(wrong, nullptr);
 }
 
@@ -302,11 +302,11 @@ TEST_F(AssetServerTest, GetMutAllowsModification) {
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
 
-    TestAsset* asset = server.get_mut<TestAsset>(handle);
+    TestAsset* asset = server.get_mut<TestAsset>(handle.untyped());
     ASSERT_NE(asset, nullptr);
     asset->content = "modified";
 
-    const TestAsset* check = server.get<TestAsset>(handle);
+    const TestAsset* check = server.get<TestAsset>(handle.untyped());
     EXPECT_EQ(check->content, "modified");
 }
 
@@ -333,20 +333,21 @@ TEST_F(AssetServerTest, AcquireAndRelease) {
 
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
+    auto raw = handle.untyped();
 
-    EXPECT_EQ(server.refcount(handle), 0u);
+    // Handle constructor already acquired once. Verify.
+    EXPECT_EQ(server.refcount(raw), 1u);
 
-    server.acquire(handle);
-    EXPECT_EQ(server.refcount(handle), 1u);
+    server.acquire(raw);
+    EXPECT_EQ(server.refcount(raw), 2u);
 
-    server.acquire(handle);
-    EXPECT_EQ(server.refcount(handle), 2u);
+    server.release(raw);
+    EXPECT_EQ(server.refcount(raw), 1u);
 
-    server.release(handle);
-    EXPECT_EQ(server.refcount(handle), 1u);
-
-    server.release(handle);
-    EXPECT_EQ(server.refcount(handle), 0u);
+    // The RAII Handle still holds one refcount; release it manually for
+    // this test to confirm the count reaches zero.
+    server.release(raw);
+    EXPECT_EQ(server.refcount(raw), 0u);
 }
 
 TEST_F(AssetServerTest, CollectGarbageUnloadsZeroRefcount) {
@@ -357,19 +358,20 @@ TEST_F(AssetServerTest, CollectGarbageUnloadsZeroRefcount) {
     auto h2 = server.load_sync<TestAsset>("test2.txt");
     ASSERT_TRUE(static_cast<bool>(h1));
     ASSERT_TRUE(static_cast<bool>(h2));
+    auto r1 = h1.untyped();
+    auto r2 = h2.untyped();
 
-    // Acquire both, then release h1
-    server.acquire(h1);
-    server.acquire(h2);
-    server.release(h1);
+    // Each Handle already holds refcount=1 from construction.
+    // Release h1's refcount so it can be collected.
+    server.release(r1);
 
     auto unloaded = server.collect_garbage();
     EXPECT_EQ(unloaded.size(), 1u);
-    EXPECT_EQ(unloaded[0], h1);
+    EXPECT_EQ(unloaded[0], r1);
 
     // h1 should be gone, h2 should still be there
-    EXPECT_EQ(server.get<TestAsset>(h1), nullptr);
-    EXPECT_NE(server.get<TestAsset>(h2), nullptr);
+    EXPECT_EQ(server.get<TestAsset>(r1), nullptr);
+    EXPECT_NE(server.get<TestAsset>(r2), nullptr);
 }
 
 TEST_F(AssetServerTest, CollectGarbageNothingToCollect) {
@@ -379,11 +381,10 @@ TEST_F(AssetServerTest, CollectGarbageNothingToCollect) {
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
 
-    server.acquire(handle);
-
+    // Handle already holds refcount=1 from RAII construction
     auto unloaded = server.collect_garbage();
     EXPECT_TRUE(unloaded.empty());
-    EXPECT_NE(server.get<TestAsset>(handle), nullptr);
+    EXPECT_NE(server.get<TestAsset>(handle.untyped()), nullptr);
 }
 
 TEST_F(AssetServerTest, ExplicitUnload) {
@@ -393,9 +394,9 @@ TEST_F(AssetServerTest, ExplicitUnload) {
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
 
-    server.unload(handle);
-    EXPECT_EQ(server.get<TestAsset>(handle), nullptr);
-    EXPECT_EQ(server.status(handle), AssetStatus::Failed);
+    server.unload(handle.untyped());
+    EXPECT_EQ(server.get<TestAsset>(handle.untyped()), nullptr);
+    EXPECT_EQ(server.status(handle.untyped()), AssetStatus::Failed);
 }
 
 TEST_F(AssetServerTest, SharedAssetNotCollected) {
@@ -404,19 +405,20 @@ TEST_F(AssetServerTest, SharedAssetNotCollected) {
 
     auto handle = server.load_sync<TestAsset>("test.txt");
     ASSERT_TRUE(static_cast<bool>(handle));
+    auto raw = handle.untyped();
 
-    // Two "owners" acquire
-    server.acquire(handle);
-    server.acquire(handle);
+    // Handle already holds refcount=1. Acquire again for a second "owner".
+    server.acquire(raw);
+    EXPECT_EQ(server.refcount(raw), 2u);
 
     // One releases
-    server.release(handle);
-    EXPECT_EQ(server.refcount(handle), 1u);
+    server.release(raw);
+    EXPECT_EQ(server.refcount(raw), 1u);
 
     // GC should not collect (refcount = 1)
     auto unloaded = server.collect_garbage();
     EXPECT_TRUE(unloaded.empty());
-    EXPECT_NE(server.get<TestAsset>(handle), nullptr);
+    EXPECT_NE(server.get<TestAsset>(raw), nullptr);
 }
 
 } // namespace helios::test

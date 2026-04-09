@@ -73,7 +73,8 @@ LoadBatchBuilder& LoadBatchBuilder::add(const std::string& path) {
         path,
         std::type_index(typeid(T)),
         [](AssetServer& server, const std::string& p) -> AssetHandle {
-            return server.load<T>(p);
+            auto h = server.load<T>(p);
+            return h.untyped();
         }
     });
     return *this;

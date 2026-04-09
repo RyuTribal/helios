@@ -110,6 +110,11 @@ struct Window::Impl {
             [](GLFWwindow* win) {
                 auto* data = static_cast<WindowCallbackData*>(glfwGetWindowUserPointer(win));
                 data->close_requested = true;
+                // Prevent GLFW from auto-setting should_close. We handle
+                // close ourselves via the callback data + WindowClosePolicy.
+                // On Wayland, some compositors spuriously trigger the close
+                // callback during fullscreen/workspace transitions.
+                glfwSetWindowShouldClose(win, GLFW_FALSE);
             });
 
         // Update desc with actual framebuffer size (may differ on HiDPI).
