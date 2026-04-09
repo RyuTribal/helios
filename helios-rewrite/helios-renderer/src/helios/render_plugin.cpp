@@ -90,7 +90,7 @@ void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
 }
 
 // --- System: end frame (end rendering + submit + present) ---
-void frame_end(ResMut<RenderContext> ctx, Res<Windows> windows) {
+void frame_end(ResMut<RenderContext> ctx) {
     if (!ctx->frame_active) return;
 
     ctx->swapchain->end_rendering(*ctx->cmd);
@@ -98,11 +98,10 @@ void frame_end(ResMut<RenderContext> ctx, Res<Windows> windows) {
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
 
     if (!ctx->swapchain->present()) {
-        // Present failed — recreate immediately (like old engine)
-        if (windows->has_primary()) {
-            auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
-            recreate_swapchain(*ctx, glfw_win);
-        }
+        // Present failed (out of date). Don't try to recreate here —
+        // the surface may be in a transient state. The next frame's
+        // acquire will fail and frame_begin will recreate then.
+        HELIOS_LOG(Render, Debug, "Present out of date, will recreate on next acquire");
     }
 
     ctx->frame_active = false;

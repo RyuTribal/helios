@@ -47,7 +47,6 @@ struct RenderContext {
 void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows);
 
 /// Infrastructure system: end rendering, end command buffer, submit + present.
-/// Recreates swapchain on present failure.
-void frame_end(ResMut<RenderContext> ctx, Res<Windows> windows);
+void frame_end(ResMut<RenderContext> ctx);
 
 } // namespace helios
