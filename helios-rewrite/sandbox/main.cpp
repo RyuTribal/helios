@@ -57,6 +57,7 @@ HELIOS_DEFINE_LOG_CHANNEL(Audio);
 struct ScenePhysics {
     physics::BodyHandle floor_body  = 0;
     physics::BodyHandle helmet_body = 0;
+    helios::Entity      helmet_entity;         // registered in PhysicsBodyMap
     std::vector<uint8_t> bounce_wav;
     bool active = false;
 };
@@ -165,13 +166,16 @@ void orbit_camera_system(Res<RawInput> input,
 
 void physics_update_system(ResMut<ScenePhysics> scene,
                            ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
-                           Res<RawInput> input,
-                           Query<Transform, const Tag> tagged) {
+                           ResMut<physics::PhysicsBodyMap> body_map,
+                           Res<RawInput> input) {
     if (!scene->active || !*physics) return;
 
     // R key: reset helmet to starting position
     if (input->key_just_pressed(KeyCode::R)) {
         HELIOS_LOG(Physics, Info, "Resetting helmet to starting position");
+
+        // Unregister old body, destroy it, create a fresh one and re-register
+        body_map->unregister_body(scene->helmet_entity);
         (*physics)->destroy_body(scene->helmet_body);
 
         physics::BodyDesc helmet_desc;
@@ -181,15 +185,9 @@ void physics_update_system(ResMut<ScenePhysics> scene,
         helmet_desc.mass        = 2.0f;
         helmet_desc.restitution = 0.6f;
         scene->helmet_body = (*physics)->create_body(helmet_desc, 2);
+        body_map->register_body(scene->helmet_entity, scene->helmet_body, physics::BodyType::Dynamic);
     }
-
-    // Read back helmet position and apply to the entity Transform
-    auto pos = (*physics)->get_position(scene->helmet_body);
-    for (auto [t, tag] : tagged) {
-        if (tag.name == "damaged_helmet") {
-            t.position = pos;
-        }
-    }
+    // Transform readback is now handled automatically by sync_physics_to_ecs (PostUpdate).
 }
 
 // Separate system: react to collision events from the physics plugin.
@@ -342,6 +340,24 @@ public:
 
         HELIOS_LOG(Physics, Info, "Floor body={} helmet body={}", scene.floor_body, scene.helmet_body);
 
+        // Register the helmet entity in the PhysicsBodyMap so that
+        // sync_physics_to_ecs (PostUpdate) automatically writes the dynamic body
+        // position back into the entity's Transform each frame.
+        auto& body_map = world.resource<physics::PhysicsBodyMap>();
+        auto q = world.query<const Tag>();
+        for (Entity e : scenes.spawned_entities(m_scene)) {
+            auto result = q.get(e);
+            if (result.has_value()) {
+                const auto& [tag] = *result;
+                if (tag.name == "damaged_helmet") {
+                    scene.helmet_entity = e;
+                    body_map.register_body(e, scene.helmet_body, physics::BodyType::Dynamic);
+                    HELIOS_LOG(Physics, Info, "Registered helmet entity in PhysicsBodyMap");
+                    break;
+                }
+            }
+        }
+
         // --- Set up audio clip ---
         if (scene.bounce_wav.empty()) {
             scene.bounce_wav = audio::generate_bounce_wav();
@@ -362,12 +378,17 @@ public:
 
         // Clean up physics bodies (the world itself lives in the plugin resource)
         auto& physics = m_world->resource<std::unique_ptr<physics::PhysicsWorld>>();
-        auto& scene = m_world->resource<ScenePhysics>();
+        auto& scene   = m_world->resource<ScenePhysics>();
+        auto& body_map = m_world->resource<physics::PhysicsBodyMap>();
         if (physics) {
-            if (scene.helmet_body) physics->destroy_body(scene.helmet_body);
+            if (scene.helmet_body) {
+                body_map.unregister_body(scene.helmet_entity);
+                physics->destroy_body(scene.helmet_body);
+            }
             if (scene.floor_body)  physics->destroy_body(scene.floor_body);
-            scene.helmet_body = 0;
-            scene.floor_body  = 0;
+            scene.helmet_body   = 0;
+            scene.floor_body    = 0;
+            scene.helmet_entity = Entity{};
         }
         scene.active = false;
     }

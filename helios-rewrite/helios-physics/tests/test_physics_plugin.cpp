@@ -56,7 +56,8 @@ TEST(PhysicsPlugin, StubBuildInsertsResources) {
 
     EXPECT_TRUE(app.config_inserted);
     EXPECT_TRUE(app.physics_world_inserted);
-    EXPECT_EQ(app.resource_count, 2);
+    // 3 resources: PhysicsConfig, std::unique_ptr<PhysicsWorld>, PhysicsBodyMap
+    EXPECT_EQ(app.resource_count, 3);
 
     EXPECT_NEAR(app.stored_config.fixed_timestep, 1.0f / 120.0f, 0.0001f);
     EXPECT_NEAR(app.stored_config.gravity.y, -10.0f, 0.01f);
@@ -102,7 +103,8 @@ TEST(PhysicsPlugin, JoltBuildInsertsResources) {
 
     EXPECT_TRUE(app.config_inserted);
     EXPECT_TRUE(app.physics_world_inserted);
-    EXPECT_EQ(app.resource_count, 2);
+    // 3 resources: PhysicsConfig, std::unique_ptr<PhysicsWorld>, PhysicsBodyMap
+    EXPECT_EQ(app.resource_count, 3);
 
     BodyDesc desc;
     desc.type = BodyType::Dynamic;
