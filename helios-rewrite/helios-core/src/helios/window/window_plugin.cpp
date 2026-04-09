@@ -36,10 +36,7 @@ void poll_window_events(ResMut<Windows> windows,
                         EventWriter<WindowResized> resize_writer,
                         EventWriter<WindowClosed>  close_writer)
 {
-    // Reset close flags BEFORE polling. This way only close events from
-    // the current glfwPollEvents() cycle trigger should_close. Stale flags
-    // from compositor state transitions (Hyprland sends spurious close
-    // during fullscreen/workspace changes) are cleared before they're read.
+    // Reset close flags before polling so we only see fresh events.
     for (auto& [id, window] : *windows) {
         window.reset_close_flag();
     }
@@ -47,23 +44,7 @@ void poll_window_events(ResMut<Windows> windows,
     // Poll GLFW events for all windows.
     windows->poll_all();
 
-    // Check for closing windows (only detects close events from THIS poll).
-    auto closing = windows->closing_windows();
-    for (auto id : closing) {
-        HELIOS_LOG(Window, Info, "Window {} close requested", id);
-
-        close_writer.send(WindowClosed{ .window_id = id });
-
-        if (windows->should_app_exit_on_close(id)) {
-            windows->request_quit();
-        }
-
-        if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
-            windows->destroy(id);
-        }
-    }
-
-    // Emit resize events.
+    // Emit resize events FIRST (needed to detect same-poll close+resize).
     for (auto& [id, window] : *windows) {
         const auto& cb = window.callback_data();
         if (cb.resized) {
@@ -72,6 +53,32 @@ void poll_window_events(ResMut<Windows> windows,
                 .width     = cb.new_width,
                 .height    = cb.new_height,
             });
+        }
+    }
+
+    // Check for closing windows. If a close arrives in the SAME poll as
+    // a resize, it's a spurious Hyprland event (the compositor fires close
+    // during fullscreen/workspace transitions alongside configure events).
+    auto closing = windows->closing_windows();
+    for (auto id : closing) {
+        const auto& cb = windows->get(id).callback_data();
+        if (cb.resized) {
+            HELIOS_LOG(Window, Debug,
+                "Ignoring spurious close on window {} (arrived with resize)", id);
+            // Reset the flag so it doesn't persist to next frame
+            windows->get(id).reset_close_flag();
+            continue;
+        }
+
+        HELIOS_LOG(Window, Info, "Window {} close requested", id);
+        close_writer.send(WindowClosed{ .window_id = id });
+
+        if (windows->should_app_exit_on_close(id)) {
+            windows->request_quit();
+        }
+
+        if (windows->count() > 1 || !windows->should_app_exit_on_close(id)) {
+            windows->destroy(id);
         }
     }
 
