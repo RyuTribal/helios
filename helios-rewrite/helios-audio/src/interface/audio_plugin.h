@@ -7,7 +7,22 @@
 #include "interface/audio_device.h"
 #include "stub/stub_audio_device.h"
 
+#include <helios/ecs/schedule.h>
+#include <helios/ecs/system_params.h>
+
 namespace helios::audio {
+
+// ============================================================
+// Audio systems (free functions, registered by the plugin)
+// ============================================================
+
+// Schedule: PostUpdate
+// Per-frame audio housekeeping (stream buffers, 3D calculations).
+inline void audio_update(helios::ResMut<std::unique_ptr<AudioDevice>> device) {
+    if (*device) {
+        (*device)->update();
+    }
+}
 
 // ============================================================
 // AudioPlugin
@@ -28,10 +43,12 @@ struct AudioPlugin {
         auto device = std::make_unique<Backend>();
         app.template insert_resource<std::unique_ptr<AudioDevice>>(std::move(device));
 
-        // Register audio systems (uncomment when ECS API from Plans 1-2 is wired):
-        // app.add_system(Schedule::PostUpdate, update_audio_listener, "update_audio_listener");
-        // app.add_system(Schedule::PostUpdate, update_spatial_sources, "update_spatial_sources");
-        // app.add_system(Schedule::PostUpdate, audio_update, "audio_update");
+        // Per-frame audio update
+        app.add_system(helios::Schedule::PostUpdate, audio_update, "audio_update");
+
+        // Full ECS-driven spatial audio (uncomment when wiring to components):
+        // app.add_system(helios::Schedule::PostUpdate, update_audio_listener, "update_audio_listener");
+        // app.add_system(helios::Schedule::PostUpdate, update_spatial_sources, "update_spatial_sources");
     }
 };
 

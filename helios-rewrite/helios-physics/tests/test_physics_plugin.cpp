@@ -29,7 +29,12 @@ struct MockApp {
         }
     }
 
+    // Absorb add_system calls (just count them)
+    template<typename... Args>
+    MockApp& add_system(Args&&...) { system_count++; return *this; }
+
     int resource_count = 0;
+    int system_count = 0;
     bool physics_world_inserted = false;
     bool config_inserted = false;
     std::unique_ptr<PhysicsWorld> stored_world;

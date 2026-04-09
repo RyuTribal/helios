@@ -20,7 +20,12 @@ struct MockApp {
         }
     }
 
+    // Absorb add_system calls (just count them)
+    template<typename... Args>
+    MockApp& add_system(Args&&...) { system_count++; return *this; }
+
     int resource_count = 0;
+    int system_count = 0;
     bool audio_device_inserted = false;
     std::unique_ptr<AudioDevice> stored_device;
 };

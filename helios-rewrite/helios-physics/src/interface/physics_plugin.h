@@ -7,6 +7,9 @@
 #include "interface/physics_world.h"
 #include "stub/stub_physics_world.h"
 
+#include <helios/ecs/schedule.h>
+#include <helios/ecs/system_params.h>
+
 namespace helios::physics {
 
 // ============================================================
@@ -14,11 +17,14 @@ namespace helios::physics {
 // ============================================================
 
 // Schedule: FixedUpdate
-// Step the physics simulation and emit collision events.
-inline void physics_step(PhysicsWorld& world, const PhysicsConfig& config) {
-    world.step(config.fixed_timestep);
+// Step the physics simulation by the configured fixed timestep.
+inline void physics_step(helios::ResMut<std::unique_ptr<PhysicsWorld>> world,
+                         helios::Res<PhysicsConfig> config) {
+    if (*world) {
+        (*world)->step(config->fixed_timestep);
+    }
     // Drain contacts -- in full ECS integration these become CollisionEvents:
-    // auto contacts = world.drain_contacts();
+    // auto contacts = (*world)->drain_contacts();
     // for (auto& c : contacts) {
     //     collisions.send(CollisionEvent{c.entity_a, c.entity_b, c.world_point, c.normal, c.impulse});
     // }
@@ -52,10 +58,12 @@ struct PhysicsPlugin {
         // Register collision event type
         // app.template add_event<CollisionEvent>();
 
-        // Register systems (uncomment when wiring to ECS scheduler):
-        // app.add_system(Schedule::FixedUpdate, physics_step, "physics_step");
-        // app.add_system(Schedule::PostUpdate,  sync_physics_transforms, "sync_physics_transforms");
-        // app.add_system(Schedule::PostUpdate,  push_kinematic_transforms, "push_kinematic_transforms");
+        // Step the physics world each fixed-update tick
+        app.add_system(helios::Schedule::FixedUpdate, physics_step, "physics_step");
+
+        // Full ECS-driven transform sync (uncomment when wiring to components):
+        // app.add_system(helios::Schedule::PostUpdate,  sync_physics_transforms, "sync_physics_transforms");
+        // app.add_system(helios::Schedule::PostUpdate,  push_kinematic_transforms, "push_kinematic_transforms");
     }
 };
 
