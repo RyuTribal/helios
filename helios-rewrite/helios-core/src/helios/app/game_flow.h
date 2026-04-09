@@ -357,8 +357,8 @@ void GameFlow<StateEnum>::activate_state_systems(
         // registered. We tag the SystemDescriptor with the state's type
         // so we can remove it later.
         StateBase* raw = entry.instance.get();
-        sd.run = [raw, invoke = sys_desc.invoke](World& world) {
-            invoke(raw, world);
+        sd.run = [raw, invoke = sys_desc.invoke](World& world, uint32_t last_run_tick) {
+            invoke(raw, world, last_run_tick);
         };
         sd.owner_tag = reg.type;
 

@@ -28,8 +28,12 @@ public:
     using EntityResultTuple = decltype(std::tuple_cat(
         std::declval<std::tuple<Entity>>(), std::declval<ResultTuple>()));
 
-    explicit Query(ArchetypeStorage& storage)
+    explicit Query(ArchetypeStorage& storage,
+                   uint32_t last_run_tick = 0,
+                   uint32_t current_tick = 0)
         : m_storage(&storage)
+        , m_last_run_tick(last_run_tick)
+        , m_current_tick(current_tick)
     {
         cache_archetypes();
     }
@@ -39,12 +43,16 @@ public:
     // -----------------------------------------------------------------------
 private:
     template <typename P>
-    static auto fetch_one(Archetype& arch, size_t row) {
+    static auto fetch_one(Archetype& arch, size_t row, uint32_t current_tick) {
         if constexpr (is_filter_v<P>) {
             return std::tuple<>();
         } else if constexpr (is_optional_v<P>) {
             using Inner = filter_inner_t<P>;
             if (arch.has_component(component_id<Inner>())) {
+                // Stamp on mutable Optional access
+                if constexpr (!std::is_const_v<Inner>) {
+                    arch.get_column<Inner>().stamp(row, current_tick);
+                }
                 return std::tuple<Inner*>(
                     &arch.get_column<Inner>().template get<Inner>(row));
             } else {
@@ -55,13 +63,15 @@ private:
             return std::tuple<const Raw&>(
                 arch.get_column<Raw>().template get<Raw>(row));
         } else {
+            // Mutable access: auto-stamp the change tick.
+            arch.get_column<P>().stamp(row, current_tick);
             return std::tuple<P&>(
                 arch.get_column<P>().template get<P>(row));
         }
     }
 
-    static ResultTuple fetch_from(Archetype& arch, size_t row) {
-        return std::tuple_cat(fetch_one<Params>(arch, row)...);
+    static ResultTuple fetch_from(Archetype& arch, size_t row, uint32_t current_tick) {
+        return std::tuple_cat(fetch_one<Params>(arch, row, current_tick)...);
     }
 
 public:
@@ -76,17 +86,20 @@ public:
         Iterator() = default;
 
         Iterator(const std::vector<Archetype*>& archetypes,
-                 size_t arch_idx, size_t row)
+                 size_t arch_idx, size_t row,
+                 uint32_t last_run_tick, uint32_t current_tick)
             : m_archetypes(&archetypes)
             , m_arch_idx(arch_idx)
             , m_row(row)
+            , m_last_run_tick(last_run_tick)
+            , m_current_tick(current_tick)
         {
             skip_empty();
         }
 
         ResultTuple operator*() const {
             Archetype& arch = *(*m_archetypes)[m_arch_idx];
-            return fetch_from(arch, m_row);
+            return fetch_from(arch, m_row, m_current_tick);
         }
 
         Iterator& operator++() {
@@ -117,6 +130,8 @@ public:
         const std::vector<Archetype*>* m_archetypes = nullptr;
         size_t m_arch_idx = 0;
         size_t m_row = 0;
+        uint32_t m_last_run_tick = 0;
+        uint32_t m_current_tick = 0;
 
         void skip_empty() {
             while (m_arch_idx < m_archetypes->size() &&
@@ -137,10 +152,13 @@ public:
         EntityIterator() = default;
 
         EntityIterator(const std::vector<Archetype*>& archetypes,
-                       size_t arch_idx, size_t row)
+                       size_t arch_idx, size_t row,
+                       uint32_t last_run_tick, uint32_t current_tick)
             : m_archetypes(&archetypes)
             , m_arch_idx(arch_idx)
             , m_row(row)
+            , m_last_run_tick(last_run_tick)
+            , m_current_tick(current_tick)
         {
             skip_empty();
         }
@@ -148,7 +166,7 @@ public:
         EntityResultTuple operator*() const {
             Archetype& arch = *(*m_archetypes)[m_arch_idx];
             Entity entity = arch.entities[m_row];
-            return std::tuple_cat(std::make_tuple(entity), fetch_from(arch, m_row));
+            return std::tuple_cat(std::make_tuple(entity), fetch_from(arch, m_row, m_current_tick));
         }
 
         EntityIterator& operator++() {
@@ -179,6 +197,8 @@ public:
         const std::vector<Archetype*>* m_archetypes = nullptr;
         size_t m_arch_idx = 0;
         size_t m_row = 0;
+        uint32_t m_last_run_tick = 0;
+        uint32_t m_current_tick = 0;
 
         void skip_empty() {
             while (m_arch_idx < m_archetypes->size() &&
@@ -193,16 +213,22 @@ public:
     // -----------------------------------------------------------------------
     class EntityView {
     public:
-        explicit EntityView(const std::vector<Archetype*>& cached) : m_cached(&cached) {}
+        EntityView(const std::vector<Archetype*>& cached,
+                   uint32_t last_run_tick, uint32_t current_tick)
+            : m_cached(&cached)
+            , m_last_run_tick(last_run_tick)
+            , m_current_tick(current_tick) {}
 
         EntityIterator begin() const {
-            return EntityIterator(*m_cached, 0, 0);
+            return EntityIterator(*m_cached, 0, 0, m_last_run_tick, m_current_tick);
         }
         EntityIterator end() const {
-            return EntityIterator(*m_cached, m_cached->size(), 0);
+            return EntityIterator(*m_cached, m_cached->size(), 0, m_last_run_tick, m_current_tick);
         }
     private:
         const std::vector<Archetype*>* m_cached;
+        uint32_t m_last_run_tick;
+        uint32_t m_current_tick;
     };
 
     // -----------------------------------------------------------------------
@@ -210,16 +236,16 @@ public:
     // -----------------------------------------------------------------------
 
     Iterator begin() const {
-        return Iterator(m_cached, 0, 0);
+        return Iterator(m_cached, 0, 0, m_last_run_tick, m_current_tick);
     }
 
     Iterator end() const {
-        return Iterator(m_cached, m_cached.size(), 0);
+        return Iterator(m_cached, m_cached.size(), 0, m_last_run_tick, m_current_tick);
     }
 
     /// Return a view that yields (Entity, components...) tuples.
     EntityView with_entity() const {
-        return EntityView(m_cached);
+        return EntityView(m_cached, m_last_run_tick, m_current_tick);
     }
 
     // -----------------------------------------------------------------------
@@ -248,12 +274,14 @@ public:
         Archetype* arch = loc->archetype;
         if (!matches(*arch)) return std::nullopt;
 
-        return fetch_from(*arch, loc->row);
+        return fetch_from(*arch, loc->row, m_current_tick);
     }
 
 private:
     ArchetypeStorage* m_storage = nullptr;
     std::vector<Archetype*> m_cached;
+    uint32_t m_last_run_tick = 0;   // tick when the owning system last ran
+    uint32_t m_current_tick = 0;    // world tick when this query was created
 
     void cache_archetypes() {
         m_storage->for_each_archetype([&](Archetype& arch) {

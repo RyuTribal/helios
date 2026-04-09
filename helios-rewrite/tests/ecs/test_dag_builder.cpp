@@ -19,7 +19,7 @@ static SystemDescriptor make_system(SystemId id, std::vector<AccessDescriptor> a
     SystemDescriptor desc;
     desc.id       = id;
     desc.name     = "sys_" + std::to_string(id.value);
-    desc.run      = [](World&) {};
+    desc.run      = [](World&, uint32_t) {};
     desc.accesses = std::move(accesses);
     desc.after    = std::move(after);
     desc.before   = std::move(before);

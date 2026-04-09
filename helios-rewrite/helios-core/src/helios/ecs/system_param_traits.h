@@ -144,8 +144,8 @@ struct SystemParam<Query<Ts...>> {
         return detail::query_accesses<Ts...>();
     }
 
-    static Query<Ts...> fetch(World& world) {
-        return world.query<Ts...>();
+    static Query<Ts...> fetch(World& world, uint32_t last_run_tick) {
+        return world.query<Ts...>(last_run_tick);
     }
 };
 
@@ -159,7 +159,7 @@ struct SystemParam<Res<T>> {
         } };
     }
 
-    static Res<T> fetch(World& world) {
+    static Res<T> fetch(World& world, uint32_t /*last_run_tick*/) {
         return Res<T>(&world.resource<T>());
     }
 };
@@ -174,7 +174,7 @@ struct SystemParam<ResMut<T>> {
         } };
     }
 
-    static ResMut<T> fetch(World& world) {
+    static ResMut<T> fetch(World& world, uint32_t /*last_run_tick*/) {
         return ResMut<T>(&world.resource<T>());
     }
 };
@@ -191,7 +191,7 @@ struct SystemParam<Commands> {
         } };
     }
 
-    static Commands& fetch(World& world) {
+    static Commands& fetch(World& world, uint32_t /*last_run_tick*/) {
         return world.pending_commands();
     }
 };
@@ -211,7 +211,7 @@ struct SystemParam<EventReader<T>> {
         } };
     }
 
-    static EventReader<T> fetch(World& world) {
+    static EventReader<T> fetch(World& world, uint32_t /*last_run_tick*/) {
         return world.event_reader<T>();
     }
 };
@@ -229,7 +229,7 @@ struct SystemParam<EventWriter<T>> {
         } };
     }
 
-    static EventWriter<T> fetch(World& world) {
+    static EventWriter<T> fetch(World& world, uint32_t /*last_run_tick*/) {
         return world.event_writer<T>();
     }
 };
@@ -260,14 +260,14 @@ std::vector<AccessDescriptor> collect_accesses() {
 
 // Invoke F by fetching each parameter from World
 template <typename F, typename Tuple, size_t... Is>
-void invoke_system_impl(F& fn, World& world, std::index_sequence<Is...>) {
-    fn(SystemParam<std::tuple_element_t<Is, Tuple>>::fetch(world)...);
+void invoke_system_impl(F& fn, World& world, uint32_t last_run_tick, std::index_sequence<Is...>) {
+    fn(SystemParam<std::tuple_element_t<Is, Tuple>>::fetch(world, last_run_tick)...);
 }
 
 template <typename F, typename Tuple>
-void invoke_system(F& fn, World& world) {
+void invoke_system(F& fn, World& world, uint32_t last_run_tick) {
     invoke_system_impl<F, Tuple>(
-        fn, world,
+        fn, world, last_run_tick,
         std::make_index_sequence<std::tuple_size_v<Tuple>>{});
 }
 
@@ -282,9 +282,9 @@ struct SystemParamExtractor {
         return detail::collect_accesses<ArgsTuple>();
     }
 
-    static std::function<void(World&)> wrap(F fn) {
-        return [fn = std::move(fn)](World& world) mutable {
-            detail::invoke_system<F, ArgsTuple>(fn, world);
+    static std::function<void(World&, uint32_t)> wrap(F fn) {
+        return [fn = std::move(fn)](World& world, uint32_t last_run_tick) mutable {
+            detail::invoke_system<F, ArgsTuple>(fn, world, last_run_tick);
         };
     }
 };

@@ -19,10 +19,10 @@ class World;
 
 /// Descriptor for one system method belonging to a state.
 struct StateSystemDescriptor {
-    /// Type-erased function that, given a StateBase* (downcast to S*) and
-    /// a World&, invokes the member function with its declared parameters
-    /// extracted from the World.
-    std::function<void(StateBase*, World&)> invoke;
+    /// Type-erased function that, given a StateBase* (downcast to S*),
+    /// a World&, and the system's last_run_tick, invokes the member function
+    /// with its declared parameters extracted from the World.
+    std::function<void(StateBase*, World&, uint32_t)> invoke;
 
     /// The schedule this system runs in (default: Update).
     Schedule schedule = Schedule::Update;
@@ -42,15 +42,15 @@ struct StateSystemDescriptor {
 namespace detail {
 
 /// Invoke a member function of S with parameters extracted from World.
-/// Uses the existing SystemParam<T>::fetch(World&) infrastructure.
+/// Uses the existing SystemParam<T>::fetch(World&, uint32_t) infrastructure.
 template<typename S, typename Ret, typename... Params>
-void invoke_member_system_impl(S* obj, Ret(S::*fn)(Params...), World& world) {
-    (obj->*fn)(SystemParam<std::decay_t<Params>>::fetch(world)...);
+void invoke_member_system_impl(S* obj, Ret(S::*fn)(Params...), World& world, uint32_t last_run_tick) {
+    (obj->*fn)(SystemParam<std::decay_t<Params>>::fetch(world, last_run_tick)...);
 }
 
 /// Overload for member functions with no parameters.
 template<typename S, typename Ret>
-void invoke_member_system_impl(S* obj, Ret(S::*fn)(), World&) {
+void invoke_member_system_impl(S* obj, Ret(S::*fn)(), World&, uint32_t) {
     (obj->*fn)();
 }
 
@@ -124,9 +124,9 @@ public:
         desc.schedule = Schedule::Update;
 
         // Build the type-erased invoker.
-        desc.invoke = [fn](StateBase* base, World& world) {
+        desc.invoke = [fn](StateBase* base, World& world, uint32_t last_run_tick) {
             S* self = static_cast<S*>(base);
-            detail::invoke_member_system_impl(self, fn, world);
+            detail::invoke_member_system_impl(self, fn, world, last_run_tick);
         };
 
         // Extract access metadata from the member function's parameter types.

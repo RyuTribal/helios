@@ -91,7 +91,10 @@ void Scheduler::run_sequential(ScheduleData& data, World& world) {
     for (const auto& stage : data.plan.stages) {
         for (size_t idx : stage.system_indices) {
             try {
-                data.systems[idx].run(world);
+                world.advance_tick();
+                auto& desc = data.systems[idx];
+                desc.run(world, desc.last_run_tick);
+                desc.last_run_tick = world.current_tick();
             } catch (const std::exception& e) {
                 HELIOS_LOG(Scheduler, Error, "System '{}' threw: {}",
                     data.systems[idx].name, e.what());
@@ -109,18 +112,28 @@ void Scheduler::run_parallel(ScheduleData& data, World& world) {
     for (const auto& stage : data.plan.stages) {
         if (stage.system_indices.size() == 1) {
             // Single system in stage -- run inline, no pool overhead
-            data.systems[stage.system_indices[0]].run(world);
+            world.advance_tick();
+            auto& desc = data.systems[stage.system_indices[0]];
+            desc.run(world, desc.last_run_tick);
+            desc.last_run_tick = world.current_tick();
         } else {
             // Multiple systems -- dispatch to pool
             HELIOS_LOG(Scheduler, Trace, "Dispatching {} systems in parallel for stage",
                 stage.system_indices.size());
+
+            // Advance tick once for the entire parallel stage -- all systems
+            // in the same stage share the same tick (they cannot observe each
+            // other's writes anyway).
+            world.advance_tick();
+
             std::vector<std::future<void>> futures;
             futures.reserve(stage.system_indices.size());
 
             for (size_t idx : stage.system_indices) {
                 auto& sys = data.systems[idx];
-                futures.push_back(m_pool->submit([&sys, &world] {
-                    sys.run(world);
+                uint32_t last_tick = sys.last_run_tick;
+                futures.push_back(m_pool->submit([&sys, &world, last_tick] {
+                    sys.run(world, last_tick);
                 }));
             }
 
@@ -142,6 +155,12 @@ void Scheduler::run_parallel(ScheduleData& data, World& world) {
             if (first_error) {
                 HELIOS_LOG(Scheduler, Error,
                     "One or more parallel systems failed; continuing to next stage");
+            }
+
+            // Update last_run_tick for all systems in the parallel stage.
+            uint32_t tick = world.current_tick();
+            for (size_t idx : stage.system_indices) {
+                data.systems[idx].last_run_tick = tick;
             }
         }
         // Apply deferred commands accumulated during this stage.

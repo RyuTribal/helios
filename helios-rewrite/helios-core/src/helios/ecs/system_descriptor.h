@@ -27,17 +27,22 @@ struct SystemId {
 
 /// Type-erased descriptor for a single system.
 struct SystemDescriptor {
-    SystemId                         id;
-    std::string                      name;       // human-readable, for debug
-    std::function<void(World&)>      run;        // type-erased invocation
-    std::vector<AccessDescriptor>    accesses;   // all reads and writes
-    std::vector<SystemId>            after;       // must run after these systems
-    std::vector<SystemId>            before;      // must run before these systems
+    SystemId                             id;
+    std::string                          name;       // human-readable, for debug
+    std::function<void(World&, uint32_t)> run;       // type-erased invocation; uint32_t = last_run_tick
+    std::vector<AccessDescriptor>        accesses;   // all reads and writes
+    std::vector<SystemId>                after;       // must run after these systems
+    std::vector<SystemId>                before;      // must run before these systems
+
+    /// Per-system tick tracking for change detection.
+    /// Set to world.current_tick() after each run so queries can compare
+    /// against it to detect changes since the last time this system ran.
+    uint32_t                             last_run_tick = 0;
 
     /// Optional tag for bulk removal (used by state management).
     /// Systems owned by a state are tagged with the state's type_index
     /// so they can be removed when the state is popped.
-    std::optional<std::type_index>   owner_tag;
+    std::optional<std::type_index>       owner_tag;
 };
 
 /// Helper: extract only reads from accesses

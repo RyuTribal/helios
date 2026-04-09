@@ -75,8 +75,10 @@ void ArchetypeStorage::move_entity(Entity entity, Archetype& from, Archetype& to
                          ? static_cast<void*>(stack_buf)
                          : static_cast<void*>(new std::byte[elem_size]);
 
+        // Preserve the change-detection tick from the source column.
+        uint32_t tick = src_col.changed_tick(src_row);
         src_col.move_out_and_swap_remove(src_row, buf);
-        dst_col.push(buf);
+        dst_col.push(buf, tick);
         // push() move-constructs from buf, leaving a moved-from object that
         // still needs its destructor called.
         dst_col.destroy_element(buf);

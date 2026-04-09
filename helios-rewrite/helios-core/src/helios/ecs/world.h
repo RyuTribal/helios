@@ -231,8 +231,8 @@ public:
     // -----------------------------------------------------------------
 
     template <typename... Params>
-    Query<Params...> query() {
-        return Query<Params...>(m_archetypes);
+    Query<Params...> query(uint32_t last_run_tick = 0) {
+        return Query<Params...>(m_archetypes, last_run_tick, m_current_tick);
     }
 
     // -----------------------------------------------------------------
