@@ -8,6 +8,7 @@ target_link_libraries(sandbox
         helios-renderer
         helios-physics
         helios-audio
+        helios-script
         glfw
 )
 target_compile_features(sandbox PRIVATE cxx_std_20)

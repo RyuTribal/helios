@@ -33,6 +33,10 @@
 #include "interface/audio_factory.h"
 #include "interface/audio_utils.h"
 
+// Scripting
+#include <helios/script/scripting_plugin.h>
+#include <helios/script/script_instance.h>
+
 #include <cmath>
 #include <vector>
 
@@ -228,6 +232,10 @@ public:
                     });
                     w.add(e, MeshRenderer{mesh});
                     w.add(e, Tag{.name = "damaged_helmet"});
+                    // Attach C# script for rotation
+                    w.add(e, ScriptInstance{
+                        .script_class_name = "SandboxScripts.HelmetRotator",
+                    });
                 });
         } else {
             std::string mesh_path = "Meshes/lion/scene.gltf";
@@ -536,6 +544,32 @@ int main() {
 
     // Scene management
     app.add_plugin(SceneManagerPlugin{});
+
+    // C# Scripting (ScriptCore + SandboxScripts assemblies)
+    {
+        namespace fs = std::filesystem;
+        // Paths relative to the project root (where cmake runs from)
+        fs::path project_root = fs::current_path();
+        fs::path script_core_dll = project_root / "ScriptCore/bin/Release/net10.0/ScriptCore.dll";
+        fs::path script_core_cfg = project_root / "ScriptCore/ScriptCore.runtimeconfig.json";
+        fs::path sandbox_dll = project_root / "sandbox/scripts/bin/Release/net10.0/SandboxScripts.dll";
+        fs::path watch_dir = project_root / "sandbox/scripts";
+
+        if (fs::exists(script_core_dll) && fs::exists(script_core_cfg)) {
+            app.add_plugin(ScriptingPlugin{ScriptingPluginConfig{
+                .runtime_config_path = script_core_cfg,
+                .script_core_dll_path = script_core_dll,
+                .app_assembly_path = fs::exists(sandbox_dll) ? sandbox_dll : fs::path{},
+                .watch_directory = watch_dir,
+            }});
+            HELIOS_LOG(Game, Info, "ScriptingPlugin loaded (ScriptCore: {}, App: {})",
+                       script_core_dll.string(),
+                       fs::exists(sandbox_dll) ? sandbox_dll.string() : "<none>");
+        } else {
+            HELIOS_LOG(Game, Warn, "ScriptCore.dll not found at {} -- scripting disabled",
+                       script_core_dll.string());
+        }
+    }
 
     // Game plugins (camera, etc.)
     app.add_plugin(GamePlugin{});
