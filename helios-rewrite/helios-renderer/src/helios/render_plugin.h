@@ -4,6 +4,7 @@
 #include "helios/ecs/system_params.h"
 #include "helios/rhi/rhi_factory.h"
 #include "helios/rhi/rhi_types.h"
+#include "helios/window/windows.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -42,11 +43,11 @@ struct RenderContext {
 };
 
 /// Infrastructure system: acquire swapchain image, begin command buffer,
-/// begin dynamic rendering. Runs first in PreRender.
-void frame_begin(ResMut<RenderContext> ctx);
+/// begin dynamic rendering. Recreates swapchain on acquire failure.
+void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows);
 
 /// Infrastructure system: end rendering, end command buffer, submit + present.
-/// Runs last in PreRender, after all draw systems.
-void frame_end(ResMut<RenderContext> ctx);
+/// Recreates swapchain on present failure.
+void frame_end(ResMut<RenderContext> ctx, Res<Windows> windows);
 
 } // namespace helios

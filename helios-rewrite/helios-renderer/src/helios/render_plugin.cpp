@@ -15,16 +15,64 @@ HELIOS_DEFINE_LOG_CHANNEL(Render);
 
 namespace helios {
 
+// Helper: recreate swapchain + depth buffer at current framebuffer size.
+// Called from frame_begin when acquire fails (same pattern as old engine).
+static void recreate_swapchain(RenderContext& ctx, GLFWwindow* glfw_win) {
+    int fb_w, fb_h;
+    glfwGetFramebufferSize(glfw_win, &fb_w, &fb_h);
+    if (fb_w <= 0 || fb_h <= 0) return;
+
+    uint32_t w = static_cast<uint32_t>(fb_w);
+    uint32_t h = static_cast<uint32_t>(fb_h);
+
+    ctx.device->wait_idle();
+
+    rhi::SwapchainDesc desc;
+    desc.width = w;
+    desc.height = h;
+    auto new_sc = ctx.device->create_swapchain(desc);
+
+    // Retry with fresh size if first attempt fails (Wayland TOCTOU race)
+    if (!new_sc) {
+        glfwGetFramebufferSize(glfw_win, &fb_w, &fb_h);
+        if (fb_w > 0 && fb_h > 0) {
+            desc.width = static_cast<uint32_t>(fb_w);
+            desc.height = static_cast<uint32_t>(fb_h);
+            new_sc = ctx.device->create_swapchain(desc);
+        }
+    }
+
+    if (new_sc) {
+        ctx.swapchain = std::move(new_sc);
+
+        if (ctx.depth_texture) {
+            rhi::TextureDesc depth_desc;
+            depth_desc.width = ctx.swapchain->width();
+            depth_desc.height = ctx.swapchain->height();
+            depth_desc.format = rhi::TextureFormat::Depth32F;
+            depth_desc.usage = rhi::TextureUsage::DepthAttachment;
+            depth_desc.debug_name = "DepthBuffer";
+            ctx.depth_texture = ctx.device->create_texture(depth_desc);
+        }
+
+        HELIOS_LOG(Render, Info, "Swapchain recreated: {}x{}",
+                   ctx.swapchain->width(), ctx.swapchain->height());
+    }
+}
+
 // --- System: begin frame (acquire + begin command buffer + begin rendering) ---
-void frame_begin(ResMut<RenderContext> ctx) {
+void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
     ctx->frame_active = false;
     HELIOS_ASSERT(ctx->device != nullptr, "RenderContext::device must be valid");
     HELIOS_ASSERT(ctx->cmd != nullptr, "RenderContext::cmd must be valid");
     if (!ctx->swapchain) return;
+    if (!windows->has_primary()) return;
 
     if (!ctx->swapchain->acquire_next_image()) {
-        HELIOS_LOG(Render, Debug, "Swapchain acquire failed, skipping frame");
-        return;
+        // Acquire failed — recreate swapchain immediately (like old engine)
+        auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+        recreate_swapchain(*ctx, glfw_win);
+        return;  // skip this frame, render next frame with new swapchain
     }
 
     ctx->frame_active = true;
@@ -42,7 +90,7 @@ void frame_begin(ResMut<RenderContext> ctx) {
 }
 
 // --- System: end frame (end rendering + submit + present) ---
-void frame_end(ResMut<RenderContext> ctx) {
+void frame_end(ResMut<RenderContext> ctx, Res<Windows> windows) {
     if (!ctx->frame_active) return;
 
     ctx->swapchain->end_rendering(*ctx->cmd);
@@ -50,9 +98,11 @@ void frame_end(ResMut<RenderContext> ctx) {
     ctx->device->submit_for_present(*ctx->cmd, *ctx->swapchain);
 
     if (!ctx->swapchain->present()) {
-        // Present failed (out of date). Wait for GPU to finish,
-        // then let the resize handler recreate next frame.
-        ctx->device->wait_idle();
+        // Present failed — recreate immediately (like old engine)
+        if (windows->has_primary()) {
+            auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+            recreate_swapchain(*ctx, glfw_win);
+        }
     }
 
     ctx->frame_active = false;
