@@ -387,10 +387,7 @@ struct DemoScenePlugin {
                 .clear_mode = Camera::ClearMode::None,
             },
             ActiveCamera{},
-            Tag{ .name = "side_camera" },
-            ScriptInstance{
-                .script_class_name = "SandboxScripts.SideCamera",
-            });
+            Tag{ .name = "side_camera" });
 
         // Directional light (sun)
         world.spawn(
