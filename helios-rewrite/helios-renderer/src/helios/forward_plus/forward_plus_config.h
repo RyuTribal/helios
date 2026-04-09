@@ -4,6 +4,7 @@
 #include "helios/rhi/rhi_types.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace helios {
@@ -25,6 +26,9 @@ struct ForwardPlusConfig {
     uint32_t irradiance_resolution  = 32;
     uint32_t prefilter_resolution   = 128;
     uint32_t brdf_lut_resolution    = 512;
+
+    // Skybox HDR path (relative to asset root). Empty = no skybox.
+    std::string skybox_hdr_path;
 
     // Tile size for light culling compute shader
     uint32_t tile_size              = 16;
