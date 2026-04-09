@@ -30,6 +30,7 @@ add_executable(helios-tests
     app/test_game_flow.cpp
     app/test_transitions.cpp
     assets/test_asset_server.cpp
+    assets/test_asset_extensions.cpp
     assets/test_importers.cpp
     serialization/test_binary_serialization.cpp
     serialization/test_yaml_serialization.cpp

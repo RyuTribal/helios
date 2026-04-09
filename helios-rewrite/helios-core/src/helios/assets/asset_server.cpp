@@ -2,10 +2,145 @@
 #include "helios/assets/load_batch.h"
 #include "helios/core/engine_log_channels.h"
 
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <optional>
 
 namespace helios {
+
+// ---- Extension helpers ----
+
+std::string AssetServer::normalize_extension(const std::string& ext) {
+    std::string result;
+    result.reserve(ext.size());
+    for (char c : ext) {
+        if (c == '.') continue;
+        result.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+    return result;
+}
+
+std::string AssetServer::extract_extension(const std::string& path) {
+    auto dot = path.rfind('.');
+    if (dot == std::string::npos || dot + 1 >= path.size()) return {};
+    return normalize_extension(path.substr(dot + 1));
+}
+
+// ---- Shared load_internal ----
+
+AssetHandle AssetServer::load_internal(std::type_index type,
+                                       const std::string& path,
+                                       bool sync) {
+    // Check cache first
+    AssetHandle cached_handle{};
+    {
+        std::lock_guard lock(m_mutex);
+        auto cached = find_cached(type, path);
+        if (cached) {
+            if (sync) {
+                uint64_t key = cached.packed();
+                auto asset_it = m_assets.find(key);
+                if (asset_it != m_assets.end() &&
+                    asset_it->second.status == AssetStatus::Loaded) {
+                    cached_handle = cached;
+                }
+            } else {
+                cached_handle = cached;
+            }
+        }
+    }
+    // Return cached handle without acquiring -- callers (Handle<T> ctor or
+    // load_by_extension) are responsible for acquiring.
+    if (cached_handle) {
+        return cached_handle;
+    }
+
+    // Create entry
+    auto handle = next_handle();
+    auto full_path = m_root / path;
+    uint64_t key = handle.packed();
+
+    {
+        std::lock_guard lock(m_mutex);
+        m_assets.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(key),
+            std::forward_as_tuple(full_path, type)
+        );
+        std::string cache_key = std::string(type.name()) + ":" + path;
+        m_path_cache[cache_key] = handle;
+    }
+
+    if (sync) {
+        execute_load(LoadRequest{handle, full_path, type});
+
+        // Check if it succeeded
+        bool failed = false;
+        {
+            std::lock_guard lock(m_mutex);
+            auto it = m_assets.find(key);
+            if (it != m_assets.end() && it->second.status == AssetStatus::Failed) {
+                failed = true;
+            }
+        }
+        if (failed) return AssetHandle{};
+
+        return handle;
+    }
+
+    // Async path
+    {
+        std::lock_guard lock(m_queue_mutex);
+        m_load_queue.push(LoadRequest{handle, full_path, type});
+    }
+    m_queue_cv.notify_one();
+
+    return handle;
+}
+
+// ---- Extension-based loading ----
+
+AssetHandle AssetServer::load_by_extension(const std::string& path) {
+    auto ext = extract_extension(path);
+    std::type_index type(typeid(void));
+    {
+        std::lock_guard lock(m_mutex);
+        auto it = m_extension_map.find(ext);
+        if (it == m_extension_map.end()) {
+            return AssetHandle{};
+        }
+        type = it->second;
+    }
+    auto handle = load_internal(type, path, /*sync=*/false);
+    if (handle) acquire(handle);
+    return handle;
+}
+
+AssetHandle AssetServer::load_sync_by_extension(const std::string& path) {
+    auto ext = extract_extension(path);
+    std::type_index type(typeid(void));
+    {
+        std::lock_guard lock(m_mutex);
+        auto it = m_extension_map.find(ext);
+        if (it == m_extension_map.end()) {
+            return AssetHandle{};
+        }
+        type = it->second;
+    }
+    auto handle = load_internal(type, path, /*sync=*/true);
+    if (handle) acquire(handle);
+    return handle;
+}
+
+std::optional<std::type_index> AssetServer::type_for_extension(
+    const std::string& ext) const {
+    auto normalized = normalize_extension(ext);
+    std::lock_guard lock(m_mutex);
+    auto it = m_extension_map.find(normalized);
+    if (it == m_extension_map.end()) return std::nullopt;
+    return it->second;
+}
 
 AssetServer::AssetServer(const std::filesystem::path& asset_root,
                          uint32_t loader_thread_count)

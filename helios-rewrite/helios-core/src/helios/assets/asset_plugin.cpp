@@ -30,10 +30,17 @@ void AssetPlugin::build(App& app) {
     server.register_importer<AudioData>(AudioImporter::import);
     server.register_importer<ShaderAsset>(ShaderImporter::import);
 
-    // 3. Register AssetLoaded event type.
+    // 3. Register default file-extension -> type mappings.
+    server.register_extensions<MeshAsset>({"gltf", "glb"});
+    server.register_extensions<TextureData>({"png", "jpg", "jpeg", "bmp", "tga"});
+    server.register_extensions<HdrTextureData>({"hdr", "exr"});
+    server.register_extensions<AudioData>({"wav", "ogg", "mp3", "flac"});
+    server.register_extensions<ShaderAsset>({"spv"});
+
+    // 4. Register AssetLoaded event type.
     app.add_event<AssetLoaded>();
 
-    // 4. Add the drain system to PreUpdate: each frame, move completed async
+    // 5. Add the drain system to PreUpdate: each frame, move completed async
     //    load results into the event channel so downstream systems can react.
     app.add_system(Schedule::PreUpdate,
         [](ResMut<std::shared_ptr<AssetServer>> server_res,
@@ -45,7 +52,7 @@ void AssetPlugin::build(App& app) {
         },
         "asset_drain_completed");
 
-    // 5. Hot reload.
+    // 6. Hot reload.
     if (config.hot_reload) {
         server.watch_for_changes(true);
     }

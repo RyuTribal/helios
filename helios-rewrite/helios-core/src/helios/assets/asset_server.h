@@ -1,13 +1,17 @@
 #pragma once
 
 #include "helios/ecs/asset_handle.h"
+#include "helios/assets/handle.h"
 
+#include <algorithm>
 #include <any>
 #include <atomic>
 #include <condition_variable>
 #include <filesystem>
 #include <functional>
+#include <initializer_list>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -55,16 +59,37 @@ public:
     // --- Loading ---
 
     // Async load: returns handle immediately, loading happens on background thread.
+    // The returned Handle<T> holds one refcount. Copying increments it; destruction
+    // decrements it. When refcount reaches zero, the asset becomes eligible for GC.
     template<typename T>
-    AssetHandle load(const std::string& path);
+    Handle<T> load(const std::string& path);
 
-    // Sync load: blocks until the asset is loaded or fails. Returns valid handle
-    // on success, null handle on failure.
+    // Sync load: blocks until the asset is loaded or fails. Returns a valid
+    // Handle<T> on success, or a null handle on failure.
     template<typename T>
-    AssetHandle load_sync(const std::string& path);
+    Handle<T> load_sync(const std::string& path);
 
     // Batch loading with progress tracking.
     LoadBatchBuilder load_batch();
+
+    // --- Extension mapping ---
+
+    // Register file extensions that map to asset type T.
+    // Extensions are normalized: lowercased, leading dots stripped.
+    // e.g. register_extensions<MeshAsset>({"gltf", "glb", ".GLTF"})
+    template<typename T>
+    void register_extensions(std::initializer_list<std::string> extensions);
+
+    // Load an asset by inferring the type from the file extension.
+    // Returns a raw AssetHandle (not typed). Use get<T>() to resolve.
+    AssetHandle load_by_extension(const std::string& path);
+
+    // Synchronous variant of load_by_extension.
+    AssetHandle load_sync_by_extension(const std::string& path);
+
+    // Query which type_index is registered for a given extension.
+    // Returns std::nullopt if the extension is not registered.
+    std::optional<std::type_index> type_for_extension(const std::string& ext) const;
 
     // --- Resolution ---
 
@@ -111,6 +136,8 @@ public:
 
     /// Store an already-constructed asset and return a handle for it.
     /// Used by importers to create sub-assets (textures, materials).
+    /// Note: returns raw AssetHandle (not Handle<T>) because importers
+    /// typically store handles in asset structs without needing refcounting.
     template<typename T>
     AssetHandle store(const std::string& path, T asset);
 
@@ -151,6 +178,15 @@ private:
     void loader_thread_main(std::stop_token stop);
     void remove_from_path_cache(uint64_t packed_key);
 
+    // Shared internal load: dispatches to async or sync path depending on flag.
+    AssetHandle load_internal(std::type_index type, const std::string& path, bool sync);
+
+    // Normalize a file extension: lowercase, strip leading dots.
+    static std::string normalize_extension(const std::string& ext);
+
+    // Extract extension from a file path (normalized).
+    static std::string extract_extension(const std::string& path);
+
     // --- Data ---
     std::filesystem::path m_root;
 
@@ -162,6 +198,9 @@ private:
 
     // Importers: type_index -> importer function
     std::unordered_map<std::type_index, ImporterFn> m_importers;
+
+    // Extension -> type_index mapping for load_by_extension
+    std::unordered_map<std::string, std::type_index> m_extension_map;
 
     // Refcount tracking: keyed by handle.packed()
     std::unordered_map<uint64_t, uint32_t> m_refcounts;
@@ -195,87 +234,26 @@ void AssetServer::register_importer(ImporterFn importer) {
 }
 
 template<typename T>
-AssetHandle AssetServer::load(const std::string& path) {
+void AssetServer::register_extensions(std::initializer_list<std::string> extensions) {
     auto type = std::type_index(typeid(T));
-
-    // Check cache first
-    {
-        std::lock_guard lock(m_mutex);
-        auto cached = find_cached(type, path);
-        if (cached) return cached;
+    std::lock_guard lock(m_mutex);
+    for (const auto& ext : extensions) {
+        m_extension_map.emplace(normalize_extension(ext), type);
     }
-
-    // Create entry and enqueue
-    auto handle = next_handle();
-    auto full_path = m_root / path;
-    uint64_t key = handle.packed();
-
-    {
-        std::lock_guard lock(m_mutex);
-        m_assets.emplace(
-            std::piecewise_construct,
-            std::forward_as_tuple(key),
-            std::forward_as_tuple(full_path, type)
-        );
-        std::string cache_key = std::string(type.name()) + ":" + path;
-        m_path_cache[cache_key] = handle;
-    }
-
-    {
-        std::lock_guard lock(m_queue_mutex);
-        m_load_queue.push(LoadRequest{handle, full_path, type});
-    }
-    m_queue_cv.notify_one();
-
-    return handle;
 }
 
 template<typename T>
-AssetHandle AssetServer::load_sync(const std::string& path) {
-    auto type = std::type_index(typeid(T));
+Handle<T> AssetServer::load(const std::string& path) {
+    auto raw = load_internal(std::type_index(typeid(T)), path, /*sync=*/false);
+    if (!raw) return Handle<T>{};
+    return Handle<T>(raw, this);
+}
 
-    // Check cache first
-    {
-        std::lock_guard lock(m_mutex);
-        auto cached = find_cached(type, path);
-        if (cached) {
-            uint64_t key = cached.packed();
-            auto asset_it = m_assets.find(key);
-            if (asset_it != m_assets.end() && asset_it->second.status == AssetStatus::Loaded) {
-                return cached;
-            }
-        }
-    }
-
-    // Create entry and load immediately on the calling thread
-    auto handle = next_handle();
-    auto full_path = m_root / path;
-    uint64_t key = handle.packed();
-
-    {
-        std::lock_guard lock(m_mutex);
-        m_assets.emplace(
-            std::piecewise_construct,
-            std::forward_as_tuple(key),
-            std::forward_as_tuple(full_path, type)
-        );
-        std::string cache_key = std::string(type.name()) + ":" + path;
-        m_path_cache[cache_key] = handle;
-    }
-
-    // Execute synchronously (not on a worker thread)
-    execute_load(LoadRequest{handle, full_path, type});
-
-    // Check if it succeeded
-    {
-        std::lock_guard lock(m_mutex);
-        auto it = m_assets.find(key);
-        if (it != m_assets.end() && it->second.status == AssetStatus::Failed) {
-            return AssetHandle{};
-        }
-    }
-
-    return handle;
+template<typename T>
+Handle<T> AssetServer::load_sync(const std::string& path) {
+    auto raw = load_internal(std::type_index(typeid(T)), path, /*sync=*/true);
+    if (!raw) return Handle<T>{};
+    return Handle<T>(raw, this);
 }
 
 template<typename T>
