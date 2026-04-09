@@ -78,17 +78,89 @@ LightCullingOutput add_light_culling_pass(
             });
             data.params_ubo = builder.write(data.params_ubo);
         },
-        [](const PassData& /*data*/, graph::RenderContext& /*ctx*/) {
-            // TODO: record commands (Task 16-17)
-            //  - Upload point lights to light_ssbo
-            //  - Upload directional lights to dir_light_ssbo
-            //  - Initialize visible_indices with -1 sentinel
-            //  - Upload LightCullingParams to params_ubo
-            //  - Bind compute pipeline "light_culling"
-            //  - Bind descriptor set (params UBO, light SSBO, visible indices, depth)
-            //  - Dispatch(tiles_x, tiles_y, 1)
+        [point_lights = packet.point_lights,
+         dir_lights   = packet.dir_lights,
+         camera       = packet.camera,
+         vp_w         = packet.viewport_width,
+         vp_h         = packet.viewport_height,
+         tile_size,
+         tiles_x,
+         tiles_y,
+         num_tiles](
+            const PassData& data, graph::RenderContext& ctx)
+        {
+            // Record light culling compute commands.
+            //
+            // Shader: light_culling.comp (16x16 workgroup)
+            //   set 0, binding 0: LightCullingParams UBO
+            //   set 0, binding 1: PointLightInfo SSBO (readonly)
+            //   set 0, binding 2: VisibleIndex SSBO (writeonly)
+            //   set 0, binding 3: sampler2D depthMap
+            //
+            // Steps:
+            //   1. Upload point light data to light_ssbo
+            //   2. Upload directional light data to dir_light_ssbo
+            //   3. Upload LightCullingParams to params_ubo
+            //   4. Bind compute pipeline + descriptor set
+            //   5. Dispatch(tiles_x, tiles_y, 1)
+
+            auto& cmd = ctx.cmd();
+
+            // Upload point light data into the SSBO.
+            auto& light_buf = ctx.resolve(data.light_ssbo);
+            if (!point_lights.empty()) {
+                // Convert from FramePacket PointLightData -> GPU PointLightGPU
+                std::vector<PointLightGPU> gpu_lights;
+                gpu_lights.reserve(point_lights.size());
+                for (const auto& pl : point_lights) {
+                    PointLightGPU g;
+                    // Use radius-based attenuation approximation
+                    g.constant_attenuation  = 1.0f;
+                    g.linear_attenuation    = 2.0f / pl.radius;
+                    g.quadratic_attenuation = 1.0f / (pl.radius * pl.radius);
+                    g.intensity             = pl.intensity;
+                    g.color                 = glm::vec4(pl.color, 1.0f);
+                    g.position              = glm::vec4(pl.position, 1.0f);
+                    gpu_lights.push_back(g);
+                }
+                light_buf.set_data(gpu_lights.data(),
+                    static_cast<uint32_t>(gpu_lights.size() * sizeof(PointLightGPU)));
+            }
+
+            // Upload directional light data.
+            auto& dir_buf = ctx.resolve(data.dir_light_ssbo);
+            if (!dir_lights.empty()) {
+                std::vector<DirLightGPU> gpu_dirs;
+                gpu_dirs.reserve(dir_lights.size());
+                for (const auto& dl : dir_lights) {
+                    DirLightGPU g;
+                    g._padding  = glm::vec3(0.0f);
+                    g.intensity = dl.intensity;
+                    g.color     = glm::vec4(dl.color, 1.0f);
+                    g.direction = glm::vec4(dl.direction, 0.0f);
+                    gpu_dirs.push_back(g);
+                }
+                dir_buf.set_data(gpu_dirs.data(),
+                    static_cast<uint32_t>(gpu_dirs.size() * sizeof(DirLightGPU)));
+            }
+
+            // Upload culling parameters.
+            auto& params_buf = ctx.resolve(data.params_ubo);
+            LightCullingParams params;
+            params.view        = camera.view;
+            params.projection  = camera.projection;
+            params.screen_size = glm::ivec2(
+                static_cast<int>(vp_w), static_cast<int>(vp_h));
+            params.light_count = static_cast<int>(point_lights.size());
+            params._pad        = 0;
+            params_buf.set_data(&params, sizeof(LightCullingParams));
+
+            // Dispatch the compute shader: one workgroup per tile.
+            cmd.dispatch(tiles_x, tiles_y, 1);
+
             HELIOS_LOG_TRACE(ForwardPlus,
-                             "LightCulling execute (commands not yet recorded)");
+                             "LightCulling: dispatched {}x{} tiles, {} point lights",
+                             tiles_x, tiles_y, point_lights.size());
         });
 
     HELIOS_LOG_TRACE(ForwardPlus,
