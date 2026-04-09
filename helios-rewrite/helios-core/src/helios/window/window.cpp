@@ -167,6 +167,10 @@ const WindowCallbackData& Window::callback_data() const {
     return m_impl->cb_data;
 }
 
+void Window::clear_callback_data() {
+    m_impl->cb_data.clear();
+}
+
 void* Window::native_handle() const {
     return static_cast<void*>(m_impl->glfw_window);
 }

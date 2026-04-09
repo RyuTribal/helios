@@ -72,6 +72,9 @@ public:
     // Returns the per-frame callback data accumulated since last clear.
     const WindowCallbackData& callback_data() const;
 
+    // Clear accumulated callback data (called by Windows::poll_all before polling).
+    void clear_callback_data();
+
     // Opaque handle for RHI / Vulkan surface creation.
     // Returns GLFWwindow* cast to void*.
     void* native_handle() const;

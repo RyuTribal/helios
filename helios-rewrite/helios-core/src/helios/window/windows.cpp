@@ -107,6 +107,14 @@ std::vector<WindowId> Windows::closing_windows() const {
 }
 
 void Windows::poll_all() {
+    // Clear per-frame callback data before polling so events from
+    // the previous frame don't bleed into this one.
+    for (auto& [id, window] : m_windows) {
+        // callback_data() is const — we need the mutable internal data.
+        // The Window stores it in its Impl; we access it through a
+        // non-const method added for this purpose.
+        window.clear_callback_data();
+    }
     glfwPollEvents();
 }
 
