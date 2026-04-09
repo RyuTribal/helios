@@ -19,21 +19,14 @@
 #include <helios/input/raw_input.h>
 #include <helios/render_plugin.h>
 #include <helios/forward_plus/forward_plus_plugin.h>
-#include <helios/forward_plus/pbr_render_state.h>
-#include <helios/forward_plus/skybox_state.h>
 #include <helios/forward_plus/gpu_data.h>
-#include <helios/forward_plus/gpu_cache.h>
-#include <helios/graph/frame_packet.h>
 #include <helios/app/game_flow_plugin.h>
 #include <helios/app/state.h>
 #include <helios/app/state_builder.h>
 #include <helios/assets/asset_server.h>
 #include <helios/assets/asset_plugin.h>
 #include <helios/assets/mesh_asset.h>
-#include <helios/assets/material_asset.h>
 #include <helios/assets/handle.h>
-
-#include "asset_loader.h"
 
 // Physics
 #include "interface/physics_world.h"
@@ -44,9 +37,9 @@
 #include "interface/audio_device.h"
 #include "interface/audio_types.h"
 #include "interface/audio_factory.h"
+#include "interface/audio_utils.h"
 
 #include <cmath>
-#include <cstring>
 #include <vector>
 
 using namespace helios;
@@ -72,53 +65,6 @@ struct PhysicsDemo {
     std::vector<uint8_t> bounce_wav;
     bool active = false;
 };
-
-// ============================================================
-// WAV generation: a short 220Hz sine "thud" with linear fade-out
-// ============================================================
-
-static std::vector<uint8_t> generate_bounce_wav() {
-    constexpr int   sample_rate = 44100;
-    constexpr float duration    = 0.1f;
-    constexpr float freq        = 220.0f;
-    const int num_samples = static_cast<int>(sample_rate * duration);
-
-    std::vector<int16_t> samples(num_samples);
-    for (int i = 0; i < num_samples; i++) {
-        float t = static_cast<float>(i) / sample_rate;
-        float envelope = 1.0f - (t / duration);
-        float sample = std::sin(2.0f * 3.14159265f * freq * t) * envelope;
-        samples[i] = static_cast<int16_t>(sample * 32767.0f * 0.5f);
-    }
-
-    uint32_t data_size = static_cast<uint32_t>(num_samples * sizeof(int16_t));
-    uint32_t file_size = 36 + data_size;
-
-    std::vector<uint8_t> wav;
-    wav.resize(44 + data_size);
-    auto write = [&](size_t off, const void* data, size_t n) {
-        std::memcpy(wav.data() + off, data, n);
-    };
-    // RIFF header
-    write(0, "RIFF", 4);
-    write(4, &file_size, 4);
-    write(8, "WAVE", 4);
-    // fmt chunk
-    write(12, "fmt ", 4);
-    uint32_t fmt_size = 16;  write(16, &fmt_size, 4);
-    uint16_t audio_fmt = 1;  write(20, &audio_fmt, 2);  // PCM
-    uint16_t channels = 1;   write(22, &channels, 2);
-    uint32_t sr = sample_rate; write(24, &sr, 4);
-    uint32_t byte_rate = sample_rate * 2; write(28, &byte_rate, 4);
-    uint16_t block_align = 2; write(32, &block_align, 2);
-    uint16_t bits = 16;       write(34, &bits, 2);
-    // data chunk
-    write(36, "data", 4);
-    write(40, &data_size, 4);
-    std::memcpy(wav.data() + 44, samples.data(), data_size);
-
-    return wav;
-}
 
 // ============================================================
 // State enum
@@ -293,9 +239,8 @@ public:
         }
 
         if (m_mesh_handle) {
-            server.acquire(m_mesh_handle);
             HELIOS_LOG(Scene, Info, "Loaded mesh asset (handle {}/{})",
-                       m_mesh_handle.index, m_mesh_handle.generation);
+                       m_mesh_handle.index(), m_mesh_handle.generation());
         } else {
             HELIOS_LOG(Scene, Error, "Failed to load mesh asset");
         }
@@ -325,7 +270,7 @@ public:
 private:
     World* m_world = nullptr;
     SceneState m_target = SceneState::Scene1;
-    AssetHandle m_mesh_handle{};
+    Handle<MeshAsset> m_mesh_handle;
     bool m_loaded = false;
 };
 
@@ -351,9 +296,7 @@ public:
             .rotation = glm::quat(glm::vec3(
                 glm::radians(90.0f), glm::radians(180.0f), 0.0f))
         });
-        world.add(m_helmet, MeshRenderer{
-            .mesh = Handle<MeshAsset>::from(m_mesh_handle),
-        });
+        world.add(m_helmet, MeshRenderer{m_mesh_handle});
         world.add(m_helmet, Tag{.name = "damaged_helmet"});
 
         HELIOS_LOG(Scene, Info, "Scene1: Spawned helmet entity");
@@ -389,7 +332,7 @@ public:
             demo.audio = audio::create_audio_device();
         }
         if (demo.bounce_wav.empty()) {
-            demo.bounce_wav = generate_bounce_wav();
+            demo.bounce_wav = audio::generate_bounce_wav();
             HELIOS_LOG(Audio, Info, "Generated bounce WAV ({} bytes)", demo.bounce_wav.size());
         }
 
@@ -408,16 +351,7 @@ public:
             demo.floor_body  = 0;
         }
         demo.active = false;
-
-        // Release the mesh asset handle
-        if (m_mesh_handle) {
-            auto& server = *m_world->resource<std::shared_ptr<AssetServer>>();
-            server.release(m_mesh_handle);
-            auto unloaded = server.collect_garbage();
-            if (!unloaded.empty()) {
-                HELIOS_LOG(Scene, Info, "GC unloaded {} assets", unloaded.size());
-            }
-        }
+        // m_mesh_handle releases automatically via Handle RAII
     }
 
     static void describe(StateBuilder<Scene1State>& s) {
@@ -439,7 +373,7 @@ public:
 private:
     World* m_world = nullptr;
     Entity m_helmet{};
-    AssetHandle m_mesh_handle{};
+    Handle<MeshAsset> m_mesh_handle;
 };
 
 // ============================================================
@@ -464,9 +398,7 @@ public:
                 glm::radians(0.0f), glm::radians(180.0f), 0.0f)),
             .scale = glm::vec3{0.01f}  // lion model is large, scale down
         });
-        world.add(m_lion, MeshRenderer{
-            .mesh = Handle<MeshAsset>::from(m_mesh_handle),
-        });
+        world.add(m_lion, MeshRenderer{m_mesh_handle});
         world.add(m_lion, Tag{.name = "lion"});
 
         HELIOS_LOG(Scene, Info, "Scene2: Spawned lion entity");
@@ -474,15 +406,7 @@ public:
 
     ~Scene2State() {
         HELIOS_LOG(Scene, Info, "Scene2: Exiting (Lion)");
-        // Release the mesh asset handle
-        if (m_mesh_handle) {
-            auto& server = *m_world->resource<std::shared_ptr<AssetServer>>();
-            server.release(m_mesh_handle);
-            auto unloaded = server.collect_garbage();
-            if (!unloaded.empty()) {
-                HELIOS_LOG(Scene, Info, "GC unloaded {} assets", unloaded.size());
-            }
-        }
+        // m_mesh_handle releases automatically via Handle RAII
     }
 
     static void describe(StateBuilder<Scene2State>& s) {
@@ -504,7 +428,7 @@ public:
 private:
     World* m_world = nullptr;
     Entity m_lion{};
-    AssetHandle m_mesh_handle{};
+    Handle<MeshAsset> m_mesh_handle;
 };
 
 // ============================================================
@@ -544,317 +468,6 @@ struct ScenePlugin {
 };
 
 // ============================================================
-// SandboxAssetsPlugin: sets up shared GPU infrastructure
-// (PBR pipeline, skybox, depth buffer -- scene-independent)
-// Per-mesh/per-material data is now handled by GPUResourceCache.
-// ============================================================
-
-struct SandboxAssetsPlugin {
-    void build(App& app) {
-        auto& ctx = app.world().resource<RenderContext>();
-        auto& device = *ctx.device;
-
-        const std::string asset_dir = HELIOS_DEMO_ASSET_DIR;
-
-#ifdef HELIOS_SHADER_DIR
-        const std::string shader_dir = HELIOS_SHADER_DIR;
-#else
-        const std::string shader_dir = "shaders";
-#endif
-
-        PBRRenderState pbr;
-        SkyboxState skybox;
-
-        // ---- Create depth buffer ----
-        {
-            rhi::TextureDesc depth_desc;
-            depth_desc.width = ctx.swapchain->width();
-            depth_desc.height = ctx.swapchain->height();
-            depth_desc.format = rhi::TextureFormat::Depth32F;
-            depth_desc.type = rhi::TextureType::Texture2D;
-            depth_desc.mip_levels = 1;
-            depth_desc.array_layers = 1;
-            depth_desc.usage = rhi::TextureUsage::DepthAttachment;
-            depth_desc.debug_name = "DepthBuffer";
-            ctx.depth_texture = device.create_texture(depth_desc);
-        }
-
-        // ---- PBR Camera UBO (set 0, binding 0) ----
-        {
-            rhi::BufferDesc ubo_desc;
-            ubo_desc.size = sizeof(PBRCameraUBO);
-            ubo_desc.usage = rhi::BufferUsage::Uniform;
-            ubo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
-            ubo_desc.debug_name = "PBRCameraUBO";
-            pbr.camera_ubo = device.create_buffer(ubo_desc);
-        }
-
-        // ---- Camera descriptor set layout (set 0) ----
-        {
-            rhi::DescriptorSetLayoutDesc layout_desc;
-            layout_desc.bindings = {
-                rhi::DescriptorBinding{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::UniformBuffer,
-                    .stage = rhi::ShaderStage::Vertex | rhi::ShaderStage::Fragment,
-                    .count = 1,
-                },
-            };
-            layout_desc.debug_name = "PBRCamera_DSL";
-            pbr.camera_layout = device.create_descriptor_set_layout(layout_desc);
-        }
-
-        // ---- Material descriptor set layout (set 1) ----
-        {
-            rhi::DescriptorSetLayoutDesc layout_desc;
-            layout_desc.bindings = {
-                rhi::DescriptorBinding{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment, .count = 1,
-                },
-                rhi::DescriptorBinding{
-                    .binding = 1,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment, .count = 1,
-                },
-                rhi::DescriptorBinding{
-                    .binding = 2,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment, .count = 1,
-                },
-                rhi::DescriptorBinding{
-                    .binding = 3,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment, .count = 1,
-                },
-                rhi::DescriptorBinding{
-                    .binding = 4,
-                    .type = rhi::DescriptorType::CombinedImageSampler,
-                    .stage = rhi::ShaderStage::Fragment, .count = 1,
-                },
-            };
-            layout_desc.debug_name = "PBRMaterial_DSL";
-            pbr.material_layout = device.create_descriptor_set_layout(layout_desc);
-        }
-
-        const rhi::TextureFormat swapchain_color_fmt = ctx.swapchain->color_format();
-
-        // ---- Load PBR shaders ----
-        {
-            auto vert_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.vert.spv");
-            auto frag_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "pbr_simple.frag.spv");
-            if (vert_spirv.empty() || frag_spirv.empty()) {
-                HELIOS_LOG(Game, Error, "Failed to load PBR shaders from '{}'", shader_dir);
-                app.insert_resource(std::move(pbr));
-                app.insert_resource(std::move(skybox));
-                return;
-            }
-
-            rhi::ShaderDesc vert_desc;
-            vert_desc.stage = rhi::ShaderStage::Vertex;
-            vert_desc.spirv_code = std::move(vert_spirv);
-            vert_desc.entry_point = "main";
-            vert_desc.debug_name = "pbr_simple_vert";
-            pbr.vert_shader = device.create_shader(vert_desc);
-
-            rhi::ShaderDesc frag_desc;
-            frag_desc.stage = rhi::ShaderStage::Fragment;
-            frag_desc.spirv_code = std::move(frag_spirv);
-            frag_desc.entry_point = "main";
-            frag_desc.debug_name = "pbr_simple_frag";
-            pbr.frag_shader = device.create_shader(frag_desc);
-        }
-
-        // ---- PBR graphics pipeline ----
-        // Note: vertex layout matches PBRVertex from mesh_asset.h
-        {
-            rhi::GraphicsPipelineDesc pipe_desc;
-            pipe_desc.vertex_shader = pbr.vert_shader.get();
-            pipe_desc.fragment_shader = pbr.frag_shader.get();
-            pipe_desc.layout.stride = sizeof(PBRVertex);
-            pipe_desc.layout.attributes = {
-                rhi::VertexAttribute{
-                    .location = 0, .binding = 0, .offset = 0,
-                    .format = rhi::TextureFormat::RGB32F,
-                },
-                rhi::VertexAttribute{
-                    .location = 1, .binding = 0,
-                    .offset = sizeof(glm::vec3),
-                    .format = rhi::TextureFormat::RGB32F,
-                },
-                rhi::VertexAttribute{
-                    .location = 2, .binding = 0,
-                    .offset = sizeof(glm::vec3) * 2,
-                    .format = rhi::TextureFormat::RG32F,
-                },
-                rhi::VertexAttribute{
-                    .location = 3, .binding = 0,
-                    .offset = sizeof(glm::vec3) * 2 + sizeof(glm::vec2),
-                    .format = rhi::TextureFormat::RGBA32F,
-                },
-            };
-            pipe_desc.state.cull = rhi::CullMode::Back;
-            pipe_desc.state.depth = rhi::DepthCompare::Less;
-            pipe_desc.state.depth_test = true;
-            pipe_desc.state.depth_write = true;
-            pipe_desc.state.blend = rhi::BlendMode::None;
-            pipe_desc.render_pass = nullptr;
-            pipe_desc.descriptor_layouts = {
-                pbr.camera_layout.get(),
-                pbr.material_layout.get()
-            };
-            pipe_desc.push_constant_size = sizeof(PushConstantData);
-            pipe_desc.push_constant_stages = rhi::ShaderStage::Vertex;
-            pipe_desc.debug_name = "PBRSimple";
-            pipe_desc.use_dynamic_rendering = true;
-            pipe_desc.dynamic_color_formats = { swapchain_color_fmt };
-            pipe_desc.dynamic_depth_format = rhi::TextureFormat::Depth32F;
-
-            pbr.pipeline = device.create_graphics_pipeline(pipe_desc);
-            if (!pbr.pipeline) {
-                HELIOS_LOG(Game, Error, "Failed to create PBR pipeline");
-                app.insert_resource(std::move(pbr));
-                app.insert_resource(std::move(skybox));
-                return;
-            }
-        }
-
-        // ---- Camera descriptor set ----
-        {
-            pbr.camera_ds = device.allocate_descriptor_set(*pbr.camera_layout);
-            device.update_descriptor_set(*pbr.camera_ds, {
-                rhi::DescriptorWrite{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::UniformBuffer,
-                    .buffer_handle = pbr.camera_ubo.get(),
-                    .range = sizeof(PBRCameraUBO),
-                },
-            });
-        }
-
-        pbr.valid = true;
-        HELIOS_LOG(Game, Info, "PBR pipeline created");
-
-        // ============================================================
-        // Skybox setup (shared between all scenes)
-        // ============================================================
-        std::unique_ptr<rhi::Texture> env_cubemap;
-        {
-            auto equirect = sandbox::load_hdr_texture(device,
-                (asset_dir + "/Textures/default_skybox.hdr").c_str(), "SkyboxEquirect");
-            if (equirect) {
-                env_cubemap = sandbox::convert_equirect_to_cubemap(
-                    device, *ctx.cmd, *equirect, 1024);
-            }
-        }
-
-        if (env_cubemap) {
-            auto sky_vert_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "skybox.vert.spv");
-            auto sky_frag_spirv = sandbox::read_spirv(std::filesystem::path(shader_dir) / "skybox.frag.spv");
-
-            if (!sky_vert_spirv.empty() && !sky_frag_spirv.empty()) {
-                rhi::ShaderDesc sv_desc;
-                sv_desc.stage = rhi::ShaderStage::Vertex;
-                sv_desc.spirv_code = std::move(sky_vert_spirv);
-                sv_desc.entry_point = "main";
-                sv_desc.debug_name = "skybox_vert";
-                skybox.vert_shader = device.create_shader(sv_desc);
-
-                rhi::ShaderDesc sf_desc;
-                sf_desc.stage = rhi::ShaderStage::Fragment;
-                sf_desc.spirv_code = std::move(sky_frag_spirv);
-                sf_desc.entry_point = "main";
-                sf_desc.debug_name = "skybox_frag";
-                skybox.frag_shader = device.create_shader(sf_desc);
-
-                rhi::DescriptorSetLayoutDesc sky_layout_desc;
-                sky_layout_desc.bindings = {
-                    rhi::DescriptorBinding{
-                        .binding = 0,
-                        .type = rhi::DescriptorType::UniformBuffer,
-                        .stage = rhi::ShaderStage::Vertex | rhi::ShaderStage::Fragment,
-                        .count = 1,
-                    },
-                    rhi::DescriptorBinding{
-                        .binding = 1,
-                        .type = rhi::DescriptorType::CombinedImageSampler,
-                        .stage = rhi::ShaderStage::Fragment,
-                        .count = 1,
-                    },
-                };
-                sky_layout_desc.debug_name = "Skybox_DSL";
-                skybox.layout = device.create_descriptor_set_layout(sky_layout_desc);
-
-                rhi::BufferDesc sky_ubo_desc;
-                sky_ubo_desc.size = sizeof(SkyboxUBOData);
-                sky_ubo_desc.usage = rhi::BufferUsage::Uniform;
-                sky_ubo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
-                sky_ubo_desc.debug_name = "SkyboxUBO";
-                skybox.ubo = device.create_buffer(sky_ubo_desc);
-
-                rhi::GraphicsPipelineDesc sky_pipe;
-                sky_pipe.vertex_shader = skybox.vert_shader.get();
-                sky_pipe.fragment_shader = skybox.frag_shader.get();
-                sky_pipe.layout.stride = sizeof(glm::vec3);
-                sky_pipe.layout.attributes = {
-                    rhi::VertexAttribute{
-                        .location = 0, .binding = 0, .offset = 0,
-                        .format = rhi::TextureFormat::RGB32F,
-                    },
-                };
-                sky_pipe.state.cull = rhi::CullMode::None;
-                sky_pipe.state.depth = rhi::DepthCompare::LessEqual;
-                sky_pipe.state.depth_test = true;
-                sky_pipe.state.depth_write = false;
-                sky_pipe.state.blend = rhi::BlendMode::None;
-                sky_pipe.render_pass = nullptr;
-                sky_pipe.descriptor_layouts = { skybox.layout.get() };
-                sky_pipe.push_constant_size = 0;
-                sky_pipe.debug_name = "SkyboxPipeline";
-                sky_pipe.use_dynamic_rendering = true;
-                sky_pipe.dynamic_color_formats = { swapchain_color_fmt };
-                sky_pipe.dynamic_depth_format = rhi::TextureFormat::Depth32F;
-
-                skybox.pipeline = device.create_graphics_pipeline(sky_pipe);
-
-                auto sky_verts = sandbox::build_skybox_cube();
-                rhi::BufferDesc sky_vbo_desc;
-                sky_vbo_desc.size = static_cast<uint32_t>(sky_verts.size() * sizeof(glm::vec3));
-                sky_vbo_desc.usage = rhi::BufferUsage::Vertex;
-                sky_vbo_desc.access = rhi::MemoryAccess::CPU_to_GPU;
-                sky_vbo_desc.debug_name = "SkyboxCubeVBO";
-                skybox.cube_vbo = device.create_buffer(sky_vbo_desc, sky_verts.data());
-
-                skybox.env_cubemap = std::move(env_cubemap);
-
-                skybox.ds = device.allocate_descriptor_set(*skybox.layout);
-                device.update_descriptor_set(*skybox.ds, {
-                    rhi::DescriptorWrite{
-                        .binding = 0,
-                        .type = rhi::DescriptorType::UniformBuffer,
-                        .buffer_handle = skybox.ubo.get(),
-                        .range = sizeof(SkyboxUBOData),
-                    },
-                    rhi::DescriptorWrite{
-                        .binding = 1,
-                        .type = rhi::DescriptorType::CombinedImageSampler,
-                        .texture_handle = skybox.env_cubemap.get(),
-                    },
-                });
-
-                skybox.valid = true;
-                HELIOS_LOG(Game, Info, "Skybox pipeline created");
-            }
-        }
-
-        app.insert_resource(std::move(pbr));
-        app.insert_resource(std::move(skybox));
-        HELIOS_LOG(Game, Info, "SandboxAssetsPlugin: shared GPU resources ready");
-    }
-};
-
-// ============================================================
 // Main
 // ============================================================
 
@@ -877,36 +490,22 @@ int main() {
     app.add_plugin(InputPlugin{});
     app.add_plugin(RenderPlugin{});
 
-    // Asset pipeline -- registers AssetServer + MeshAsset importer
+    // Asset pipeline -- registers AssetServer + importers
     app.add_plugin(AssetPlugin{AssetPluginConfig{
         .asset_root = HELIOS_DEMO_ASSET_DIR,
         .loader_threads = 0,  // sync-only for this demo
     }});
 
-    app.add_plugin(ForwardPlusPlugin{});
+    // Forward+ rendering pipeline -- creates PBR pipeline, skybox, depth buffer
+    app.add_plugin(ForwardPlusPlugin{.config = ForwardPlusConfig{
+        .skybox_hdr_path = "Textures/default_skybox.hdr",
+    }});
 
     app.insert_resource(PendingScene{.target = SceneState::Scene1, .pending = true});
-
-    // Shared GPU resources (pipeline, skybox)
-    app.add_plugin(SandboxAssetsPlugin{});
 
     // Game plugins (camera, etc.)
     app.add_plugin(GamePlugin{});
     app.add_plugin(ScenePlugin{});
-
-    // Register despawn hook: release MeshRenderer asset handles automatically
-    {
-        auto& world = app.world();
-        world.register_despawn_hook([](World& w, Entity e) {
-            auto* mr = w.try_get<MeshRenderer>(e);
-            if (!mr) return;
-            auto* server_ptr = w.try_resource<std::shared_ptr<AssetServer>>();
-            if (!server_ptr || !*server_ptr) return;
-            auto& server = **server_ptr;
-            if (mr->mesh) server.release(mr->mesh.untyped());
-            if (mr->material) server.release(mr->material.untyped());
-        });
-    }
 
     // State management
     app.add_plugin(GameFlowPlugin<SceneState>{}
