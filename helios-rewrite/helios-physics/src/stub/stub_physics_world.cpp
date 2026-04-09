@@ -72,8 +72,10 @@ void StubPhysicsWorld::set_velocity(BodyHandle handle, const glm::vec3& linear) 
     it->second.velocity = linear;
 }
 
-void StubPhysicsWorld::apply_force(BodyHandle /*handle*/, const glm::vec3& /*force*/) {
-    // No-op in stub
+void StubPhysicsWorld::apply_force(BodyHandle handle, const glm::vec3& force) {
+    auto it = m_bodies.find(handle);
+    if (it == m_bodies.end()) return;
+    it->second.accumulated_force += force;
 }
 
 void StubPhysicsWorld::apply_impulse(BodyHandle handle, const glm::vec3& impulse) {
@@ -89,6 +91,12 @@ void StubPhysicsWorld::step(float dt) {
     // Simple Euler integration for dynamic bodies with basic collision
     for (auto& [handle, body] : m_bodies) {
         if (body.desc.type != BodyType::Dynamic) continue;
+
+        // Apply accumulated forces (F = ma → a = F/m)
+        if (body.desc.mass > 0.0f) {
+            body.velocity += (body.accumulated_force / body.desc.mass) * dt;
+        }
+        body.accumulated_force = glm::vec3{0.0f};
 
         // Apply gravity
         body.velocity += m_config.gravity * dt;
