@@ -171,9 +171,6 @@ void Window::clear_callback_data() {
     m_impl->cb_data.clear();
 }
 
-void Window::reset_close_flag() {
-    glfwSetWindowShouldClose(m_impl->glfw_window, GLFW_FALSE);
-}
 
 void* Window::native_handle() const {
     return static_cast<void*>(m_impl->glfw_window);

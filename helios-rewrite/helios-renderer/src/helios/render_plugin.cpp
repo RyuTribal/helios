@@ -56,7 +56,6 @@ static void recreate_swapchain(RenderContext& ctx, GLFWwindow* glfw_win) {
             ctx.depth_texture = ctx.device->create_texture(depth_desc);
         }
 
-        ctx.swapchain_just_recreated = true;
         HELIOS_LOG(Render, Info, "Swapchain recreated: {}x{}",
                    ctx.swapchain->width(), ctx.swapchain->height());
     } else {
@@ -109,10 +108,7 @@ void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
 
 // --- System: end frame (end rendering + submit + present) ---
 void frame_end(ResMut<RenderContext> ctx) {
-    if (!ctx->frame_active) {
-        HELIOS_LOG(Render, Debug, "frame_end: skipped (frame_active=false)");
-        return;
-    }
+    if (!ctx->frame_active) return;
 
     ctx->swapchain->end_rendering(*ctx->cmd);
     ctx->cmd->end();
@@ -176,7 +172,6 @@ void handle_swapchain_resize(
 
         if (new_swapchain) {
             ctx->swapchain = std::move(new_swapchain);
-            ctx->swapchain_just_recreated = true;
 
             // Recreate depth buffer to match the new swapchain size
             if (ctx->depth_texture) {

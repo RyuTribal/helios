@@ -75,9 +75,6 @@ public:
     // Clear accumulated callback data (called after all systems read it).
     void clear_callback_data();
 
-    // Reset the GLFW should_close flag (called before polling to detect fresh events only).
-    void reset_close_flag();
-
     // Opaque handle for RHI / Vulkan surface creation.
     // Returns GLFWwindow* cast to void*.
     void* native_handle() const;
