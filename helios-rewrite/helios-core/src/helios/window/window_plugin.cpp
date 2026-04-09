@@ -67,6 +67,7 @@ void poll_window_events(ResMut<Windows> windows,
             });
         }
     }
+
 }
 
 } // namespace helios

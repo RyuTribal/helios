@@ -14,7 +14,7 @@ HELIOS_DECLARE_LOG_CHANNEL(Input);
 
 namespace helios {
 
-void update_raw_input(ResMut<RawInput> input, Res<Windows> windows) {
+void update_raw_input(ResMut<RawInput> input, ResMut<Windows> windows) {
     // Snapshot previous frame state before applying new events.
     input->begin_frame();
 
@@ -64,6 +64,10 @@ void update_raw_input(ResMut<RawInput> input, Res<Windows> windows) {
 
     HELIOS_LOG_TRACE(Input, "update_raw_input: {} key events, {} mouse button events",
                      cb.key_events.size(), cb.mouse_button_events.size());
+
+    // Clear callback data now that all consumers have read it.
+    // This prevents stale events (especially scroll) from persisting.
+    windows->primary().clear_callback_data();
 }
 
 void update_action_map(ResMut<InputMap> map, Res<RawInput> input) {
