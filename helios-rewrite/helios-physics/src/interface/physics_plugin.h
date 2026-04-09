@@ -190,12 +190,16 @@ inline void sync_ecs_to_physics(
 
 // Schedule: PostUpdate
 // Read physics body position/rotation -> ECS Transform for Dynamic bodies.
+// SKIPS if the user modified Transform this frame (Changed<Transform>) so
+// the user's change is preserved and pushed to physics next frame.
 // Records the write tick so sync_ecs_to_physics can distinguish user changes
 // from physics writeback (prevents feedback loop).
 inline void sync_physics_to_ecs(
     helios::Res<std::unique_ptr<PhysicsWorld>> world,
     helios::ResMut<PhysicsBodyMap>             body_map,
-    helios::Query<helios::Transform>           transforms)
+    helios::Query<helios::Transform>           transforms,
+    helios::Query<const helios::Transform,
+                  helios::Changed<helios::Transform>> changed_transforms)
 {
     if (!*world) return;
 
@@ -206,14 +210,23 @@ inline void sync_physics_to_ecs(
         entity.index      = static_cast<uint32_t>(k & 0xFFFF'FFFFu);
         entity.generation = static_cast<uint32_t>(k >> 32);
 
+        // Skip if user modified Transform this frame — preserve their change.
+        // It will be pushed to physics next frame via sync_ecs_to_physics.
+        auto changed = changed_transforms.get(entity);
+        if (changed.has_value()) {
+            // Check if the change was from us (last_physics_write_tick) or user
+            if (entry.last_physics_write_tick == 0 ||
+                transforms.current_tick() - entry.last_physics_write_tick > 2) {
+                continue;  // user changed it — don't overwrite
+            }
+        }
+
         auto result = transforms.get(entity);
         if (!result.has_value()) continue;
 
         auto& [t] = *result;
         t.position = (*world)->get_position(entry.handle);
         t.rotation = (*world)->get_rotation(entry.handle);
-        // The mutable query access auto-stamps Transform's changed_tick.
-        // Record that tick so sync_ecs_to_physics knows this was physics-caused.
         entry.last_physics_write_tick = transforms.current_tick();
     }
 }

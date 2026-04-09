@@ -150,10 +150,9 @@ void orbit_camera_system(Res<RawInput> input,
 void helmet_controls(Query<Transform, const Tag> entities,
                      Res<RawInput> input,
                      Res<Time> time) {
-    for (auto [t, tag] : entities) {
+    for (auto&& [t, tag] : entities) {
         if (tag.name != "damaged_helmet") continue;
 
-        // R key: reset to starting position
         if (input->key_just_pressed(KeyCode::R)) {
             t.position = glm::vec3{0.0f, 3.0f, 0.0f};
             t.rotation = glm::quat(glm::vec3(
