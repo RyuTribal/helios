@@ -26,6 +26,7 @@ static void recreate_swapchain(RenderContext& ctx, GLFWwindow* glfw_win) {
     uint32_t h = static_cast<uint32_t>(fb_h);
 
     ctx.device->wait_idle();
+    ctx.swapchain.reset();  // destroy old before creating new
 
     rhi::SwapchainDesc desc;
     desc.width = w;
@@ -72,17 +73,22 @@ void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
 
     if (!ctx->swapchain) return;
 
-    // Skip rendering for one frame after swapchain recreation to let the
-    // Wayland surface stabilize. Presenting into a just-recreated swapchain
-    // causes wl_display_flush to fail and hang glfwPollEvents.
-    if (ctx->swapchain_just_recreated) {
-        ctx->swapchain_just_recreated = false;
-        return;  // skip this frame, render next frame
+    // Check if framebuffer size changed — if so, skip this frame entirely.
+    // The resize handler will recreate the swapchain this frame (PreUpdate),
+    // but we must NOT present into a swapchain that doesn't match the surface.
+    auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
+    {
+        int fb_w, fb_h;
+        glfwGetFramebufferSize(glfw_win, &fb_w, &fb_h);
+        if (fb_w > 0 && fb_h > 0 &&
+            (static_cast<uint32_t>(fb_w) != ctx->swapchain->width() ||
+             static_cast<uint32_t>(fb_h) != ctx->swapchain->height())) {
+            // Size mismatch — skip this frame, let resize handler catch up
+            return;
+        }
     }
 
     if (!ctx->swapchain->acquire_next_image()) {
-        HELIOS_LOG(Render, Warn, "Acquire failed, recreating swapchain");
-        auto* glfw_win = static_cast<GLFWwindow*>(windows->primary().native_handle());
         recreate_swapchain(*ctx, glfw_win);
         return;
     }
@@ -103,7 +109,10 @@ void frame_begin(ResMut<RenderContext> ctx, Res<Windows> windows) {
 
 // --- System: end frame (end rendering + submit + present) ---
 void frame_end(ResMut<RenderContext> ctx) {
-    if (!ctx->frame_active) return;
+    if (!ctx->frame_active) {
+        HELIOS_LOG(Render, Debug, "frame_end: skipped (frame_active=false)");
+        return;
+    }
 
     ctx->swapchain->end_rendering(*ctx->cmd);
     ctx->cmd->end();
@@ -144,6 +153,11 @@ void handle_swapchain_resize(
 
         HELIOS_LOG(Render, Info, "Swapchain resize: {}x{}", w, h);
         ctx->device->wait_idle();
+
+        // Destroy old swapchain BEFORE creating new one (like old engine).
+        // On Wayland, the old swapchain holding the surface can interfere
+        // with the new one's creation/present.
+        ctx->swapchain.reset();
 
         rhi::SwapchainDesc desc;
         desc.width = w;
@@ -200,21 +214,9 @@ void RenderPlugin::build(App& app) {
     auto device = rhi::create_device(backend, app_name.c_str(), native, gpu_index, enable_validation);
     HELIOS_ASSERT(device != nullptr, "Failed to create RHI device");
 
-    // Poll events once to let Wayland's initial configure settle.
-    // Without this, the swapchain is created at the requested size, but
-    // the compositor immediately sends a different size on the first frame.
-    glfwPollEvents();
-    // Clear any spurious events from the initial poll (Hyprland can fire
-    // close/resize events during the first configure).
-    windows.primary().clear_callback_data();
-    glfwSetWindowShouldClose(native, GLFW_FALSE);
-
-    int fb_w, fb_h;
-    glfwGetFramebufferSize(native, &fb_w, &fb_h);
-
     rhi::SwapchainDesc sc_desc;
-    sc_desc.width = (fb_w > 0) ? static_cast<uint32_t>(fb_w) : windows.primary().width();
-    sc_desc.height = (fb_h > 0) ? static_cast<uint32_t>(fb_h) : windows.primary().height();
+    sc_desc.width = windows.primary().width();
+    sc_desc.height = windows.primary().height();
     auto swapchain = device->create_swapchain(sc_desc);
     auto cmd = device->create_command_buffer();
 
