@@ -70,111 +70,8 @@ struct PendingScene {
 };
 
 // ============================================================
-// Orbit camera state (stored as a resource)
-// ============================================================
-
-struct OrbitCamera {
-    float yaw   = 0.0f;       // radians
-    float pitch = 0.0f;       // radians
-    float distance = 3.0f;
-    glm::vec3 target = {0.0f, 0.0f, 0.0f};
-    float sensitivity = 0.003f;
-    float zoom_speed  = 0.3f;
-    bool panning = false;
-};
-
-// ============================================================
 // Systems
 // ============================================================
-
-void orbit_camera_system(Res<RawInput> input,
-                         ResMut<Windows> windows,
-                         ResMut<OrbitCamera> orbit,
-                         Query<Transform, const Tag, With<ActiveCamera>> cameras)
-{
-    if (!windows->has_primary()) return;
-    auto& win = windows->primary();
-
-    bool rmb = input->mouse_button_pressed(MouseButton::Right);
-
-    // Transition: start panning
-    if (rmb && !orbit->panning) {
-        orbit->panning = true;
-        win.set_cursor_mode(Window::CursorMode::Captured);
-    }
-    // Transition: stop panning
-    if (!rmb && orbit->panning) {
-        orbit->panning = false;
-        win.set_cursor_mode(Window::CursorMode::Normal);
-    }
-
-    // Apply mouse delta while panning
-    if (orbit->panning) {
-        glm::vec2 delta = input->mouse_delta();
-        orbit->yaw   += delta.x * orbit->sensitivity;
-        orbit->pitch -= delta.y * orbit->sensitivity;
-
-        constexpr float max_pitch = glm::radians(89.0f);
-        orbit->pitch = glm::clamp(orbit->pitch, -max_pitch, max_pitch);
-    }
-
-    // Scroll zoom — proportional, clamped per tick to avoid jumps
-    float scroll = glm::clamp(input->scroll_delta(), -1.0f, 1.0f);
-    if (scroll != 0.0f) {
-        orbit->distance *= 1.0f - scroll * orbit->zoom_speed;
-        orbit->distance = glm::clamp(orbit->distance, 0.2f, 30.0f);
-    }
-
-    // Compute main camera position from spherical coordinates
-    glm::vec3 offset;
-    offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw);
-    offset.y = orbit->distance * std::sin(orbit->pitch);
-    offset.z = orbit->distance * std::cos(orbit->pitch) * std::cos(orbit->yaw);
-
-    glm::vec3 cam_pos = orbit->target + offset;
-
-    for (auto [t, tag] : cameras) {
-        if (tag.name == "main_camera") {
-            t.position = cam_pos;
-            glm::mat4 look = glm::lookAt(cam_pos, orbit->target, glm::vec3(0, 1, 0));
-            t.rotation = glm::conjugate(glm::quat_cast(look));
-        } else if (tag.name == "side_camera") {
-            glm::vec3 side_offset;
-            side_offset.x = orbit->distance * std::cos(orbit->pitch) * std::sin(orbit->yaw + glm::half_pi<float>());
-            side_offset.y = orbit->distance * std::sin(orbit->pitch);
-            side_offset.z = orbit->distance * std::cos(orbit->pitch) * std::cos(orbit->yaw + glm::half_pi<float>());
-            glm::vec3 side_pos = orbit->target + side_offset;
-            t.position = side_pos;
-            t.rotation = glm::conjugate(glm::quat_cast(glm::lookAt(side_pos, orbit->target, glm::vec3(0, 1, 0))));
-        }
-    }
-}
-
-
-void helmet_controls(Query<const Tag, const physics::PhysicsBody> bodies,
-                     ResMut<std::unique_ptr<physics::PhysicsWorld>> physics,
-                     Res<RawInput> input) {
-    if (!*physics) return;
-
-    for (auto&& [tag, pb] : bodies) {
-        if (tag.name != "damaged_helmet") continue;
-
-        // R: reset position (teleport via physics)
-        if (input->key_just_pressed(KeyCode::R)) {
-            (*physics)->set_transform(pb.handle,
-                glm::vec3{0.0f, 3.0f, 0.0f},
-                glm::quat(glm::vec3(glm::radians(90.0f), glm::radians(180.0f), 0.0f)));
-            (*physics)->set_velocity(pb.handle, glm::vec3{0.0f});
-        }
-
-        // E: apply upward impulse
-        if (input->key_pressed(KeyCode::E)) {
-            (*physics)->apply_force(pb.handle, glm::vec3{0.0f, 30.0f, 0.0f});
-        }
-
-        break;
-    }
-}
 
 // Separate system: react to collision events from the physics plugin.
 // Any system can read these — decoupled from the physics update.
@@ -445,10 +342,7 @@ struct GamePlugin {
         app.add_plugin(physics::DefaultPhysicsPlugin{});
         app.add_plugin(audio::DefaultAudioPlugin{});
 
-        app.insert_resource(OrbitCamera{});
         app.insert_resource(SceneAudio{});
-        app.add_system(Schedule::Update, orbit_camera_system, "orbit_camera");
-        app.add_system(Schedule::Update, helmet_controls, "helmet_controls");
         app.add_system(Schedule::Update, on_collision, "on_collision");
         HELIOS_LOG(Game, Info, "GamePlugin initialized");
     }
@@ -459,6 +353,7 @@ struct DemoScenePlugin {
         auto& world = app.world();
 
         // Left camera (primary) -- covers left half of the window
+        // Orbit behaviour is driven by the C# OrbitCamera script.
         world.spawn(
             Transform{ .position = glm::vec3{0.0f, 0.0f, 3.0f} },
             Camera{
@@ -472,7 +367,10 @@ struct DemoScenePlugin {
                 .viewport_h = 1.0f,
             },
             ActiveCamera{},
-            Tag{ .name = "main_camera" });
+            Tag{ .name = "main_camera" },
+            ScriptInstance{
+                .script_class_name = "SandboxScripts.OrbitCamera",
+            });
 
         // Right camera (side view) -- covers right half, 90-degree offset
         world.spawn(
@@ -489,7 +387,10 @@ struct DemoScenePlugin {
                 .clear_mode = Camera::ClearMode::None,
             },
             ActiveCamera{},
-            Tag{ .name = "side_camera" });
+            Tag{ .name = "side_camera" },
+            ScriptInstance{
+                .script_class_name = "SandboxScripts.SideCamera",
+            });
 
         // Directional light (sun)
         world.spawn(
