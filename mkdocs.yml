@@ -37,10 +37,22 @@ nav:
         - Query: api/core/ecs/query.md
         - Commands: api/core/ecs/commands.md
         - Scheduler: api/core/ecs/scheduler.md
+      - Assets:
+        - Asset Server: api/core/assets/asset_server.md
+        - Handle: api/core/assets/handle.md
+        - Asset Binary: api/core/assets/asset_binary.md
+      - Window:
+        - Window: api/core/window/window.md
+        - Windows: api/core/window/windows.md
+      - Input:
+        - Raw Input: api/core/input/raw_input.md
+        - Input Map: api/core/input/input_map.md
+      - Scene:
+        - Scene Manager: api/core/scene/scene_manager.md
+        - Scene Serializer: api/core/scene/scene_serializer.md
       - App:
         - App: api/core/app/app.md
         - GameFlow: api/core/app/game_flow.md
-
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
