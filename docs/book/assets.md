@@ -2,7 +2,7 @@
 
 ## AssetServer
 
-The `AssetServer` manages the loading, caching, and lifetime of all asset data. It is stored as a world resource via a `shared_ptr` to ensure it can be safely shared across systems and background loading threads.
+The **[`AssetServer`](../api/core/assets/asset_server.md)** manages the loading, caching, and lifetime of all asset data. It is stored as a world resource via a `shared_ptr` to ensure it can be safely shared across systems and background loading threads.
 
 ### Accessing the AssetServer
 
@@ -116,11 +116,11 @@ if (server->is_loaded(mesh.untyped())) {
 
 ## Handle\<T\>
 
-A `Handle<T>` is a reference-counted smart pointer to an asset. Under the hood, it wraps a raw `AssetHandle`.
+A **[`Handle<T>`](../api/core/assets/handle.md)** is a reference-counted smart pointer to an asset. Under the hood, it wraps a raw `AssetHandle`.
 
 ### AssetHandle
 
-The `AssetHandle` is a 64-bit packed ID consisting of:
+The **[`AssetHandle`](../api/core/assets/handle.md)** is a 64-bit packed ID consisting of:
 - **32-bit Index:** Points to the asset's slot in the internal storage array.
 - **32-bit Generation:** Incremented each time a slot is reused, preventing "dangling" handles to destroyed assets.
 
@@ -132,7 +132,7 @@ Because it is a simple 64-bit POD (Plain Old Data) type, it is extremely efficie
 
 ## Binary Asset Format (.hlasset)
 
-Helios uses a unified binary format (`.hlasset`) for all imported assets. This format is optimized for fast loading and contains a GUID-based header.
+Helios uses a unified **[binary format](../api/core/assets/asset_binary.md)** (`.hlasset`) for all imported assets. This format is optimized for fast loading and contains a GUID-based header.
 
 ### Header Structure
 

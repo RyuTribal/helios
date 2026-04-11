@@ -2,25 +2,25 @@
 
 The Helios Audio module utilizes ECS components to attach audio playback behavior to entities.
 
-## AudioSource
+## AudioSource (WIP)
 
-The `AudioSource` component defines a sound emitter attached to an entity. If the entity has a `Transform`, the sound will be spatialized in 3D.
+The `AudioSource` component is intended to define a sound emitter attached to an entity. **Full integration with the audio backend is currently in progress.**
 
 | Member | Type | Description |
 | :--- | :--- | :--- |
 | `clip` | `SoundHandle` | The sound clip to be played. |
 | `volume` | `float` | Volume for this instance (0.0 to 1.0). |
 | `pitch` | `float` | Playback speed multiplier (default: 1.0). |
-| `flags` | `uint32_t` | `AudioFlags::Looping`, `AudioFlags::PlayOnStart`, etc. |
+| `flags` | `uint32_t` | (Placeholder) `Looping`, `PlayOnStart`, etc. |
 
-### Audio Flags
+### Audio Flags (Placeholder)
 
 - **`Looping`**: The sound will repeat indefinitely once started.
-- **`PlayOnStart`**: The sound will automatically start playing when the entity is spawned or the scene is loaded.
+- **`PlayOnStart`**: The sound will automatically start playing when the entity is spawned.
 
 ## Listener (Implicit)
 
-While there is no explicit `Listener` component yet, the audio module automatically treats the entity with the `ActiveCamera` component as the audio listener. The position and orientation of this entity's `GlobalTransform` are used to update the `AudioDevice` listener settings each frame.
+The audio module is designed to treat the entity with the `ActiveCamera` component as the audio listener. The position and orientation of this entity's `GlobalTransform` will be used to update the `AudioDevice` listener settings. **This system is currently a placeholder.**
 
 ## Example: Creating a Spatial Audio Source
 

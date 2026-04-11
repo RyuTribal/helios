@@ -29,7 +29,7 @@ When you `add` or `remove` a component, the entity is moved from its current arc
 ## 2. Entities and Components
 
 ### Entities
-An `Entity` is a lightweight, 64-bit identifier. It contains a 32-bit index and a 32-bit generation to safely handle reuse after an entity is despawned.
+An **[`Entity`](../api/core/ecs/entity.md)** is a lightweight, 64-bit identifier. It contains a 32-bit index and a 32-bit generation to safely handle reuse after an entity is despawned.
 
 ### Components
 Components in Helios are plain-old-data (POD) or aggregate structs. They should represent "data" rather than "behavior."
@@ -52,7 +52,7 @@ struct Health {
 - RAII types (like `std::vector` or `Handle<T>`) are allowed and their destructors will run when the entity is despawned.
 
 ### Spawning Entities
-The `World` provides several ways to create entities:
+The **[`World`](../api/core/ecs/world.md)** provides several ways to create entities:
 
 ```cpp
 // 1. Spawn empty
@@ -121,10 +121,10 @@ Helios automatically injects data into systems based on their parameter types:
 
 | Parameter | Access | Description |
 |---|---|---|
-| `Query<Ts...>` | Mixed | Iterates over entities matching constraints. |
+| **[`Query<Ts...>`](../api/core/ecs/query.md)** | Mixed | Iterates over entities matching constraints. |
 | `Res<T>` | Read | Immutable access to a global resource. |
 | `ResMut<T>` | Write | Mutable access to a global resource. |
-| `Commands&` | Write | Defer structural changes (spawn, despawn, add/remove). |
+| **[`Commands&`](../api/core/ecs/commands.md)** | Write | Defer structural changes (spawn, despawn, add/remove). |
 | `EventReader<T>` | Read | Read events sent in previous stages/frames. |
 | `EventWriter<T>` | Write | Send events to be read by other systems. |
 | `World&` | Exclusive | Full, direct access. Forces serial execution of the system. |
@@ -158,7 +158,7 @@ void cleanup_system(World& world) {
 ```
 
 ### Commands (Deferred Changes)
-You **cannot** structurally modify the world (spawn/add/remove) while iterating over a `Query` because it would invalidate the archetype storage. Instead, use `Commands`:
+You **cannot** structurally modify the world (spawn/add/remove) while iterating over a `Query` because it would invalidate the archetype storage. Instead, use **[`Commands`](../api/core/ecs/commands.md)**:
 
 ```cpp
 void spawner_system(Commands& cmds, Query<Entity, const Transform> q) {
@@ -216,7 +216,7 @@ void sync_physics(Query<const Transform, Changed<Transform>> query, ResMut<Physi
 ## 5. Scheduling and Parallelism
 
 ### Registering Systems
-Systems are added to the `App` and assigned to a `Schedule`.
+Systems are added to the **[`App`](../api/core/app/app.md)** and assigned to a **[`Schedule`](../api/core/ecs/scheduler.md)**.
 
 ```cpp
 app.add_system(Schedule::Update, movement_system, "movement");

@@ -19,7 +19,7 @@ with JIT compilation, strong typing, and the vast .NET ecosystem.
 
 ## ScriptBehaviour
 
-All user scripts must inherit from the `ScriptBehaviour` base class. This
+All user scripts must inherit from the **[`ScriptBehaviour`](../api/scripting/csharp/script_behaviour.md)** base class. This
 provides the gateway to entity properties and lifecycle events.
 
 ### Lifecycle Callbacks
@@ -55,9 +55,9 @@ public class Rotator : ScriptBehaviour
         var transform = GetComponent<TransformComponent>();
         if (transform != null)
         {
-            // Update rotation (stored as Euler angles in degrees)
+            // Update rotation (stored as Euler angles in radians)
             var rotation = transform.Rotation;
-            rotation.Y += Speed * 50.0f * delta;
+            rotation.Y += Speed * delta; // Speed is in radians/sec
             transform.Rotation = rotation;
         }
 
@@ -79,7 +79,7 @@ engine systems.
 
 ### The Entity Class
 
-The `Entity` class (which `ScriptBehaviour` inherits from) provides the
+The **[`Entity`](../api/scripting/csharp/entity.md)** class (which `ScriptBehaviour` inherits from) provides the
 primary interface to the engine:
 
 - **`GetComponent<T>()`**: Retrieves a component from the entity. Returns `null` if not found.
@@ -98,7 +98,7 @@ The following component is currently available with a full C# bridge:
 
 | Component | Description |
 |---|---|
-| `TransformComponent` | `Translation`, `Rotation` (Euler angles), and `Scale`. |
+| **[`TransformComponent`](../api/scripting/csharp/transform_component.md)** | `Translation`, `Rotation` (Euler angles in radians), and `Scale`. |
 
 > [!NOTE]
 > Additional engine components (e.g., `RigidBody`, `MeshRenderer`, `PointLight`) are planned for future updates. Currently, these are only accessible via the raw `NativeAPI` layer if implemented, or must be managed from the C++ side.

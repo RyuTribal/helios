@@ -19,15 +19,17 @@ nav:
   - Home: index.md
   - The Helios Book:
     - Introduction: book/index.md
-    - Architecture: architecture.md
-    - ECS: ecs.md
-    - Assets: assets.md
-    - Scenes: scenes.md
-    - Rendering: rendering.md
-    - Physics: physics.md
-    - Audio: audio.md
-    - Scripting: scripting.md
-    - Editor: editor.md
+    - Architecture: book/architecture.md
+    - ECS: book/ecs.md
+    - Assets: book/assets.md
+    - Scenes: book/scenes.md
+    - Rendering: book/rendering.md
+    - Physics: book/physics.md
+    - Audio: book/audio.md
+    - Scripting: book/scripting.md
+    - Editor: book/editor.md
+  - Examples:
+    - Snippets: examples/snippets.md
   - API Reference:
     - Overview: api/index.md
     - Core:
@@ -54,6 +56,7 @@ nav:
         - App: api/core/app/app.md
         - GameFlow: api/core/app/game_flow.md
     - Renderer:
+      - Overview: api/renderer/index.md
       - Render Plugin: api/renderer/render_plugin.md
       - Render Context: api/renderer/render_context.md
       - Render Settings: api/renderer/render_settings.md

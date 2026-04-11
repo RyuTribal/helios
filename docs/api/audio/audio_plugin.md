@@ -18,8 +18,8 @@ When the plugin is added, it automatically registers several systems into the `A
 | System | Schedule | Description |
 | :--- | :--- | :--- |
 | `audio_update` | `PostUpdate` | Performs per-frame audio housekeeping (stream buffers, 3D calculations). |
-| `update_audio_listener` | `PostUpdate` | Updates the `AudioDevice` listener's position and orientation based on the active camera's transform. |
-| `update_spatial_sources` | `PostUpdate` | Updates the position and volume of playing spatial audio instances for each `AudioSource` component. |
+| `update_audio_listener` | `PostUpdate` | (Placeholder) Updates the `AudioDevice` listener from the active camera. |
+| `update_spatial_sources` | `PostUpdate` | (Placeholder) Updates playing spatial audio instances from `AudioSource` components. |
 
 ## Lifecycle
 

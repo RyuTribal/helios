@@ -2,9 +2,9 @@
 
 ## Overview
 
-Helios uses **Jolt Physics** for its 3D physics simulation. The `helios-physics` library provides an abstract `PhysicsWorld` interface, allowing the engine to remain decoupled from the specific backend while taking advantage of Jolt's performance and stability.
+Helios uses **Jolt Physics** for its 3D physics simulation. The `helios-physics` library provides an abstract **[`PhysicsWorld`](../api/physics/physics_world.md)** interface, allowing the engine to remain decoupled from the specific backend while taking advantage of Jolt's performance and stability.
 
-The `PhysicsPlugin` handles all ECS integration automatically. By simply attaching `RigidBody` and `Collider` components to an entity, the engine will manage body creation, synchronization, and destruction.
+The **[`PhysicsPlugin`](../api/physics/physics_plugin.md)** handles all ECS integration automatically. By simply attaching **[`RigidBody`](../api/physics/components.md)** and **[`Collider`](../api/physics/components.md)** components to an entity, the engine will manage body creation, synchronization, and destruction.
 
 ## Setup
 
@@ -136,7 +136,7 @@ if (hit) {
 
 ## Handling Contact Events
 
-Collision events are emitted during the physics step and can be consumed by any system using an `EventReader<ContactEvent>`.
+Collision events are emitted during the physics step and can be consumed by any system using an **[`EventReader<ContactEvent>`](../api/physics/components.md)**.
 
 ```cpp
 void on_collision(EventReader<physics::ContactEvent> contacts) {

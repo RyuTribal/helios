@@ -35,7 +35,7 @@ The architecture follows a strict "core-outward" dependency model:
 
 ## The Plugin System
 
-Plugins are the primary mechanism for extending Helios. A **Plugin** is a simple struct that implements a `build(App& app)` method, where it registers resources, events, and systems.
+Plugins are the primary mechanism for extending Helios. A **[Plugin](../api/core/ecs/world.md)** (specifically, a type implementing the plugin concept) is a simple struct that implements a `build(App& app)` method, where it registers resources, events, and systems.
 
 ### Custom Plugin Example
 
@@ -62,7 +62,7 @@ struct GameplayPlugin {
 
 ### Idempotency and Composition
 
-The `App::add_plugin` method is **idempotent**. If a plugin type is added multiple times, only the first call executes. This is crucial for composition: if `PluginB` depends on `PluginA`, it can safely call `app.add_plugin<PluginA>()` in its own `build` method without risking double-registration.
+The **[`App::add_plugin`](../api/core/app/app.md)** method is **idempotent**. If a plugin type is added multiple times, only the first call executes. This is crucial for composition: if `PluginB` depends on `PluginA`, it can safely call `app.add_plugin<PluginA>()` in its own `build` method without risking double-registration.
 
 ```cpp
 helios::App app;
@@ -73,11 +73,11 @@ app.run();
 
 ## App Lifecycle & Main Loop
 
-`App::run()` is the entry point that drives the engine's execution. It initializes the `Startup` schedule and then enters a continuous loop that calls `tick()` until the application is closed.
+**[`App::run()`](../api/core/app/app.md)** is the entry point that drives the engine's execution. It initializes the `Startup` schedule and then enters a continuous loop that calls `tick()` until the application is closed.
 
 ### The Schedule Pipeline
 
-Each frame follows a deterministic execution order across several specialized schedules:
+Each frame follows a deterministic execution order across several specialized **[Schedules](../api/core/ecs/scheduler.md)**:
 
 1.  **`Startup`**: Runs exactly once when the app starts. Used for one-time initialization (e.g., spawning a camera).
 2.  **`PreUpdate`**: Input polling, event processing, and engine-internal preparation (e.g., physics body creation).
@@ -107,13 +107,13 @@ To keep `helios-core` decoupled from the renderer, the `App` provides a **Post-P
 
 Helios utilizes a single, globally-shared `ThreadPool` created at `App` construction. This pool is a critical resource used by several engine subsystems:
 
-*   **Scheduler**: Parallel execution of ECS systems that don't have data dependencies.
-*   **Asset Server**: Background loading and decoding of textures, meshes, and audio files.
+*   **[Scheduler](../api/core/ecs/scheduler.md)**: Parallel execution of ECS systems that don't have data dependencies.
+*   **[Asset Server](../api/core/assets/asset_server.md)**: Background loading and decoding of textures, meshes, and audio files.
 *   **Editor**: Parallel compilation of C# scripts and asset importing.
 
 ### Accessing the Pool
 
-You can access the thread pool from any system by requesting it as a resource:
+You can access the thread pool from any system by requesting it as a **[resource](../api/core/ecs/world.md)**:
 
 ```cpp
 void background_task_system(World& world) {

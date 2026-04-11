@@ -34,7 +34,7 @@ scene:
 
 ## SceneRoot Component
 
-When a scene is loaded, Helios typically creates a **SceneRoot** entity. This entity serves as the parent for all top-level entities in that scene, allowing you to manage the entire scene as a single hierarchy (e.g., for moving, disabling, or despawning).
+When a scene is loaded, Helios typically creates a **[`SceneRoot`](../api/core/scene/scene_manager.md)** entity. This entity serves as the parent for all top-level entities in that scene, allowing you to manage the entire scene as a single hierarchy (e.g., for moving, disabling, or despawning).
 
 ```cpp
 struct SceneRoot {
@@ -49,8 +49,8 @@ Helios distinguishes between **Loading** a scene (replacing the current world st
 
 ### SceneManager vs SceneSerializer
 
-- **SceneSerializer**: A low-level utility for reading/writing YAML files to the ECS `World`.
-- **SceneManager**: A high-level system that manages scene lifetimes, preloading, and instantiation.
+- **[`SceneSerializer`](../api/core/scene/scene_serializer.md)**: A low-level utility for reading/writing YAML files to the ECS `World`.
+- **[`SceneManager`](../api/core/scene/scene_manager.md)**: A high-level system that manages scene lifetimes, preloading, and instantiation.
 
 ### Loading a Scene (Replace)
 

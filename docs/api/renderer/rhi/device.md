@@ -14,7 +14,6 @@ The `rhi::Device` class is the primary interface for interacting with the GPU. I
 | `create_graphics_pipeline(desc)` | Creates a graphics pipeline state object. |
 | `create_compute_pipeline(desc)` | Creates a compute pipeline state object. |
 | `create_command_buffer()` | Allocates a new command buffer for recording. |
-| `create_swapchain(desc)` | Creates a swapchain for window presentation. |
 | `create_render_pass(desc)` | Defines a set of attachments and subpasses. |
 | `create_framebuffer(desc)` | Binds textures to a render pass. |
 

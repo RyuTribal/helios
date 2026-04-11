@@ -34,10 +34,10 @@ To maximize GPU throughput while ensuring safety, Helios employs a triple-buffer
 
 ## Render Context & Settings
 
-The renderer is integrated into the ECS via two primary resources: `RenderContext` and `RenderSettings`.
+The renderer is integrated into the ECS via two primary resources: **[`RenderContext`](../api/renderer/render_context.md)** and **[`RenderSettings`](../api/renderer/render_settings.md)**.
 
 ### `RenderContext`
-The `RenderContext` resource holds the lifetime of the GPU device, the swapchain, and the per-frame command buffers. It also manages the scene framebuffers and per-camera render targets.
+The **[`RenderContext`](../api/renderer/render_context.md)** resource holds the lifetime of the GPU device, the swapchain, and the per-frame command buffers. It also manages the scene framebuffers and per-camera render targets.
 
 Systems interacting with the renderer should use the `ResMut<RenderContext>` pattern:
 
@@ -57,7 +57,7 @@ The global rendering mode is configured via `RenderPlugin` and reflected in `Ren
 
 ### `RenderSettings`
 
-Centralized, runtime-changeable settings that govern the global render state. These settings are typically accessed via `ResMut<RenderSettings>` within a system.
+Centralized, runtime-changeable **[`settings`](../api/renderer/render_settings.md)** that govern the global render state. These settings are typically accessed via `ResMut<RenderSettings>` within a system.
 
 - **VSync**: Controlled via `present_mode`. Use `set_vsync(bool)` for a simplified interface (`Fifo` for VSync, `Immediate` for off).
 - **Resolution Scale**: Dynamically scales the internal render resolution (0.25x to 2.0x) without resizing the window.

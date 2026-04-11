@@ -2,11 +2,11 @@
 
 ## Overview
 
-Helios provides a high-level audio system powered by the **SoLoud** library. The `helios-audio` library abstracts audio playback behind an `AudioDevice` interface, supporting both simple 2D sound effects and full 3D spatialized audio.
+Helios provides a high-level audio system powered by the **SoLoud** library. The `helios-audio` library abstracts audio playback behind an **[`AudioDevice`](../api/audio/audio_device.md)** interface, supporting both simple 2D sound effects and full 3D spatialized audio.
 
 ## Setup
 
-To enable audio, add the `AudioPlugin` with the `SoLoudDevice` implementation to your application:
+To enable audio, add the **[`AudioPlugin`](../api/audio/audio_plugin.md)** with the `SoLoudDevice` implementation to your application:
 
 ```cpp
 #include <helios/audio/audio_plugin.h>
@@ -19,7 +19,7 @@ This plugin inserts a `std::unique_ptr<AudioDevice>` as a world resource and add
 
 ## AudioSource Component
 
-The `AudioSource` component is used to manage audio playback attached to an entity. It stores state such as the current sound handle, volume, pitch, and playback flags.
+The **[`AudioSource`](../api/audio/components.md)** component is used to manage audio playback attached to an entity. It stores state such as the current sound handle, volume, pitch, and playback flags.
 
 ```cpp
 struct AudioSource {

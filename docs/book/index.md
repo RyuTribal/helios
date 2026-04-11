@@ -16,11 +16,11 @@ Key features include:
 
 If you're new to Helios, we recommend following this path to get up to speed:
 
-1.  **[Architecture](../architecture.md):** Understand the high-level design and the plugin system.
-2.  **[ECS](../ecs.md):** Dive into the core data-driven model that powers everything.
-3.  **[Assets](../assets.md):** Learn how assets are imported, managed, and uploaded to the GPU.
-4.  **[Rendering](../rendering.md):** Explore the Forward+ pipeline and Vulkan integration.
-5.  **[Scripting](../scripting.md):** Start writing game logic in C#.
+1.  **[Architecture](architecture.md):** Understand the high-level design and the plugin system.
+2.  **[ECS](ecs.md):** Dive into the core data-driven model that powers everything.
+3.  **[Assets](assets.md):** Learn how assets are imported, managed, and uploaded to the GPU.
+4.  **[Rendering](rendering.md):** Explore the Forward+ pipeline and Vulkan integration.
+5.  **[Scripting](scripting.md):** Start writing game logic in C#.
 
 ## Hello World
 

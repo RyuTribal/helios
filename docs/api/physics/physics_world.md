@@ -47,6 +47,8 @@ void my_system(helios::ResMut<std::unique_ptr<helios::physics::PhysicsWorld>> wo
 | :--- | :--- |
 | `set_velocity(BodyHandle, vec3)` | Sets the linear velocity of a body. |
 | `get_velocity(BodyHandle)` | Returns the current linear velocity. |
+| `set_angular_velocity(BodyHandle, vec3)` | Sets the angular velocity of a body. |
+| `get_angular_velocity(BodyHandle)` | Returns the current angular velocity. |
 | `apply_force(BodyHandle, vec3)` | Applies a force to the center of mass. |
 | `apply_impulse(BodyHandle, vec3)` | Applies an instantaneous impulse to the center of mass. |
 | `apply_torque(BodyHandle, vec3)` | Applies a torque to the body. |
