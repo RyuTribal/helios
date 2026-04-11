@@ -21,8 +21,8 @@ The `AssetServer` tracks all loaded assets by their file paths and ensures that 
 | :--- | :--- |
 | `load<T>(path)` | Asynchronously load an asset of type `T`. Returns a `Handle<T>` immediately. |
 | `load_sync<T>(path)` | Synchronously load an asset of type `T`. Blocks until finished. |
-| `load_batch()` | Start a batch load operation for multiple assets with progress tracking. |
-| `load_by_extension(path)` | Load an asset by inferring its type from the file extension. |
+| `load_batch()` | Start a batch load operation. Returns a `LoadBatchBuilder` for configuring the batch. |
+| `load_by_extension(path)` | Load an asset by extension. Returns an untyped `AssetHandle`. |
 
 ### Resolution & Status
 
@@ -37,7 +37,7 @@ The `AssetServer` tracks all loaded assets by their file paths and ensures that 
 
 | Method | Description |
 | :--- | :--- |
-| `register_importer<T>(fn)` | Register a function to handle loading files of type `T`. |
+| `register_importer<T>(fn)` | Register an `ImporterFn` for type `T`. Signature: `std::function<std::any(const std::filesystem::path&, AssetServer&)>`. |
 | `register_extensions<T>({exts})` | Map file extensions (e.g., `.png`, `.jpg`) to an asset type. |
 | `collect_garbage()` | Manually trigger an unload of all assets with a zero reference count. |
 | `add_dependency(parent, child)` | Ensure `child` stays alive as long as `parent` is alive. |

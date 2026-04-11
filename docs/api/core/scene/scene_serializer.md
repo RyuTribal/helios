@@ -15,8 +15,7 @@ The serializer allows for full scene persistence, including:
 
 | Method | Description |
 | :--- | :--- |
-| `register_component<T>(name)` | Register a component for serialization using its YAML conversion functions. |
-| `register_component(name, ser, deser)` | Register a component with custom lambda functions. |
+| `register_component<T>(name, ser, deser)` | Register a component for serialization with its name and conversion functions. |
 
 ### Saving
 
@@ -39,8 +38,16 @@ The serializer allows for full scene persistence, including:
 ```cpp
 // 1. Configure the serializer
 SceneSerializer serializer;
-serializer.register_component<Transform>("Transform");
-serializer.register_component<MeshRenderer>("MeshRenderer");
+serializer.register_component<Transform>(
+    "Transform",
+    serialize_yaml_transform,
+    deserialize_yaml_transform
+);
+serializer.register_component<MeshRenderer>(
+    "MeshRenderer",
+    serialize_yaml_mesh_renderer,
+    deserialize_yaml_mesh_renderer
+);
 
 // 2. Save current world
 serializer.save(world, "assets/scenes/my_scene.yaml");
