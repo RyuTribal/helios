@@ -145,8 +145,15 @@ Use `World&` when you need direct, unrestricted control over the entire ECS. Sys
 
 ```cpp
 void cleanup_system(World& world) {
-    // Manually iterate, clear entire archetypes, or perform mass-deletions
-    world.despawn_all_with<TempTag>();
+    // Exclusive access allows direct mutation of the World
+    auto q = world.query<With<TempTag>>();
+    std::vector<Entity> to_despawn;
+    for (auto [entity] : q.with_entity()) {
+        to_despawn.push_back(entity);
+    }
+    for (auto e : to_despawn) {
+        world.despawn(e);
+    }
 }
 ```
 
@@ -157,8 +164,8 @@ You **cannot** structurally modify the world (spawn/add/remove) while iterating 
 void spawner_system(Commands& cmds, Query<Entity, const Transform> q) {
     for (auto [entity, transform] : q.with_entity()) {
         if (should_split(transform)) {
-            cmds.spawn(Transform{transform.position}); // Queued for later
-            cmds.despawn(entity);                      // Queued for later
+            cmds.spawn().insert(Transform{transform.position}); // Queued for later
+            cmds.despawn(entity);                               // Queued for later
         }
     }
 }
