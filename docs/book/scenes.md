@@ -6,28 +6,30 @@ Helios uses a **YAML-based scene serialization** system. Scenes are stored as `.
 
 ## The .hvescn Structure
 
-A scene file is a list of entities, each with a unique local ID (for parenting) and a set of components.
+A scene file defines a root `scene` node containing a list of `entities`. Each entity has a `name` and a `components` map.
 
 ```yaml
-- entity: 0
-  tag: Main Camera
-  Transform:
-    position: [0, 5, 10]
-    rotation: [-0.2, 0, 0, 0.98]
-  Camera:
-    fov: 60.0
-    near: 0.1
-    far: 1000.0
+scene:
+  entities:
+    - name: Main Camera
+      components:
+        Transform:
+          position: [0, 5, 10]
+          rotation: [-0.2, 0, 0, 0.98]
+        Camera:
+          fov: 60.0
+          near: 0.1
+          far: 1000.0
 
-- entity: 1
-  tag: Player
-  Transform:
-    position: [0, 1, 0]
-  RigidBody:
-    body_type: Dynamic
-    mass: 1.0
-  physics::Collider:
-    shape: { SphereShape: { radius: 0.5 } }
+    - name: Player
+      components:
+        Transform:
+          position: [0, 1, 0]
+        RigidBody:
+          body_type: Dynamic
+          mass: 1.0
+        BoxCollider:
+          half_extents: [0.5, 0.5, 0.5]
 ```
 
 ## SceneRoot Component
@@ -61,21 +63,22 @@ void load_level(World& world, const std::string& path) {
     world.clear(); 
     
     SceneSerializer serializer;
+    // Register required components before loading
+    // serializer.register_component<Transform>("Transform", ...);
+    
     serializer.load_scene(world, path);
 }
-
-// C# Scripting equivalent
-Scene.Load("Scenes/Level2.hvescn");
 ```
 
 ### Instantiating a Scene (Additive)
 
-Instantiating a scene (or "prefab") adds its entities to the existing world, often parented under a specific entity or a new `SceneRoot`.
+Instantiating a scene (or "prefab") adds its entities to the existing world, often parented under a new `SceneRoot`.
 
 ```cpp
 // C++ Example: Instantiating an enemy prefab
 Entity spawn_enemy(World& world, const std::string& prefab_path, glm::vec3 position) {
     SceneSerializer serializer;
+    // Note: load_scene creates a SceneRoot and parents loaded entities under it
     Entity root = serializer.load_scene(world, prefab_path);
     
     if (auto* t = world.try_get<Transform>(root)) {
@@ -83,9 +86,6 @@ Entity spawn_enemy(World& world, const std::string& prefab_path, glm::vec3 posit
     }
     return root;
 }
-
-// C# Scripting equivalent
-Entity enemy = Scene.Instantiate("Prefabs/Orc.hvescn");
 ```
 
 ## Serialization Lifecycle

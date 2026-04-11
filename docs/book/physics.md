@@ -56,22 +56,22 @@ The `RigidBody` component defines how an entity interacts with the physical worl
 
 ```cpp
 struct RigidBody {
-    BodyType body_type = BodyType::Static;
-    float mass = 1.0f;
-    float friction = 0.5f;
-    float restitution = 0.0f;
-    RigidBodyFlags flags = RigidBodyFlags::None;
+    BodyType body_type = BodyType::Dynamic;
+    BodyHandle handle;
+    float    mass        = 1.0f;
+    float    friction    = 0.5f;
+    float    restitution = 0.3f;
+    uint32_t flags       = RigidBodyFlags::UseGravity;
 };
 ```
 
-## Collider Component
+## Collider Components
 
-A `RigidBody` must be paired with a `Collider` to have a physical shape. Helios supports several primitive shapes via a `ColliderShape` variant.
+A `RigidBody` must be paired with a `Collider` component to have a physical shape. Helios provides several primitive collider components:
 
-### Supported Shapes
-- **BoxShape**: Defined by `half_extents`.
-- **SphereShape**: Defined by `radius`.
-- **CapsuleShape**: Defined by `radius` and `half_height`.
+### Supported Colliders
+- **BoxCollider**: Defined by `half_extents` and `offset`.
+- **SphereCollider**: Defined by `radius` and `offset`.
 
 ### Setting up a Dynamic Body
 
@@ -81,10 +81,11 @@ world.spawn(
     RigidBody{
         .body_type = BodyType::Dynamic,
         .mass = 5.0f,
-        .friction = 0.3f
+        .friction = 0.3f,
+        .flags = RigidBodyFlags::UseGravity
     },
-    physics::Collider{
-        .shape = physics::BoxShape{.half_extents = {0.5f, 0.5f, 0.5f}}
+    BoxCollider{
+        .half_extents = {0.5f, 0.5f, 0.5f}
     }
 );
 ```

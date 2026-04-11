@@ -79,9 +79,9 @@ void update_audio_listener(Res<ActiveCamera> active_cam,
                            Query<const Transform> transforms) {
     if (auto* transform = transforms.try_get(active_cam->entity)) {
         glm::vec3 pos = transform->position;
-        glm::vec3 forward = transform->forward();
-        glm::vec3 up = transform->up();
-        
+        glm::vec3 forward = transform->rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::vec3 up      = transform->rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+
         device->set_listener(pos, forward, up);
     }
 }
