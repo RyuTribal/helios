@@ -39,6 +39,22 @@ The renderer is integrated into the ECS via two primary resources: `RenderContex
 ### `RenderContext`
 The `RenderContext` resource holds the lifetime of the GPU device, the swapchain, and the per-frame command buffers. It also manages the scene framebuffers and per-camera render targets.
 
+Systems interacting with the renderer should use the `ResMut<RenderContext>` pattern:
+
+```cpp
+void my_render_system(ResMut<RenderContext> ctx) {
+    auto* device = ctx->device.get(); // Access low-level RHI
+    auto* cmd = ctx->cmd;             // Current frame command buffer
+    // ...
+}
+```
+
+### `RenderMode`
+The global rendering mode is configured via `RenderPlugin` and reflected in `RenderContext::mode`:
+
+- **`RenderMode::Direct`**: The default mode. The internal scene framebuffer is automatically blitted to the swapchain at the end of the frame for display.
+- **`RenderMode::Offscreen`**: The scene is rendered to the internal framebuffer but not blitted to the swapchain. This is used by the Editor to display the scene within an ImGui window.
+
 ### `RenderSettings`
 Centralized, runtime-changeable settings that govern the global render state:
 - **VSync**: Controlled via `present_mode` (e.g., `Fifo` for VSync, `Immediate` for off).
@@ -65,7 +81,7 @@ The `ForwardPlusPlugin` provides the engine's primary rendering path. It is a hi
 
 ### Configuration (`ForwardPlusConfig`)
 The pipeline is configured via the `ForwardPlusConfig` resource, typically set during application startup:
-- **`skybox_hdr_path`**: The path to the HDR environment map used for the skybox and IBL (Image Based Lighting).
+- **`skybox_hdr_path`**: The path to the HDR environment map used for the skybox and IBL (Image Based Lighting). This is the only way to configure the skybox; it is not currently an ECS component.
 - **`tile_size`**: The size of the screen-space tiles used for light culling (default 16x16).
 - **`shadow_resolution`**: The resolution of the cascaded shadow maps.
 
@@ -81,13 +97,54 @@ The pipeline executes the following stages in sequence:
 6.  **Skybox Pass**: Renders the environment cubemap behind the geometry.
 7.  **Tonemapping**: Final pass that converts the HDR scene buffer to the display's LDR range.
 
+## Scene Setup
+
+To render a mesh, you must spawn an entity with `Transform` and `MeshRenderer` components. The `MeshRenderer` requires a `Handle` to a `MeshAsset` and optionally a `MaterialAsset`.
+
+```cpp
+void setup_scene(App& app, Res<AssetServer> assets) {
+    // Load assets
+    auto mesh = assets->load<MeshAsset>("Meshes/Sphere.hvemesh");
+    auto material = assets->load<MaterialAsset>("Materials/Gold.hvemat");
+
+    // Spawn entity
+    app.spawn()
+        .add<Transform>({ .position = glm::vec3(0, 0, 0) })
+        .add<MeshRenderer>({
+            .mesh = mesh,
+            .material = material // Overrides the mesh's default material
+        });
+}
+```
+
 ## Lighting
 
 Lighting is integrated into the ECS with support for various light types:
 
 - **`DirectionalLight`**: A global, distant light source with support for cascaded shadows.
 - **`PointLight`**: An omnidirectional light with a specific radius.
-- **`SpotLight`**: *Note: Currently, SpotLights are only supported within the renderer's internal `FramePacket` structures and are not yet available as high-level ECS components.*
+- **`SpotLight`**: *Note: Currently, SpotLights are internal-only and not yet exposed as ECS components.*
+
+### Light Components
+
+```cpp
+// Create a bright white directional light
+app.spawn()
+    .add<Transform>({ .rotation = glm::quatLookAt(glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0, 1, 0)) })
+    .add<DirectionalLight>({
+        .color = glm::vec3(1.0f),
+        .intensity = 5.0f
+    });
+
+// Create a small red point light
+app.spawn()
+    .add<Transform>({ .position = glm::vec3(0, 5, 0) })
+    .add<PointLight>({
+        .color = glm::vec3(1.0f, 0.0f, 0.0f),
+        .intensity = 10.0f,
+        .radius = 25.0f
+    });
+```
 
 ### Render Layers
 Both cameras and renderable entities (meshes, lights) support `RenderLayers`. A camera only renders an entity if their layer masks intersect, providing a flexible way to partition scenes or create specialized view effects.
