@@ -129,6 +129,27 @@ Helios automatically injects data into systems based on their parameter types:
 | `EventWriter<T>` | Write | Send events to be read by other systems. |
 | `World&` | Exclusive | Full, direct access. Forces serial execution of the system. |
 
+### Event Examples
+```cpp
+void collision_system(EventReader<CollisionEvent> reader, EventWriter<SoundRequestEvent> writer) {
+    for (const auto& event : reader) {
+        if (event.is_player_hit) {
+            writer.send(SoundRequestEvent{"impact_thud"});
+        }
+    }
+}
+```
+
+### Exclusive Access
+Use `World&` when you need direct, unrestricted control over the entire ECS. Systems using this parameter will run sequentially, as they require exclusive access to all data.
+
+```cpp
+void cleanup_system(World& world) {
+    // Manually iterate, clear entire archetypes, or perform mass-deletions
+    world.despawn_all_with<TempTag>();
+}
+```
+
 ### Commands (Deferred Changes)
 You **cannot** structurally modify the world (spawn/add/remove) while iterating over a `Query` because it would invalidate the archetype storage. Instead, use `Commands`:
 
@@ -175,9 +196,10 @@ for (auto [entity, transform] : query.with_entity()) { ... }
 Helios tracks "ticks" for every component mutation. `Changed<T>` is extremely powerful for optimization (e.g., only updating physics bodies when their transform moves).
 
 ```cpp
-void sync_physics(Query<const Transform, Changed<Transform>, ResMut<PhysicsWorld>> query) {
+void sync_physics(Query<const Transform, Changed<Transform>> query, ResMut<PhysicsWorld> physics) {
     for (auto [transform] : query) {
         // Only runs for entities whose Transform actually changed!
+        physics->update_body(transform);
     }
 }
 ```
@@ -197,9 +219,13 @@ app.add_system(Schedule::Update, movement_system, "movement");
 By default, the scheduler runs systems in parallel. You can enforce order using `.before()` and `.after()`:
 
 ```cpp
+// Explicit ordering via system IDs
 app.add_system(Schedule::Update, input_system, "input");
 app.add_system(Schedule::Update, move_system, "move").after("input");
 app.add_system(Schedule::Update, post_move, "post").after("move");
+
+// You can also ensure a system runs BEFORE another
+app.add_system(Schedule::Update, pre_update, "setup").before("input");
 ```
 
 ### Parallel Execution
