@@ -59,12 +59,12 @@ The `rhi::CommandBuffer` class is used to record GPU commands, such as drawing, 
 
 ```cpp
 cmd->begin();
-cmd->transition_image(*texture, rhi::TextureLayout::Undefined, rhi::TextureLayout::ColorAttachment);
-cmd->begin_rendering(texture, nullptr, clear_values, width, height);
-cmd->bind_pipeline(*pipeline);
+cmd->transition_image(texture.get(), rhi::TextureLayout::Undefined, rhi::TextureLayout::ColorAttachment);
+cmd->begin_rendering(texture.get(), nullptr, clear_values, width, height);
+cmd->bind_pipeline(pipeline.get());
 cmd->draw(3);
 cmd->end_rendering();
-cmd->transition_image(*texture, rhi::TextureLayout::ColorAttachment, rhi::TextureLayout::PresentSrc);
+cmd->transition_image(texture.get(), rhi::TextureLayout::ColorAttachment, rhi::TextureLayout::PresentSrc);
 cmd->end();
 ```
 

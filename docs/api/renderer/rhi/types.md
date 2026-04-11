@@ -19,6 +19,38 @@ Flags indicating how a buffer can be used.
 Flags indicating how a texture can be used.
 - `Sampled`, `Storage`, `ColorAttachment`, `DepthAttachment`, `Transfer`
 
+### TextureLayout
+States a texture can transition between.
+- `Undefined`, `General`, `ColorAttachment`, `DepthAttachment`, `ShaderReadOnly`, `TransferSrc`, `TransferDst`, `PresentSrc`
+
+### ShaderStage
+Pipeline stages for shaders.
+- `Vertex`, `Fragment`, `Compute`
+
+### SamplerMode
+Texture filtering and wrapping behaviors.
+- `Repeat`, `MirroredRepeat`, `ClampToEdge`, `ClampToBorder`
+
+### CullMode
+Mesh face culling.
+- `None`, `Front`, `Back`, `FrontAndBack`
+
+### DepthCompare
+Depth testing comparison functions.
+- `Never`, `Less`, `Equal`, `LessEqual`, `Greater`, `NotEqual`, `GreaterEqual`, `Always`
+
+### BlendMode
+Color blending equations.
+- `None`, `Additive`, `Alpha`, `Screen`
+
+### LoadOp
+Action taken on an attachment at the start of a pass.
+- `Load`, `Clear`, `DontCare`
+
+### StoreOp
+Action taken on an attachment at the end of a pass.
+- `Store`, `DontCare`
+
 ### MemoryAccess
 Determines where a resource is stored and how it can be accessed.
 - `GPU_Only`: Fastest performance, requires command buffers for updates.
@@ -53,6 +85,10 @@ Description of the entire graphics pipeline state.
 - `state`: `RenderState` (culling, depth test, blending).
 - `render_pass`: The render pass this pipeline is compatible with.
 - `descriptor_layouts`: List of descriptor sets used by this pipeline.
+- `use_dynamic_rendering`: Boolean flag to enable dynamic rendering support.
+- `dynamic_color_formats`: List of `TextureFormat` used for color attachments.
+- `dynamic_depth_format`: `TextureFormat` used for the depth attachment.
+- `primitive_topology`: `Topology` type (Point, Line, Triangle).
 
 ### ClearValues
 Values used when clearing attachments at the start of a pass.

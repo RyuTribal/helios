@@ -1,6 +1,6 @@
 # rhi::Device
 
-The `rhi::Device` class is the primary interface for interacting with the GPU. it acts as a factory for all GPU resources (textures, buffers, shaders, pipelines) and manages the command submission queue.
+The `rhi::Device` class is the primary interface for interacting with the GPU. It acts as a factory for all GPU resources (textures, buffers, shaders, pipelines) and manages the command submission queue.
 
 ## Member Functions
 
@@ -17,6 +17,22 @@ The `rhi::Device` class is the primary interface for interacting with the GPU. i
 | `create_swapchain(desc)` | Creates a swapchain for window presentation. |
 | `create_render_pass(desc)` | Defines a set of attachments and subpasses. |
 | `create_framebuffer(desc)` | Binds textures to a render pass. |
+
+### Descriptor Management
+
+| Method | Description |
+| :--- | :--- |
+| `create_descriptor_set_layout(desc)` | Defines the layout of a descriptor set. |
+| `allocate_descriptor_set(layout)` | Allocates a descriptor set from the device pool. |
+| `update_descriptor_set(set, writes)` | Updates the contents of a descriptor set. |
+
+### Surface & Swapchain
+
+| Method | Description |
+| :--- | :--- |
+| `create_surface(window_handle)` | Creates an RHI surface for window integration. |
+| `destroy_surface(surface)` | Destroys an RHI surface. |
+| `create_swapchain(desc)` | Creates a swapchain for window presentation. |
 
 ### Command Submission
 

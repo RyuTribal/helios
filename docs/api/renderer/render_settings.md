@@ -19,6 +19,20 @@ The `RenderSettings` struct is a resource stored in the ECS that manages runtime
 | `exposure` | The exposure level for HDR. |
 | `tonemap` | The tonemapping operator to use (`TonemapMode`). |
 
+#### TonemapMode
+Available operators:
+- `None`: Linear output.
+- `Reinhard`: Basic compression, prevents highlight clipping.
+- `ACES`: Academy Color Encoding System, cinematic look.
+- `Filmic`: High-contrast, film-like curve.
+
+### Ambient Settings
+
+| Member | Description |
+| :--- | :--- |
+| `ambient_color` | The color of global ambient light. |
+| `ambient_intensity` | Multiplier for global ambient light. |
+
 ### Quality Settings
 
 | Member | Description |
@@ -26,6 +40,9 @@ The `RenderSettings` struct is a resource stored in the ECS that manages runtime
 | `shadow_resolution` | The pixel dimension for shadow maps. |
 | `shadow_cascades` | The number of shadow cascades for directional lights. |
 | `max_point_lights` | The limit for tiled lighting calculations. |
+| `max_dir_lights` | The limit for directional light sources. |
+| `lod_bias` | Offset for Level of Detail calculations (positive = lower detail). |
+| `anisotropic_filtering` | Level of anisotropic filtering (1 - 16). |
 
 ### Debugging
 
