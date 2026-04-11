@@ -53,6 +53,16 @@ nav:
       - App:
         - App: api/core/app/app.md
         - GameFlow: api/core/app/game_flow.md
+    - Renderer:
+      - Render Plugin: api/renderer/render_plugin.md
+      - Render Context: api/renderer/render_context.md
+      - Render Settings: api/renderer/render_settings.md
+      - RHI:
+        - Device: api/renderer/rhi/device.md
+        - Command Buffer: api/renderer/rhi/command_buffer.md
+        - Texture: api/renderer/rhi/texture.md
+        - Buffer: api/renderer/rhi/buffer.md
+        - Types: api/renderer/rhi/types.md
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
