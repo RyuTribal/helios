@@ -215,17 +215,23 @@ Systems are added to the `App` and assigned to a `Schedule`.
 app.add_system(Schedule::Update, movement_system, "movement");
 ```
 
+### Fixed Timestep
+`Schedule::Update` runs as fast as possible every frame. For physics, networking, and critical gameplay logic, use `Schedule::FixedUpdate`.
+- **Constant Frequency:** By default, it runs at 60Hz (0.0166s per tick).
+- **Accumulator Logic:** It uses a time accumulator to ensure it handles variable frame rates correctly. If a frame takes longer than usual, multiple `FixedUpdate` ticks may run in a single engine frame.
+- **Spiral of Death Prevention:** To prevent performance death spirals (where slow frames cause more ticks, which cause even slower frames), there is a cap of **10 ticks per engine frame**.
+
 ### Ordering
 By default, the scheduler runs systems in parallel. You can enforce order using `.before()` and `.after()`:
 
 ```cpp
 // Explicit ordering via system IDs
 app.add_system(Schedule::Update, input_system, "input");
-app.add_system(Schedule::Update, move_system, "move").after("input");
-app.add_system(Schedule::Update, post_move, "post").after("move");
+app.add_system(Schedule::Update, move_system, "move").after(app.id_of("input"));
+app.add_system(Schedule::Update, post_move, "post").after(app.id_of("move"));
 
 // You can also ensure a system runs BEFORE another
-app.add_system(Schedule::Update, pre_update, "setup").before("input");
+app.add_system(Schedule::Update, pre_update, "setup").before(app.id_of("input"));
 ```
 
 ### Parallel Execution
