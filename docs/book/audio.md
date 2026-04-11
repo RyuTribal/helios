@@ -74,15 +74,15 @@ void play_explosion(World& world, glm::vec3 position, Handle<AudioData> explosio
 For spatial audio to work correctly, the `AudioDevice` needs to know the position and orientation of the listener (usually the active camera). This is typically updated once per frame.
 
 ```cpp
-void update_audio_listener(Res<ActiveCamera> active_cam, 
-                           ResMut<std::unique_ptr<AudioDevice>> device,
-                           Query<const Transform> transforms) {
-    if (auto* transform = transforms.try_get(active_cam->entity)) {
-        glm::vec3 pos = transform->position;
-        glm::vec3 forward = transform->rotation * glm::vec3(0.0f, 0.0f, -1.0f);
-        glm::vec3 up      = transform->rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+void update_audio_listener(ResMut<std::unique_ptr<AudioDevice>> device,
+                           Query<const Transform, With<ActiveCamera>> listener_query) {
+    for (auto [transform] : listener_query) {
+        glm::vec3 pos     = transform.position;
+        glm::vec3 forward = transform.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::vec3 up      = transform.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
 
         device->set_listener(pos, forward, up);
+        break; // Only one listener supported
     }
 }
 ```

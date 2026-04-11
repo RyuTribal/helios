@@ -59,9 +59,6 @@ Loading a scene usually involves clearing the current world (except for persiste
 ```cpp
 // C++ Example
 void load_level(World& world, const std::string& path) {
-    // Clear existing entities
-    world.clear(); 
-    
     SceneSerializer serializer;
     // Register required components before loading
     // serializer.register_component<Transform>("Transform", ...);

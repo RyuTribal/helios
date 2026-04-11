@@ -32,8 +32,11 @@ The engine uses a `FixedTimeAccumulator` resource to track elapsed time. If the 
 ```cpp
 // Internal physics step system
 void physics_step(ResMut<std::unique_ptr<PhysicsWorld>> world,
+                  Res<PhysicsConfig> config,
                   EventWriter<ContactEvent> contacts_out) {
-    float dt = world->config().fixed_timestep;
+    if (!*world) return;
+
+    float dt = config->fixed_timestep;
     world->step(dt);
     
     // Drain and emit contact events
