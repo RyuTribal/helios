@@ -41,3 +41,6 @@ The `WindowClosePolicy` enum defines how window closures affect the application'
 - `PrimaryExitsApp`: Closing the primary window exits the app. Secondary windows just close. (Default for games)
 - `LastWindowExitsApp`: The app exits when the last window is closed. (Suitable for editors)
 - `NeverExit`: Closing a window never exits the app automatically. Manual `quit()` required. (Suitable for specialized tools)
+
+## Related Pages
+- [Window](window.md)

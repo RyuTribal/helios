@@ -46,3 +46,6 @@ float vertical = map.axis_value("Vertical"); // 1.0 if W pressed, -1.0 if S pres
 ### Remapping Support
 
 `InputMap` stores multiple bindings per action. This means an action like `"Fire"` can be bound to both the Left Mouse Button and a Gamepad Trigger simultaneously.
+
+## Related Pages
+- [RawInput](raw_input.md)

@@ -65,3 +65,7 @@ Entities:
           Mesh: "assets/meshes/cube.hlasset"
           Material: "assets/materials/red.hlasset"
 ```
+
+## Related Pages
+- [SceneManager](scene_manager.md)
+- [World](../ecs/world.md)

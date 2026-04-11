@@ -41,3 +41,7 @@ if (input.mouse_button_pressed(MouseButton::Left)) {
     // Perform fire
 }
 ```
+
+## Related Pages
+- [InputMap](input_map.md)
+- [Window](../window/window.md)

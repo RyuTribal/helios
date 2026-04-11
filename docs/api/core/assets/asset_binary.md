@@ -47,3 +47,6 @@ Metadata allows storing arbitrary key-value pairs alongside the asset. Examples 
 - `source_hash`: The hash of the source file for detecting changes.
 - `texture_format`: Specific compression format for textures.
 - `mesh_scale`: Default scaling for a 3D model.
+
+## Related Pages
+- [AssetServer](asset_server.md)

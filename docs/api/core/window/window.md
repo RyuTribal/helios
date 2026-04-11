@@ -42,3 +42,7 @@ A struct containing:
 - `scroll_x`, `scroll_y`: Cumulative scroll delta.
 - `resized`: Boolean flag for window resize.
 - `close_requested`: Boolean flag for close request.
+
+## Related Pages
+- [Windows](windows.md)
+- [RawInput](../input/raw_input.md)

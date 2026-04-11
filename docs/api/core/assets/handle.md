@@ -47,3 +47,6 @@ Handle<TextureAsset> h2 = h1; // refcount = 2
 // Re-assigning handles handles release and acquire correctly
 h1 = server.load<TextureAsset>("other.png"); // release "t.png", acquire "other.png"
 ```
+
+## Related Pages
+- [AssetServer](asset_server.md)

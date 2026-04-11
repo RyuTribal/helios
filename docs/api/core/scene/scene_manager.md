@@ -53,3 +53,7 @@ if (scenes.is_preloaded(scene, asset_server)) {
 ## Scene Data
 
 The `SceneManager` stores information about each scene in an internal `SceneData` structure. Each spawned entity is tagged with a `SceneTag` component, allowing the manager to track and despawn them as needed.
+
+## Related Pages
+- [SceneSerializer](scene_serializer.md)
+- [AssetServer](../assets/asset_server.md)
