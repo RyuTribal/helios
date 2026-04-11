@@ -15,7 +15,7 @@ void my_system(Res<std::shared_ptr<AssetServer>> asset_server) {
 }
 ```
 
-### Registration
+### Custom Importers
 
 Each asset type must have an importer registered. The `AssetPlugin` handles standard types, but you can register custom ones:
 
@@ -26,6 +26,26 @@ server->register_importer<MyAsset>([](const std::filesystem::path& path, AssetSe
 });
 
 server->register_extensions<MyAsset>({"myasset", "hvemy"});
+```
+
+#### Sub-asset Creation
+
+Complex assets, like a GLB model, often contain multiple internal sub-assets (e.g., embedded textures, materials). To manage these properly, importers can use `server.store()` and `server.add_dependency()`.
+
+- **`server.store(path, asset)`**: Manually registers an asset that doesn't have its own file. The `path` is used as a unique cache key (often the parent's path + a name). Returns a raw `AssetHandle`.
+- **`server.add_dependency(parent, child)`**: Tells the server that the `child` asset's lifetime is tied to the `parent`. When the parent's refcount reaches zero, it will also release its reference to the child.
+
+**Example from a GLB Importer:**
+
+```cpp
+// 1. Create sub-asset (e.g., embedded texture)
+TextureAsset tex = load_from_buffer(glb_data);
+
+// 2. Store it manually in the server
+AssetHandle tex_handle = server.store("Models/Hero.glb::Texture_0", std::move(tex));
+
+// 3. Link child's lifetime to the parent mesh
+server.add_dependency(mesh_handle, tex_handle);
 ```
 
 ### Loading Assets
@@ -44,6 +64,44 @@ Blocks the current thread until the asset is loaded.
 Handle<MeshAsset> mesh = server->load_sync<MeshAsset>("Meshes/Hero.hlasset");
 ```
 
+### Diverse Loading Examples
+
+The `AssetServer` can load any registered type. Common examples:
+
+```cpp
+// Textures (PNG, JPG, HDR)
+Handle<TextureAsset> albedo = server->load<TextureAsset>("Textures/Grass_Albedo.png");
+
+// Audio (WAV, OGG, MP3)
+Handle<AudioData> music = server->load<AudioData>("Music/MainTheme.ogg");
+```
+
+### Loading Batches
+
+Use a `LoadBatch` to track the loading status of multiple assets. This is ideal for loading a scene or a set of resources for a specific entity.
+
+```cpp
+// 1. Start a batch
+auto builder = server->load_batch();
+
+// 2. Add multiple assets (all types supported)
+builder.add<MeshAsset>("Meshes/Hero.hlasset")
+       .add<TextureAsset>("Textures/Hero_Base.png")
+       .add<AudioData>("Sfx/Hero_Spawn.wav");
+
+// 3. Submit and get a tracker
+LoadBatch batch = builder.submit();
+
+// 4. Check progress or completion
+if (batch.is_complete()) {
+    float percent = batch.progress() * 100.0f;
+    int remaining = batch.remaining();
+}
+```
+
+- **Reference Counting:** The `LoadBatch` holds a strong reference to all assets within it. When the batch is destroyed, those references are released unless you've stored the handles elsewhere.
+- **Progress Tracking:** `batch.progress()` returns a `float` (0.0 to 1.0) indicating the percentage of assets that have either finished loading or failed.
+
 ### Status and Resolution
 
 Check the status of an asset or resolve a handle to its underlying data:
@@ -58,9 +116,17 @@ if (server->is_loaded(mesh.untyped())) {
 
 ## Handle\<T\>
 
-A `Handle<T>` is a reference-counted smart pointer to an asset. 
+A `Handle<T>` is a reference-counted smart pointer to an asset. Under the hood, it wraps a raw `AssetHandle`.
 
-- **Acquire/Release:** Automatically increments the refcount on construction/copy and decrements on destruction.
+### AssetHandle
+
+The `AssetHandle` is a 64-bit packed ID consisting of:
+- **32-bit Index:** Points to the asset's slot in the internal storage array.
+- **32-bit Generation:** Incremented each time a slot is reused, preventing "dangling" handles to destroyed assets.
+
+Because it is a simple 64-bit POD (Plain Old Data) type, it is extremely efficient to copy, pass, and store. It contains no pointers, making it safe for serialization and use in multi-threaded contexts.
+
+- **Acquire/Release:** `Handle<T>` automatically increments the refcount on construction/copy and decrements on destruction.
 - **Untyped Access:** Use `handle.untyped()` to get the raw `AssetHandle` (e.g., for internal engine APIs or serialization).
 - **Null Checks:** Handles can be checked for validity: `if (mesh) { ... }`.
 
