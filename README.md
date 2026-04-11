@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-brightgreen?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/C%2B%2B-20-orange?style=flat-square" alt="C++20">
   <img src="https://img.shields.io/badge/Vulkan-1.3-red?style=flat-square" alt="Vulkan 1.3">
+  <a href="https://helios-engine.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/docs-ReadTheDocs-blue?style=flat-square" alt="Docs"></a>
   <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="License">
 </p>
 
