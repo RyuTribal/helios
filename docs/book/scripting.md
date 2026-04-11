@@ -27,10 +27,13 @@ provides the gateway to entity properties and lifecycle events.
 | Callback | Description |
 |---|---|
 | `OnCreate()` | Called once when the script instance is first created. Use for initialization. |
-| `OnUpdate(float delta)` | Called every frame. `delta` is the time in seconds since the last frame. |
+| `OnUpdate(float delta)` | Called every frame during `Schedule::Update` (variable timestep). `delta` is the time in seconds since the last frame. |
 | `OnDestroy()` | Called when the entity is destroyed or the script component is removed. |
 | `OnCollisionEnter(...)` | Triggered when the physics engine detects a new contact. |
 | `OnCollisionExit(...)` | Triggered when a physics contact ends. |
+
+> [!IMPORTANT]
+> **Execution Order:** `OnUpdate` runs during the engine's main update phase (`Schedule::Update`), which uses a variable timestep. There is currently no `OnFixedUpdate` for C# scripts; any logic requiring a fixed-step (e.g., custom physics integration) should be implemented in C++ or manually accumulated within `OnUpdate`.
 
 ### Example: Rotator Script
 
@@ -89,16 +92,16 @@ primary interface to the engine:
 ### Available Engine Components
 
 You can access native C++ components from C# as if they were managed classes.
-These are marked with `[NativeComponent]` and cannot be added/removed from C#:
+These are marked with `[NativeComponent]` and cannot be added/removed from C#.
+
+The following component is currently available with a full C# bridge:
 
 | Component | Description |
 |---|---|
-| `TransformComponent` | Position, Rotation (Euler), and Scale. |
-| `RigidBody` | Physics state (velocity, mass, forces). |
-| `MeshRenderer` | Controls the 3D model and material assigned to the entity. |
-| `Tag` | A string identifier for the entity (accessible via `Entity.TagName`). |
-| `PointLight` | Emits light in all directions from a point. |
-| `AudioSource` | Internal state for spatialized audio playback. |
+| `TransformComponent` | `Translation`, `Rotation` (Euler angles), and `Scale`. |
+
+> [!NOTE]
+> Additional engine components (e.g., `RigidBody`, `MeshRenderer`, `PointLight`) are planned for future updates. Currently, these are only accessible via the raw `NativeAPI` layer if implemented, or must be managed from the C++ side.
 
 ## Input, Audio, and Scenes
 
@@ -119,15 +122,15 @@ if (Input.IsMouseButtonPressed(0)) { /* Primary fire */ }
 
 ### Audio System
 
-Play spatialized or global audio:
+Play spatialized or global audio using the `Audio` class:
 
 ```csharp
 // Play a specific audio file at a world position
-Audio.PlayFile("Assets/Sounds/Explosion.wav", transform.Translation, 1.0f, false);
+Audio.Play("Assets/Sounds/Explosion.wav", transform.Translation, 1.0f, false);
 
-// Play a registered sound by ID (faster)
-uint soundId = Audio.GetSoundId("PlayerJump");
-Audio.PlaySoundAt(soundId, transform.Translation);
+// Play a pre-loaded audio asset (faster, load in OnCreate via Assets.Load)
+AssetHandle jumpSound = Assets.Load("Assets/Sounds/Jump.wav");
+Audio.Play(jumpSound, transform.Translation);
 ```
 
 ### Scene Management
