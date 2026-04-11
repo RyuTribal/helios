@@ -29,7 +29,17 @@ nav:
     - Scripting: scripting.md
     - Editor: editor.md
   - API Reference:
-    - Placeholder: api/index.md
+    - Overview: api/index.md
+    - Core:
+      - ECS:
+        - World: api/core/ecs/world.md
+        - Entity: api/core/ecs/entity.md
+        - Query: api/core/ecs/query.md
+        - Commands: api/core/ecs/commands.md
+        - Scheduler: api/core/ecs/scheduler.md
+      - App:
+        - App: api/core/app/app.md
+        - GameFlow: api/core/app/game_flow.md
 
 markdown_extensions:
   - pymdownx.highlight:
