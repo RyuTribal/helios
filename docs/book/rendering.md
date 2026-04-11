@@ -56,11 +56,43 @@ The global rendering mode is configured via `RenderPlugin` and reflected in `Ren
 - **`RenderMode::Offscreen`**: The scene is rendered to the internal framebuffer but not blitted to the swapchain. This is used by the Editor to display the scene within an ImGui window.
 
 ### `RenderSettings`
-Centralized, runtime-changeable settings that govern the global render state:
-- **VSync**: Controlled via `present_mode` (e.g., `Fifo` for VSync, `Immediate` for off).
-- **Resolution Scale**: Dynamically scales the internal render resolution (0.25x to 2.0x).
-- **Tonemapping**: Selection of operators including ACES, Reinhard, and Filmic.
-- **Debug Visualization**: Flags for wireframe, colliders, normals, and light bounds.
+
+Centralized, runtime-changeable settings that govern the global render state. These settings are typically accessed via `ResMut<RenderSettings>` within a system.
+
+- **VSync**: Controlled via `present_mode`. Use `set_vsync(bool)` for a simplified interface (`Fifo` for VSync, `Immediate` for off).
+- **Resolution Scale**: Dynamically scales the internal render resolution (0.25x to 2.0x) without resizing the window.
+- **Exposure & Ambient Lighting**: Global `exposure` control for tonemapping, and `ambient_color` / `ambient_intensity` for basic environmental fill lighting.
+- **Shadow Settings**: Configure `shadow_resolution` and `shadow_cascades` for directional lights. Updating these may trigger a lazy reallocation of shadow map resources.
+- **Tonemapping**: Selection of operators: `ACES` (default), `Reinhard`, or `Filmic`. Set to `None` for raw HDR output.
+- **Debug Visualization**: The `debug_draw` field supports bitwise flags for various visualizations. Use `toggle_debug(flag)` or `has_debug(flag)` to manage:
+    - `Wireframe`: Renders geometry in wireframe mode.
+    - `Colliders`: Displays physics collider geometry.
+    - `Normals`: Shows surface normals for debugging mesh data.
+    - `LightBounds`: Visualizes the screen-space tiles and point light influence.
+    - `BoundingBoxes`: Shows AABBs for all renderable entities.
+
+#### Example Usage
+
+```cpp
+void adjust_settings(ResMut<RenderSettings> settings) {
+    // Enable VSync
+    settings->set_vsync(true);
+
+    // Boost ambient lighting for a daylight look
+    settings->ambient_intensity = 0.5f;
+    settings->ambient_color = glm::vec3(1.0f, 0.9f, 0.8f);
+
+    // Enable debug visualizations
+    settings->toggle_debug(DebugDraw::Wireframe | DebugDraw::Colliders);
+
+    // Increase shadow quality (triggers a resource refresh)
+    settings->set_shadow_resolution(4096);
+    settings->shadow_cascades = 4;
+
+    // Switch tonemapper
+    settings->tonemap = TonemapMode::Filmic;
+}
+```
 
 ## Camera System
 
@@ -78,6 +110,9 @@ The `camera_driver` system executes during `PreRender`. It gathers all active ca
 ## Forward+ Pipeline
 
 The `ForwardPlusPlugin` provides the engine's primary rendering path. It is a high-performance solution that handles many light sources by using a compute-based light culling pass.
+
+!!! note "Anti-Aliasing"
+    MSAA (Multi-Sample Anti-Aliasing) is not currently supported in the Forward+ pipeline. Improved anti-aliasing techniques are on the roadmap for future development.
 
 ### Configuration (`ForwardPlusConfig`)
 The pipeline is configured via the `ForwardPlusConfig` resource, typically set during application startup:
