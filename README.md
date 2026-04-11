@@ -9,7 +9,11 @@
 </p>
 
 <p align="center">
-  <strong>v0.5.0</strong>
+  <img src="https://img.shields.io/badge/version-0.5.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-brightgreen?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-orange?style=flat-square" alt="C++20">
+  <img src="https://img.shields.io/badge/Vulkan-1.3-red?style=flat-square" alt="Vulkan 1.3">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="License">
 </p>
 
 ---
