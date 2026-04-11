@@ -1,0 +1,39 @@
+site_name: Helios Engine
+site_description: A modular, data-driven game engine built with C++20 and Vulkan 1.3
+repo_url: https://github.com/RyuTribal/helios
+repo_name: RyuTribal/helios
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: amber
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Core:
+    - ECS: ecs.md
+    - Assets: assets.md
+    - Scenes: scenes.md
+  - Runtime:
+    - Rendering: rendering.md
+    - Physics: physics.md
+    - Audio: audio.md
+  - Scripting: scripting.md
+  - Editor: editor.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - toc:
+      permalink: true
