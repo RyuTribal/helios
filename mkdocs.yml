@@ -63,6 +63,16 @@ nav:
         - Texture: api/renderer/rhi/texture.md
         - Buffer: api/renderer/rhi/buffer.md
         - Types: api/renderer/rhi/types.md
+    - Physics:
+      - Overview: api/physics/index.md
+      - PhysicsWorld: api/physics/physics_world.md
+      - PhysicsPlugin: api/physics/physics_plugin.md
+      - Components: api/physics/components.md
+    - Audio:
+      - Overview: api/audio/index.md
+      - AudioDevice: api/audio/audio_device.md
+      - AudioPlugin: api/audio/audio_plugin.md
+      - Components: api/audio/components.md
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
