@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8z/qKZtMtlY=",
+  "dgSpecHash": "nZy04yBVfsE=",
   "success": true,
-  "projectFilePath": "/home/ryutribal/programming/helios/ScriptCore/ScriptCore.csproj",
+  "projectFilePath": "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/ScriptCore.csproj",
   "expectedPackageFiles": [
     "/home/ryutribal/.nuget/packages/microsoft.aspnetcore.app.ref/10.0.4/microsoft.aspnetcore.app.ref.10.0.4.nupkg.sha512"
   ],

@@ -9,10 +9,10 @@ internal class ScriptAssemblyLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-        // User scripts reference ScriptCore — resolve it from the default (non-collectible) context
-        // where ScriptCore is already loaded.
+        // User scripts reference ScriptCore -- resolve it from the default
+        // (non-collectible) context where ScriptCore is already loaded.
         if (assemblyName.Name == "ScriptCore")
-            return typeof(Entity).Assembly;
+            return typeof(ScriptBehaviour).Assembly;
 
         return null;
     }

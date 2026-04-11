@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/ryutribal/programming/helios/ScriptCore/ScriptCore.csproj": {}
+    "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/ScriptCore.csproj": {}
   },
   "projects": {
-    "/home/ryutribal/programming/helios/ScriptCore/ScriptCore.csproj": {
+    "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/ScriptCore.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/ryutribal/programming/helios/ScriptCore/ScriptCore.csproj",
+        "projectUniqueName": "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/ScriptCore.csproj",
         "projectName": "ScriptCore",
-        "projectPath": "/home/ryutribal/programming/helios/ScriptCore/ScriptCore.csproj",
+        "projectPath": "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/ScriptCore.csproj",
         "packagesPath": "/home/ryutribal/.nuget/packages/",
-        "outputPath": "/home/ryutribal/programming/helios/ScriptCore/obj/",
+        "outputPath": "/home/ryutribal/programming/helios/helios-rewrite/ScriptCore/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/ryutribal/.nuget/NuGet/NuGet.Config"

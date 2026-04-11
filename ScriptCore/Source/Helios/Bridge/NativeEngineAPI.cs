@@ -2,68 +2,85 @@ using System.Runtime.InteropServices;
 
 namespace Helios.Bridge;
 
+/// <summary>
+/// Function pointers received from C++ at initialization.
+/// Layout must exactly match the C++ NativeEngineAPI struct.
+/// Every callback receives world_context (void*) as its first argument.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public unsafe struct NativeEngineAPI
 {
-    // Input (3)
-    public delegate* unmanaged<int, bool> IsKeyPressed;
-    public delegate* unmanaged<int, bool> IsMouseButtonPressed;
-    public delegate* unmanaged<float*, float*, void> GetMousePosition;
+    // World context (opaque pointer passed back on every call)
+    public void* WorldContext;
 
-    // Entity (2)
-    public delegate* unmanaged<ulong, byte*, bool> EntityHasComponent;
-    public delegate* unmanaged<ulong, void> EntityDestroy;
+    // Logging
+    public delegate* unmanaged<void*, int, byte*, void> Log;
 
-    // Transform (6)
-    public delegate* unmanaged<ulong, float*, void> TransformGetTranslation;
-    public delegate* unmanaged<ulong, float*, void> TransformSetTranslation;
-    public delegate* unmanaged<ulong, float*, void> TransformGetRotation;
-    public delegate* unmanaged<ulong, float*, void> TransformSetRotation;
-    public delegate* unmanaged<ulong, float*, void> TransformGetScale;
-    public delegate* unmanaged<ulong, float*, void> TransformSetScale;
+    // Entity
+    public delegate* unmanaged<void*, ulong> Spawn;
+    public delegate* unmanaged<void*, ulong, void> Despawn;
+    public delegate* unmanaged<void*, ulong, byte> IsAlive;
 
-    // Camera (8)
-    public delegate* unmanaged<ulong, float*, float, bool, void> CameraRotateAroundEntity;
-    public delegate* unmanaged<ulong, float*, float, bool, void> CameraRotate;
-    public delegate* unmanaged<ulong, float*, void> CameraGetForwardDirection;
-    public delegate* unmanaged<ulong, float*, void> CameraGetRightDirection;
-    public delegate* unmanaged<ulong, float*, void> CameraGetPosition;
-    public delegate* unmanaged<ulong, float*, void> CameraGetRotation;
-    public delegate* unmanaged<ulong, float*, void> CameraSetPosition;
-    public delegate* unmanaged<ulong, float*, void> CameraSetRotation;
+    // Component (generic)
+    public delegate* unmanaged<void*, ulong, byte*, byte> HasComponent;
 
-    // Sounds (2)
-    public delegate* unmanaged<ulong, int, void> SoundsPlayGlobal;
-    public delegate* unmanaged<ulong, int, void> SoundsPlayLocal;
+    // Transform shortcuts
+    public delegate* unmanaged<void*, ulong, float*, void> TransformGetTranslation;
+    public delegate* unmanaged<void*, ulong, float*, void> TransformSetTranslation;
+    public delegate* unmanaged<void*, ulong, float*, void> TransformGetRotation;
+    public delegate* unmanaged<void*, ulong, float*, void> TransformSetRotation;
+    public delegate* unmanaged<void*, ulong, float*, void> TransformGetScale;
+    public delegate* unmanaged<void*, ulong, float*, void> TransformSetScale;
 
-    // Box Collider (7)
-    public delegate* unmanaged<ulong, float*, void> BoxColliderGetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> BoxColliderSetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> BoxColliderAddLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> BoxColliderAddAngularVelocity;
-    public delegate* unmanaged<ulong, float*, void> BoxColliderAddImpulse;
-    public delegate* unmanaged<ulong, float*, void> BoxColliderAddAngularImpulse;
-    public delegate* unmanaged<ulong, float*, float*, void> BoxColliderAddLinearAngularImpulse;
+    // Input
+    public delegate* unmanaged<void*, int, byte> IsKeyPressed;
+    public delegate* unmanaged<void*, int, byte> IsMouseButtonPressed;
+    public delegate* unmanaged<void*, float*, float*, void> GetMousePosition;
 
-    // Sphere Collider (7)
-    public delegate* unmanaged<ulong, float*, void> SphereColliderGetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> SphereColliderSetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> SphereColliderAddLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> SphereColliderAddAngularVelocity;
-    public delegate* unmanaged<ulong, float*, void> SphereColliderAddImpulse;
-    public delegate* unmanaged<ulong, float*, void> SphereColliderAddAngularImpulse;
-    public delegate* unmanaged<ulong, float*, float*, void> SphereColliderAddLinearAngularImpulse;
+    // Physics
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyForce;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyImpulse;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsApplyTorque;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsSetLinearVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsGetLinearVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsSetAngularVelocity;
+    public delegate* unmanaged<void*, ulong, float*, void> PhysicsGetAngularVelocity;
 
-    // Character Controller (11)
-    public delegate* unmanaged<ulong, float*, void> CharControllerGetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> CharControllerSetLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> CharControllerAddLinearVelocity;
-    public delegate* unmanaged<ulong, float*, void> CharControllerAddAngularVelocity;
-    public delegate* unmanaged<ulong, float*, void> CharControllerAddImpulse;
-    public delegate* unmanaged<ulong, float*, void> CharControllerAddAngularImpulse;
-    public delegate* unmanaged<ulong, float*, float*, void> CharControllerAddLinearAngularImpulse;
-    public delegate* unmanaged<ulong, bool> CharControllerIsGrounded;
-    public delegate* unmanaged<ulong, float*, void> CharControllerGetRotation;
-    public delegate* unmanaged<ulong, float*, void> CharControllerSetRotation;
-    public delegate* unmanaged<ulong, float*, void> CharControllerRotate;
+    // Mouse delta / scroll
+    public delegate* unmanaged<void*, float*, float*, void> GetMouseDelta;
+    public delegate* unmanaged<void*, float> GetScrollDelta;
+
+    // Cursor mode (0 = normal, 1 = captured)
+    public delegate* unmanaged<void*, int, void> SetCursorMode;
+    public delegate* unmanaged<void*, int> GetCursorMode;
+
+    // Physics teleport (set_transform + zero velocity)
+    public delegate* unmanaged<void*, ulong, float*, float*, void> PhysicsTeleport;
+
+    // Tag name lookup
+    public delegate* unmanaged<void*, ulong, byte*, int, void> GetTagName;
+
+    // Time
+    public delegate* unmanaged<void*, float> GetDeltaTime;
+
+    // Input: single-press detection
+    public delegate* unmanaged<void*, int, byte> IsKeyJustPressed;
+
+    // Transform: look-at (computes rotation to face target)
+    public delegate* unmanaged<void*, ulong, float*, float*, void> TransformLookAt;
+
+    // Assets
+    public delegate* unmanaged<void*, byte*, ulong> AssetLoad;
+    public delegate* unmanaged<void*, ulong, byte> AssetIsLoaded;
+
+    // Audio
+    public delegate* unmanaged<void*, byte*, uint> AudioGetSoundId;
+    public delegate* unmanaged<void*, uint, float, float, float, void> AudioPlaySoundAt;
+    public delegate* unmanaged<void*, byte*, float, float, float, float, byte, void> AudioPlayFile;
+    public delegate* unmanaged<void*, ulong, float, float, float, float, byte, void> AudioPlayHandle;
+
+    // Scene
+    public delegate* unmanaged<void*, byte*, void> SceneLoad;
+    public delegate* unmanaged<void*, byte*, void> SceneInstantiate;
+    public delegate* unmanaged<void*, byte*, byte> SceneIsReady;
 }

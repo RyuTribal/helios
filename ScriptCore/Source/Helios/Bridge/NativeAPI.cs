@@ -4,6 +4,10 @@ using Helios.Bridge;
 
 namespace Helios;
 
+/// <summary>
+/// Static accessor for NativeEngineAPI function pointers.
+/// All methods pass WorldContext as the first argument to every native call.
+/// </summary>
 public static unsafe class NativeAPI
 {
     private static NativeEngineAPI* Api;
@@ -13,209 +17,225 @@ public static unsafe class NativeAPI
         Api = api;
     }
 
-    // ── Input (3) ──────────────────────────────────────────────
+    // -- Logging --------------------------------------------------------------
 
-    internal static bool IsKeyPressed(int keycode)
-        => Api->IsKeyPressed(keycode);
-
-    internal static bool IsMouseButtonPressed(int button)
-        => Api->IsMouseButtonPressed(button);
-
-    internal static Vector2 GetMousePosition()
+    internal static void Log(int level, string message)
     {
-        float x, y;
-        Api->GetMousePosition(&x, &y);
-        return new Vector2(x, y);
+        var bytes = Encoding.UTF8.GetBytes(message + '\0');
+        fixed (byte* ptr = bytes)
+            Api->Log(Api->WorldContext, level, ptr);
     }
 
-    // ── Entity (2) ─────────────────────────────────────────────
+    // -- Entity ---------------------------------------------------------------
 
-    internal static bool EntityHasComponent(ulong entityId, string componentName)
+    internal static ulong Spawn()
+        => Api->Spawn(Api->WorldContext);
+
+    internal static void Despawn(ulong entityId)
+        => Api->Despawn(Api->WorldContext, entityId);
+
+    internal static bool IsAlive(ulong entityId)
+        => Api->IsAlive(Api->WorldContext, entityId) != 0;
+
+    // -- Component (generic) --------------------------------------------------
+
+    internal static bool HasComponent(ulong entityId, string componentName)
     {
         var bytes = Encoding.UTF8.GetBytes(componentName + '\0');
         fixed (byte* ptr = bytes)
-            return Api->EntityHasComponent(entityId, ptr);
+            return Api->HasComponent(Api->WorldContext, entityId, ptr) != 0;
     }
 
-    internal static void EntityDestroy(ulong entityId)
-        => Api->EntityDestroy(entityId);
-
-    // ── Transform (6) ──────────────────────────────────────────
+    // -- Transform shortcuts --------------------------------------------------
 
     internal static Vector3 TransformGetTranslation(ulong id)
     {
         Vector3 v;
-        Api->TransformGetTranslation(id, (float*)&v);
+        Api->TransformGetTranslation(Api->WorldContext, id, (float*)&v);
         return v;
     }
 
     internal static void TransformSetTranslation(ulong id, Vector3 value)
-        => Api->TransformSetTranslation(id, (float*)&value);
+        => Api->TransformSetTranslation(Api->WorldContext, id, (float*)&value);
 
     internal static Vector3 TransformGetRotation(ulong id)
     {
         Vector3 v;
-        Api->TransformGetRotation(id, (float*)&v);
+        Api->TransformGetRotation(Api->WorldContext, id, (float*)&v);
         return v;
     }
 
     internal static void TransformSetRotation(ulong id, Vector3 value)
-        => Api->TransformSetRotation(id, (float*)&value);
+        => Api->TransformSetRotation(Api->WorldContext, id, (float*)&value);
 
     internal static Vector3 TransformGetScale(ulong id)
     {
         Vector3 v;
-        Api->TransformGetScale(id, (float*)&v);
+        Api->TransformGetScale(Api->WorldContext, id, (float*)&v);
         return v;
     }
 
     internal static void TransformSetScale(ulong id, Vector3 value)
-        => Api->TransformSetScale(id, (float*)&value);
+        => Api->TransformSetScale(Api->WorldContext, id, (float*)&value);
 
-    // ── Camera (8) ─────────────────────────────────────────────
+    // -- Input ----------------------------------------------------------------
 
-    internal static void CameraRotateAroundEntity(ulong id, Vector2 rotation, float speed, bool inverse)
-        => Api->CameraRotateAroundEntity(id, (float*)&rotation, speed, inverse);
+    internal static bool IsKeyPressed(int keycode)
+        => Api->IsKeyPressed(Api->WorldContext, keycode) != 0;
 
-    internal static void CameraRotate(ulong id, Vector2 rotation, float speed, bool inverse)
-        => Api->CameraRotate(id, (float*)&rotation, speed, inverse);
+    internal static bool IsMouseButtonPressed(int button)
+        => Api->IsMouseButtonPressed(Api->WorldContext, button) != 0;
 
-    internal static Vector3 CameraGetForwardDirection(ulong id)
+    internal static Vector2 GetMousePosition()
+    {
+        float x, y;
+        Api->GetMousePosition(Api->WorldContext, &x, &y);
+        return new Vector2(x, y);
+    }
+
+    // -- Physics --------------------------------------------------------------
+
+    internal static void PhysicsApplyForce(ulong entityId, Vector3 force)
+        => Api->PhysicsApplyForce(Api->WorldContext, entityId, (float*)&force);
+
+    internal static void PhysicsApplyImpulse(ulong entityId, Vector3 impulse)
+        => Api->PhysicsApplyImpulse(Api->WorldContext, entityId, (float*)&impulse);
+
+    internal static void PhysicsApplyTorque(ulong entityId, Vector3 torque)
+        => Api->PhysicsApplyTorque(Api->WorldContext, entityId, (float*)&torque);
+
+    internal static void PhysicsSetLinearVelocity(ulong entityId, Vector3 velocity)
+        => Api->PhysicsSetLinearVelocity(Api->WorldContext, entityId, (float*)&velocity);
+
+    internal static Vector3 PhysicsGetLinearVelocity(ulong entityId)
     {
         Vector3 v;
-        Api->CameraGetForwardDirection(id, (float*)&v);
+        Api->PhysicsGetLinearVelocity(Api->WorldContext, entityId, (float*)&v);
         return v;
     }
 
-    internal static Vector3 CameraGetRightDirection(ulong id)
+    internal static void PhysicsSetAngularVelocity(ulong entityId, Vector3 velocity)
+        => Api->PhysicsSetAngularVelocity(Api->WorldContext, entityId, (float*)&velocity);
+
+    internal static Vector3 PhysicsGetAngularVelocity(ulong entityId)
     {
         Vector3 v;
-        Api->CameraGetRightDirection(id, (float*)&v);
+        Api->PhysicsGetAngularVelocity(Api->WorldContext, entityId, (float*)&v);
         return v;
     }
 
-    internal static Vector3 CameraGetPosition(ulong id)
+    // -- Mouse delta / scroll -------------------------------------------------
+
+    internal static Vector2 GetMouseDelta()
     {
-        Vector3 v;
-        Api->CameraGetPosition(id, (float*)&v);
-        return v;
+        float dx, dy;
+        Api->GetMouseDelta(Api->WorldContext, &dx, &dy);
+        return new Vector2(dx, dy);
     }
 
-    internal static Vector3 CameraGetRotation(ulong id)
+    internal static float GetScrollDelta()
+        => Api->GetScrollDelta(Api->WorldContext);
+
+    // -- Cursor mode ----------------------------------------------------------
+
+    internal static void SetCursorMode(int mode)
+        => Api->SetCursorMode(Api->WorldContext, mode);
+
+    internal static int GetCursorMode()
+        => Api->GetCursorMode(Api->WorldContext);
+
+    // -- Physics teleport -----------------------------------------------------
+
+    internal static void PhysicsTeleport(ulong entityId, Vector3 position, Vector4 rotation)
     {
-        Vector3 v;
-        Api->CameraGetRotation(id, (float*)&v);
-        return v;
+        Api->PhysicsTeleport(Api->WorldContext, entityId, (float*)&position, (float*)&rotation);
     }
 
-    internal static void CameraSetPosition(ulong id, Vector3 value)
-        => Api->CameraSetPosition(id, (float*)&value);
+    // -- Tag name -------------------------------------------------------------
 
-    internal static void CameraSetRotation(ulong id, Vector3 value)
-        => Api->CameraSetRotation(id, (float*)&value);
-
-    // ── Sounds (2) ─────────────────────────────────────────────
-
-    internal static void SoundsPlayGlobal(ulong id, int index)
-        => Api->SoundsPlayGlobal(id, index);
-
-    internal static void SoundsPlayLocal(ulong id, int index)
-        => Api->SoundsPlayLocal(id, index);
-
-    // ── Box Collider (7) ───────────────────────────────────────
-
-    internal static Vector3 BoxColliderGetLinearVelocity(ulong id)
+    internal static string GetTagName(ulong entityId)
     {
-        Vector3 v;
-        Api->BoxColliderGetLinearVelocity(id, (float*)&v);
-        return v;
+        const int bufferSize = 256;
+        byte* buffer = stackalloc byte[bufferSize];
+        Api->GetTagName(Api->WorldContext, entityId, buffer, bufferSize);
+        int len = 0;
+        while (len < bufferSize && buffer[len] != 0) len++;
+        return Encoding.UTF8.GetString(buffer, len);
     }
 
-    internal static void BoxColliderSetLinearVelocity(ulong id, Vector3 value)
-        => Api->BoxColliderSetLinearVelocity(id, (float*)&value);
+    // -- Time -----------------------------------------------------------------
 
-    internal static void BoxColliderAddLinearVelocity(ulong id, Vector3 value)
-        => Api->BoxColliderAddLinearVelocity(id, (float*)&value);
+    internal static float GetDeltaTime()
+        => Api->GetDeltaTime(Api->WorldContext);
 
-    internal static void BoxColliderAddAngularVelocity(ulong id, Vector3 value)
-        => Api->BoxColliderAddAngularVelocity(id, (float*)&value);
+    // -- Input: single-press --------------------------------------------------
 
-    internal static void BoxColliderAddImpulse(ulong id, Vector3 value)
-        => Api->BoxColliderAddImpulse(id, (float*)&value);
+    internal static bool IsKeyJustPressed(int keycode)
+        => Api->IsKeyJustPressed(Api->WorldContext, keycode) != 0;
 
-    internal static void BoxColliderAddAngularImpulse(ulong id, Vector3 value)
-        => Api->BoxColliderAddAngularImpulse(id, (float*)&value);
+    // -- Transform: look-at ---------------------------------------------------
 
-    internal static void BoxColliderAddLinearAngularImpulse(ulong id, Vector3 linear, Vector3 angular)
-        => Api->BoxColliderAddLinearAngularImpulse(id, (float*)&linear, (float*)&angular);
-
-    // ── Sphere Collider (7) ────────────────────────────────────
-
-    internal static Vector3 SphereColliderGetLinearVelocity(ulong id)
+    internal static void TransformLookAt(ulong entityId, Vector3 target, Vector3 up)
     {
-        Vector3 v;
-        Api->SphereColliderGetLinearVelocity(id, (float*)&v);
-        return v;
+        Api->TransformLookAt(Api->WorldContext, entityId, (float*)&target, (float*)&up);
     }
 
-    internal static void SphereColliderSetLinearVelocity(ulong id, Vector3 value)
-        => Api->SphereColliderSetLinearVelocity(id, (float*)&value);
+    // -- Assets ---------------------------------------------------------------
 
-    internal static void SphereColliderAddLinearVelocity(ulong id, Vector3 value)
-        => Api->SphereColliderAddLinearVelocity(id, (float*)&value);
-
-    internal static void SphereColliderAddAngularVelocity(ulong id, Vector3 value)
-        => Api->SphereColliderAddAngularVelocity(id, (float*)&value);
-
-    internal static void SphereColliderAddImpulse(ulong id, Vector3 value)
-        => Api->SphereColliderAddImpulse(id, (float*)&value);
-
-    internal static void SphereColliderAddAngularImpulse(ulong id, Vector3 value)
-        => Api->SphereColliderAddAngularImpulse(id, (float*)&value);
-
-    internal static void SphereColliderAddLinearAngularImpulse(ulong id, Vector3 linear, Vector3 angular)
-        => Api->SphereColliderAddLinearAngularImpulse(id, (float*)&linear, (float*)&angular);
-
-    // ── Character Controller (11) ──────────────────────────────
-
-    internal static Vector3 CharControllerGetLinearVelocity(ulong id)
+    internal static ulong AssetLoad(string path)
     {
-        Vector3 v;
-        Api->CharControllerGetLinearVelocity(id, (float*)&v);
-        return v;
+        var bytes = Encoding.UTF8.GetBytes(path + '\0');
+        fixed (byte* ptr = bytes)
+            return Api->AssetLoad(Api->WorldContext, ptr);
     }
 
-    internal static void CharControllerSetLinearVelocity(ulong id, Vector3 value)
-        => Api->CharControllerSetLinearVelocity(id, (float*)&value);
+    internal static bool AssetIsLoaded(ulong handle)
+        => Api->AssetIsLoaded(Api->WorldContext, handle) != 0;
 
-    internal static void CharControllerAddLinearVelocity(ulong id, Vector3 value)
-        => Api->CharControllerAddLinearVelocity(id, (float*)&value);
+    // -- Audio ----------------------------------------------------------------
 
-    internal static void CharControllerAddAngularVelocity(ulong id, Vector3 value)
-        => Api->CharControllerAddAngularVelocity(id, (float*)&value);
-
-    internal static void CharControllerAddImpulse(ulong id, Vector3 value)
-        => Api->CharControllerAddImpulse(id, (float*)&value);
-
-    internal static void CharControllerAddAngularImpulse(ulong id, Vector3 value)
-        => Api->CharControllerAddAngularImpulse(id, (float*)&value);
-
-    internal static void CharControllerAddLinearAngularImpulse(ulong id, Vector3 linear, Vector3 angular)
-        => Api->CharControllerAddLinearAngularImpulse(id, (float*)&linear, (float*)&angular);
-
-    internal static bool CharControllerIsGrounded(ulong id)
-        => Api->CharControllerIsGrounded(id);
-
-    internal static Vector3 CharControllerGetRotation(ulong id)
+    internal static uint AudioGetSoundId(string name)
     {
-        Vector3 v;
-        Api->CharControllerGetRotation(id, (float*)&v);
-        return v;
+        var bytes = Encoding.UTF8.GetBytes(name + '\0');
+        fixed (byte* ptr = bytes)
+            return Api->AudioGetSoundId(Api->WorldContext, ptr);
     }
 
-    internal static void CharControllerSetRotation(ulong id, Vector3 value)
-        => Api->CharControllerSetRotation(id, (float*)&value);
+    internal static void AudioPlaySoundAt(uint soundId, float x, float y, float z)
+        => Api->AudioPlaySoundAt(Api->WorldContext, soundId, x, y, z);
 
-    internal static void CharControllerRotate(ulong id, Vector3 value)
-        => Api->CharControllerRotate(id, (float*)&value);
+    internal static void AudioPlayFile(string path, float x, float y, float z,
+                                        float volume, bool loop)
+    {
+        var bytes = Encoding.UTF8.GetBytes(path + '\0');
+        fixed (byte* ptr = bytes)
+            Api->AudioPlayFile(Api->WorldContext, ptr, x, y, z, volume, loop ? (byte)1 : (byte)0);
+    }
+
+    internal static void AudioPlayHandle(ulong handle, float x, float y, float z,
+                                          float volume, bool loop)
+        => Api->AudioPlayHandle(Api->WorldContext, handle, x, y, z, volume, loop ? (byte)1 : (byte)0);
+
+    // -- Scene ----------------------------------------------------------------
+
+    internal static void SceneLoad(string path)
+    {
+        var bytes = Encoding.UTF8.GetBytes(path + '\0');
+        fixed (byte* ptr = bytes)
+            Api->SceneLoad(Api->WorldContext, ptr);
+    }
+
+    internal static void SceneInstantiate(string path)
+    {
+        var bytes = Encoding.UTF8.GetBytes(path + '\0');
+        fixed (byte* ptr = bytes)
+            Api->SceneInstantiate(Api->WorldContext, ptr);
+    }
+
+    internal static bool SceneIsReady(string path)
+    {
+        var bytes = Encoding.UTF8.GetBytes(path + '\0');
+        fixed (byte* ptr = bytes)
+            return Api->SceneIsReady(Api->WorldContext, ptr) != 0;
+    }
 }

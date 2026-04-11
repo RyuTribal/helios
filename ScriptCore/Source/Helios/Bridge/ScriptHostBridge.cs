@@ -2,36 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Helios.Bridge;
 
-[StructLayout(LayoutKind.Sequential)]
-public unsafe struct ManagedBridgeNative
-{
-    public delegate* unmanaged<byte*, void> LoadAppAssembly;
-    public delegate* unmanaged<void> UnloadAppAssembly;
-    public delegate* unmanaged<int> GetEntityClassCount;
-    public delegate* unmanaged<int, byte*, int, void> GetEntityClassName;
-    public delegate* unmanaged<byte*, byte> EntityClassExists;
-    public delegate* unmanaged<byte*, ulong, byte> CreateInstance;
-    public delegate* unmanaged<ulong, void> DestroyInstance;
-    public delegate* unmanaged<ulong, void> InvokeOnCreate;
-    public delegate* unmanaged<ulong, float, void> InvokeOnUpdate;
-    public delegate* unmanaged<void> DestroyAllInstances;
-    public delegate* unmanaged<ulong, byte*, byte> EntityHasComponent;
-}
-
 public static unsafe class ScriptHostBridge
 {
     private static ScriptAssemblyLoadContext? s_ScriptALC;
     private static Assembly? s_AppAssembly;
-    private static List<Type> s_EntityClasses = new();
-    private static Dictionary<ulong, Entity> s_Instances = new();
-    private static Dictionary<Type, MethodInfo?> s_OnCreateCache = new();
-    private static Dictionary<Type, MethodInfo?> s_OnUpdateCache = new();
+    private static List<Type> s_ScriptClasses = new();
+    private static Dictionary<ulong, ScriptBehaviour> s_Instances = new();
 
     [UnmanagedCallersOnly]
     public static void Initialize(NativeEngineAPI* nativeApi, ManagedBridgeNative* outBridge)
@@ -43,15 +26,17 @@ public static unsafe class ScriptHostBridge
         outBridge->GetEntityClassCount = &BridgeGetEntityClassCount;
         outBridge->GetEntityClassName = &BridgeGetEntityClassName;
         outBridge->EntityClassExists = &BridgeEntityClassExists;
+        outBridge->GetScriptTypeId = &BridgeGetScriptTypeId;
         outBridge->CreateInstance = &BridgeCreateInstance;
-        outBridge->DestroyInstance = &BridgeDestroyInstance;
         outBridge->InvokeOnCreate = &BridgeInvokeOnCreate;
-        outBridge->InvokeOnUpdate = &BridgeInvokeOnUpdate;
+        outBridge->InvokeOnUpdateBatch = &BridgeInvokeOnUpdateBatch;
+        outBridge->InvokeOnDestroy = &BridgeInvokeOnDestroy;
         outBridge->DestroyAllInstances = &BridgeDestroyAllInstances;
-        outBridge->EntityHasComponent = &BridgeEntityHasComponent;
+        outBridge->InvokeMethod = &BridgeInvokeMethod;
+        outBridge->InvokeOnCollision = &BridgeInvokeOnCollision;
     }
 
-    // ── Helper: UTF-8 byte* to string ──────────────────────────
+    // -- Helper: UTF-8 byte* to string ----------------------------------------
 
     private static string PtrToString(byte* ptr)
     {
@@ -61,7 +46,7 @@ public static unsafe class ScriptHostBridge
         return Encoding.UTF8.GetString(ptr, len);
     }
 
-    // ── Bridge methods ─────────────────────────────────────────
+    // -- Bridge methods -------------------------------------------------------
 
     [UnmanagedCallersOnly]
     private static void BridgeLoadAppAssembly(byte* pathPtr)
@@ -78,9 +63,7 @@ public static unsafe class ScriptHostBridge
         if (s_ScriptALC != null)
         {
             s_Instances.Clear();
-            s_OnCreateCache.Clear();
-            s_OnUpdateCache.Clear();
-            s_EntityClasses.Clear();
+            s_ScriptClasses.Clear();
             s_AppAssembly = null;
             s_ScriptALC.Unload();
         }
@@ -91,8 +74,8 @@ public static unsafe class ScriptHostBridge
         using var stream = File.OpenRead(path);
         s_AppAssembly = s_ScriptALC.LoadFromStream(stream);
 
-        // Scan for Entity subclasses
-        s_EntityClasses.Clear();
+        // Scan for ScriptBehaviour subclasses
+        s_ScriptClasses.Clear();
         Type[] types;
         try
         {
@@ -100,7 +83,6 @@ public static unsafe class ScriptHostBridge
         }
         catch (ReflectionTypeLoadException ex)
         {
-            // Some types may fail to load — use the ones that succeeded
             types = ex.Types.Where(t => t != null).ToArray()!;
             foreach (var err in ex.LoaderExceptions)
                 Console.Error.WriteLine($"[ScriptBridge] Type load warning: {err?.Message}");
@@ -108,8 +90,8 @@ public static unsafe class ScriptHostBridge
 
         foreach (var type in types)
         {
-            if (type.IsSubclassOf(typeof(Entity)) && !type.IsAbstract)
-                s_EntityClasses.Add(type);
+            if (type.IsSubclassOf(typeof(ScriptBehaviour)) && !type.IsAbstract)
+                s_ScriptClasses.Add(type);
         }
     }
 
@@ -117,9 +99,7 @@ public static unsafe class ScriptHostBridge
     private static void BridgeUnloadAppAssembly()
     {
         s_Instances.Clear();
-        s_OnCreateCache.Clear();
-        s_OnUpdateCache.Clear();
-        s_EntityClasses.Clear();
+        s_ScriptClasses.Clear();
         s_AppAssembly = null;
 
         if (s_ScriptALC != null)
@@ -132,15 +112,15 @@ public static unsafe class ScriptHostBridge
     [UnmanagedCallersOnly]
     private static int BridgeGetEntityClassCount()
     {
-        return s_EntityClasses.Count;
+        return s_ScriptClasses.Count;
     }
 
     [UnmanagedCallersOnly]
     private static void BridgeGetEntityClassName(int index, byte* buffer, int bufferSize)
     {
-        if (index < 0 || index >= s_EntityClasses.Count) return;
+        if (index < 0 || index >= s_ScriptClasses.Count) return;
 
-        string name = s_EntityClasses[index].FullName ?? s_EntityClasses[index].Name;
+        string name = s_ScriptClasses[index].FullName ?? s_ScriptClasses[index].Name;
         int byteCount = Encoding.UTF8.GetBytes(name, new Span<byte>(buffer, bufferSize - 1));
         buffer[byteCount] = 0; // null terminator
     }
@@ -149,7 +129,7 @@ public static unsafe class ScriptHostBridge
     private static byte BridgeEntityClassExists(byte* fullNamePtr)
     {
         string fullName = PtrToString(fullNamePtr);
-        foreach (var type in s_EntityClasses)
+        foreach (var type in s_ScriptClasses)
         {
             if (type.FullName == fullName || type.Name == fullName)
                 return 1;
@@ -158,12 +138,26 @@ public static unsafe class ScriptHostBridge
     }
 
     [UnmanagedCallersOnly]
-    private static byte BridgeCreateInstance(byte* classNamePtr, ulong entityId)
+    private static uint BridgeGetScriptTypeId(byte* fullNamePtr)
+    {
+        string fullName = PtrToString(fullNamePtr);
+        // FNV-1a hash
+        uint hash = 2166136261u;
+        foreach (char c in fullName)
+        {
+            hash ^= c;
+            hash *= 16777619u;
+        }
+        return hash;
+    }
+
+    [UnmanagedCallersOnly]
+    private static ulong BridgeCreateInstance(byte* classNamePtr, ulong entityId)
     {
         string className = PtrToString(classNamePtr);
 
         Type? targetType = null;
-        foreach (var type in s_EntityClasses)
+        foreach (var type in s_ScriptClasses)
         {
             if (type.FullName == className || type.Name == className)
             {
@@ -174,65 +168,96 @@ public static unsafe class ScriptHostBridge
 
         if (targetType == null) return 0;
 
-        var instance = (Entity?)Activator.CreateInstance(targetType);
+        var instance = (ScriptBehaviour?)Activator.CreateInstance(targetType);
         if (instance == null) return 0;
 
-        // Set the entity ID (public mutable field)
+        // Set the entity ID (inherited from Entity base class)
         instance.ID = entityId;
 
+        // Store and return handle (we use entityId as the key)
         s_Instances[entityId] = instance;
-        return 1;
-    }
 
-    [UnmanagedCallersOnly]
-    private static void BridgeDestroyInstance(ulong entityId)
-    {
-        s_Instances.Remove(entityId);
+        // Return a non-zero handle (entityId itself works as the opaque handle)
+        return entityId;
     }
 
     [UnmanagedCallersOnly]
     private static void BridgeInvokeOnCreate(ulong entityId)
     {
         if (!s_Instances.TryGetValue(entityId, out var instance)) return;
-
-        var type = instance.GetType();
-        if (!s_OnCreateCache.TryGetValue(type, out var method))
-        {
-            method = type.GetMethod("OnCreate",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            s_OnCreateCache[type] = method;
-        }
-
-        method?.Invoke(instance, null);
+        instance.OnCreate();
     }
 
     [UnmanagedCallersOnly]
-    private static void BridgeInvokeOnUpdate(ulong entityId, float deltaTime)
+    private static void BridgeInvokeOnUpdateBatch(
+        uint scriptTypeId,
+        ulong* entityIds,
+        ulong* managedHandles,
+        int count,
+        float deltaTime)
     {
-        if (!s_Instances.TryGetValue(entityId, out var instance)) return;
-
-        var type = instance.GetType();
-        if (!s_OnUpdateCache.TryGetValue(type, out var method))
+        for (int i = 0; i < count; i++)
         {
-            method = type.GetMethod("OnUpdate",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null, new[] { typeof(float) }, null);
-            s_OnUpdateCache[type] = method;
+            ulong entityId = entityIds[i];
+            if (s_Instances.TryGetValue(entityId, out var instance))
+            {
+                instance.OnUpdate(deltaTime);
+            }
         }
+    }
 
-        method?.Invoke(instance, new object[] { deltaTime });
+    [UnmanagedCallersOnly]
+    private static void BridgeInvokeOnDestroy(ulong entityId, ulong managedHandle)
+    {
+        if (s_Instances.TryGetValue(entityId, out var instance))
+        {
+            instance.OnDestroy();
+            s_Instances.Remove(entityId);
+        }
+        // Clean up managed components for this entity
+        ComponentStore.RemoveAll(entityId);
     }
 
     [UnmanagedCallersOnly]
     private static void BridgeDestroyAllInstances()
     {
+        // Snapshot to avoid modification during iteration (OnDestroy could spawn)
+        var snapshot = new List<KeyValuePair<ulong, ScriptBehaviour>>(s_Instances);
+
+        foreach (var (entityId, instance) in snapshot)
+        {
+            instance.OnDestroy();
+            ComponentStore.RemoveAll(entityId);
+        }
+
         s_Instances.Clear();
     }
 
     [UnmanagedCallersOnly]
-    private static byte BridgeEntityHasComponent(ulong entityId, byte* componentNamePtr)
+    private static void BridgeInvokeMethod(
+        ulong entityId, byte* methodNamePtr,
+        void* args, int argsSizeBytes)
     {
-        string componentName = PtrToString(componentNamePtr);
-        return NativeAPI.EntityHasComponent(entityId, componentName) ? (byte)1 : (byte)0;
+        if (!s_Instances.TryGetValue(entityId, out var instance)) return;
+        string methodName = PtrToString(methodNamePtr);
+
+        // For collision exit, args is a uint64 (other entity ID)
+        if (methodName == "OnCollisionExit" && argsSizeBytes >= 8)
+            instance.OnCollisionExit(*(ulong*)args);
+    }
+
+    [UnmanagedCallersOnly]
+    private static void BridgeInvokeOnCollision(
+        ulong entityId, ulong otherEntityId,
+        float px, float py, float pz,
+        float nx, float ny, float nz,
+        float impulse)
+    {
+        if (!s_Instances.TryGetValue(entityId, out var instance)) return;
+        instance.OnCollisionEnter(
+            otherEntityId,
+            new Vector3(px, py, pz),
+            new Vector3(nx, ny, nz),
+            impulse);
     }
 }

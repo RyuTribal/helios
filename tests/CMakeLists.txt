@@ -1,0 +1,53 @@
+add_executable(helios-tests
+    ecs/test_entity.cpp
+    ecs/test_entity_allocator.cpp
+    ecs/test_archetype.cpp
+    ecs/test_archetype_storage.cpp
+    ecs/test_resources.cpp
+    ecs/test_events.cpp
+    ecs/test_query.cpp
+    ecs/test_world.cpp
+    ecs/test_commands.cpp
+    ecs/test_components.cpp
+    ecs/test_access_descriptor.cpp
+    ecs/test_system_param.cpp
+    ecs/test_dag_builder.cpp
+    ecs/test_thread_pool.cpp
+    ecs/test_scheduler_sequential.cpp
+    ecs/test_scheduler_parallel.cpp
+    ecs/test_app.cpp
+    ecs/test_fixed_update.cpp
+    ecs/test_integration.cpp
+    ecs/test_change_detection.cpp
+    ecs/test_transform_propagation.cpp
+    core/test_uuid.cpp
+    core/test_logging.cpp
+    core/test_log_channel_registry.cpp
+    core/test_assert.cpp
+    window/test_window.cpp
+    input/test_raw_input.cpp
+    input/test_input_map.cpp
+    input/test_input_integration.cpp
+    app/test_state.cpp
+    app/test_game_flow.cpp
+    app/test_transitions.cpp
+    assets/test_asset_server.cpp
+    assets/test_asset_extensions.cpp
+    assets/test_importers.cpp
+    assets/test_binary_reader_writer.cpp
+    assets/test_asset_binary.cpp
+    assets/test_asset_import_export.cpp
+    scene/test_scene_manager.cpp
+    scene/test_scene_plugin.cpp
+    serialization/test_binary_serialization.cpp
+    serialization/test_yaml_serialization.cpp
+)
+
+target_link_libraries(helios-tests
+    PRIVATE
+        helios-core
+        GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(helios-tests)
