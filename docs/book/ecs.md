@@ -124,7 +124,7 @@ Helios automatically injects data into systems based on their parameter types:
 | `Query<Ts...>` | Mixed | Iterates over entities matching constraints. |
 | `Res<T>` | Read | Immutable access to a global resource. |
 | `ResMut<T>` | Write | Mutable access to a global resource. |
-| `Commands` | Write | Defer structural changes (spawn, despawn, add/remove). |
+| `Commands&` | Write | Defer structural changes (spawn, despawn, add/remove). |
 | `EventReader<T>` | Read | Read events sent in previous stages/frames. |
 | `EventWriter<T>` | Write | Send events to be read by other systems. |
 | `World&` | Exclusive | Full, direct access. Forces serial execution of the system. |
@@ -154,7 +154,7 @@ void cleanup_system(World& world) {
 You **cannot** structurally modify the world (spawn/add/remove) while iterating over a `Query` because it would invalidate the archetype storage. Instead, use `Commands`:
 
 ```cpp
-void spawner_system(Commands cmds, Query<Entity, const Transform> q) {
+void spawner_system(Commands& cmds, Query<Entity, const Transform> q) {
     for (auto [entity, transform] : q.with_entity()) {
         if (should_split(transform)) {
             cmds.spawn(Transform{transform.position}); // Queued for later
