@@ -73,6 +73,21 @@ nav:
       - AudioDevice: api/audio/audio_device.md
       - AudioPlugin: api/audio/audio_plugin.md
       - Components: api/audio/components.md
+    - Scripting:
+      - Overview: api/scripting/index.md
+      - C++ API:
+        - Overview: api/scripting/cpp/index.md
+        - ScriptingPlugin: api/scripting/cpp/scripting_plugin.md
+        - ScriptRuntime: api/scripting/cpp/script_runtime.md
+        - ScriptInstance & Components: api/scripting/cpp/components.md
+      - C# API:
+        - Overview: api/scripting/csharp/index.md
+        - Entity: api/scripting/csharp/entity.md
+        - ScriptBehaviour: api/scripting/csharp/script_behaviour.md
+        - TransformComponent: api/scripting/csharp/transform_component.md
+        - Input: api/scripting/csharp/input.md
+        - Audio: api/scripting/csharp/audio.md
+        - Scene: api/scripting/csharp/scene.md
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
