@@ -1,0 +1,6 @@
+#pragma once
+
+#define HELIOS_VERSION_MAJOR 0
+#define HELIOS_VERSION_MINOR 5
+#define HELIOS_VERSION_PATCH 0
+#define HELIOS_VERSION_STRING "0.5.0"

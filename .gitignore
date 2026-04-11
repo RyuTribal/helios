@@ -1,18 +1,28 @@
-# Binaries
-bin/
-bin-int/
-Intermediates/
-!vendor/premake/bin/
+# Build
+build/
+cmake-build-*/
 
-# Misc files
-*.log
-
-# Visual Studio files and folder
+# IDE
 .vs/
 .vscode/
-**.sln
-**.vcxproj
-**.vcxproj.filters
-**.vcxproj.user
-**.csproj
-Makefile
+.idea/
+.cache/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+compile_commands.json
+
+# .NET build artifacts
+**/bin/
+**/obj/
+!ScriptCore/ScriptCore.csproj
+!sandbox/scripts/*.csproj
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/worktrees/
