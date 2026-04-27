@@ -210,7 +210,3 @@ These are enforced across the entire codebase:
 6. **Async by default** — Asset loading is non-blocking via the shared thread pool. Scripts, physics, and audio all integrate through the ECS event system.
 
 7. **Don't reinvent** — Use existing infrastructure. `ThreadPool::submit()` for background work. `set_parent()`/`unparent()` for hierarchy. `resolve_mesh_paths()` for asset resolution. `AssetServer::load()` for caching.
-
-## License
-
-See [LICENSE](LICENSE) for details.
