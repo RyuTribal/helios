@@ -204,8 +204,8 @@ static void draw_directory_tree(const std::filesystem::path& dir,
 
         bool is_helios_asset = s_helios_exts.count(ext) > 0;
 
-        // Task 7B: Show yellow warning dot if source is outdated
-        // Only check for visible Helios binary assets.
+        // Yellow warning dot when the source file is newer than the
+        // imported asset. Only checked for visible Helios binary assets.
         bool source_outdated = false;
         if (is_helios_asset && server) {
             // Compute path relative to asset root for is_source_outdated

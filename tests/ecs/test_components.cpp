@@ -21,7 +21,7 @@ static bool mat4_approx_equal(const glm::mat4& a, const glm::mat4& b, float eps 
 }
 
 // ---------------------------------------------------------------------------
-// Task 13 – AssetHandle / BodyHandle / SoundHandle
+// AssetHandle / BodyHandle / SoundHandle
 // ---------------------------------------------------------------------------
 
 TEST(AssetHandle, DefaultIsInvalid) {

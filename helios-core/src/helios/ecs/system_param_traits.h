@@ -11,7 +11,6 @@
 
 namespace helios {
 
-// Forward declarations from Plan 1
 class World;
 class Commands;
 template <typename... T> class Query;

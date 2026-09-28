@@ -12,7 +12,6 @@
 
 namespace helios {
 
-// Forward declaration -- World is from Plan 1
 class World;
 
 /// Stable identifier for a registered system. Wraps a monotonically increasing uint64.
